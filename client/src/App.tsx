@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { checkHealth, Category } from "./api.js";
+import { checkSystem, Category } from "./api.js";
 
 // UI states: idle, loading, success, error.
 type UiState = "idle" | "loading" | "success" | "error";
@@ -8,14 +8,13 @@ export default function App() {
   const [state, setState] = useState<UiState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [categories, setCategories] = useState<Category[]>([]);
-  void categories;
-  void setCategories;
 
   async function handleCheck() {
     setState("loading");
     setErrorMessage("");
     try {
-      await checkHealth();
+      const result = await checkSystem();
+      setCategories(result.categories);
       setState("success");
     } catch (err: unknown) {
       setState("error");
@@ -40,6 +39,13 @@ export default function App() {
       {state === "success" && (
         <div className="alert alert-success mt-4" role="alert">
           <strong>Online</strong>
+          {categories.length > 0 && (
+            <ul className="mt-2 mb-0">
+              {categories.map((category) => (
+                <li key={category.id}>{category.name}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
