@@ -1,19 +1,30 @@
 import { useState } from "react";
-import { checkSystem, Category } from "./api.js";
+import { checkHealth, Category } from "./api.js";
 
-// UI states you must handle for Issue 4: idle, loading, success, error.
+// UI states: idle, loading, success, error.
 type UiState = "idle" | "loading" | "success" | "error";
 
 export default function App() {
   const [state, setState] = useState<UiState>("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const [categories, setCategories] = useState<Category[]>([]);
   void categories;
+  void setCategories;
 
   async function handleCheck() {
-    // TODO(Issue 4): set loading, call checkSystem(), then either
-    //   - success: store categories and show Online + the list, or
-    //   - error: show Offline + a useful message.
     setState("loading");
+    setErrorMessage("");
+    try {
+      await checkHealth();
+      setState("success");
+    } catch (err: unknown) {
+      setState("error");
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage("An unexpected error occurred");
+      }
+    }
   }
 
   return (
@@ -26,7 +37,18 @@ export default function App() {
         {state === "loading" ? "Loading…" : "Check System"}
       </button>
 
-      {/* TODO(Issue 4): render loading / success (Online + categories) / error (Offline) states. */}
+      {state === "success" && (
+        <div className="alert alert-success mt-4" role="alert">
+          <strong>Online</strong>
+        </div>
+      )}
+
+      {state === "error" && (
+        <div className="alert alert-danger mt-4" role="alert">
+          <strong>Offline</strong>
+          {errorMessage && <div className="small mt-1">{errorMessage}</div>}
+        </div>
+      )}
     </div>
   );
 }
