@@ -1,0 +1,6387 @@
+# Lab 2 - TokTickIT Requester Ticketing MVP Specification
+
+Version: 1.0
+Status: Approved SRS
+Sprint: Lab 2
+Product: TokTickIT
+
+## 1. Sprint Goal
+
+Lab 2 delivers the Requester-facing TokTickIT Ticketing MVP.
+
+A temporary Development Requester Selection mechanism is used to simulate
+requester identity for testing until real authentication is introduced in
+Lab 3.
+
+The sprint allows a Requester to create an IT support Ticket, attach
+permitted supporting evidence, receive an official Ticket Number, view and
+search their own Tickets, open Ticket Detail, and manage permitted
+Attachments.
+
+The sprint also establishes a reusable requester-facing UI foundation for
+later TokTickIT screens.
+
+---
+
+## 2. Stakeholder Request
+
+The IT department needs a professional and responsive Requester-facing
+ticketing application.
+
+A Requester must be able to:
+
+- select a temporary Development Requester identity for Lab 2 testing;
+- describe an IT problem;
+- select a Category;
+- select a Related System;
+- indicate Requested Priority;
+- add permitted supporting Attachments;
+- submit a Ticket;
+- receive the official Ticket Number;
+- view their own Tickets in My Tickets;
+- search their own Tickets;
+- filter their own Tickets;
+- sort their own Tickets;
+- page through their Tickets;
+- open Requester Ticket Detail;
+- inspect Ticket information;
+- inspect and download permitted Attachments;
+- add permitted Attachments to an existing Ticket; and
+- remove their own permitted Attachments according to the required
+  removal rules.
+
+The system must prevent one Requester from viewing or managing another
+Requester's Ticket or Attachments.
+
+---
+
+## 3. Scope
+
+### 3.1 Included in Lab 2
+
+Lab 2 includes:
+
+- Development Requester Selection for testing
+- requester-context switching
+- active and inactive Development Requester behavior
+- Category reference data
+- Related System reference data
+- Ticket creation
+- backend-generated Ticket Number
+- system-generated Ticket Date
+- Requester ownership
+- Requested Priority
+- initial Current Status
+- form validation
+- duplicate-submission prevention
+- My Tickets
+- requester-owned Ticket retrieval
+- search
+- filtering
+- sorting
+- pagination
+- Requester Ticket Detail
+- Attachment upload
+- Attachment validation
+- Attachment metadata
+- permitted preview/open behavior
+- Attachment download
+- Attachment removal
+- loading states
+- validation states
+- empty states
+- no-results states
+- success states
+- safe failure states
+- responsive requester-facing UI
+- accessibility behavior
+- reusable KMUTT visual foundation
+- automated tests and end-to-end verification
+
+### 3.2 Explicitly Excluded from Lab 2
+
+Lab 2 shall not implement:
+
+- real login or authentication
+- passwords
+- password hashing
+- authentication sessions or tokens
+- real role-based authorization
+- IT Staff dashboard or queue
+- Ticket Owner assignment or reassignment
+- IT Priority changes
+- Public Comments
+- Internal Notes
+- Actions Taken
+- Ticket status changes after the initial New status
+- resolving Tickets
+- closing Tickets
+- reopening Tickets
+- cancelling Tickets
+- Administrator user-management functions
+- Administrator reference-data-management screens
+- requester editing of submitted Ticket fields
+- a custom PDF-viewer component
+
+The Development Requester selector is strictly a temporary Lab 2 testing
+mechanism and must not be represented as secure authentication.
+
+---
+
+## 4. Functional Requirements
+
+### FR-01 - Development Requester Selection
+
+The system shall provide a Development Requester Selection screen before
+requester-specific functions are used.
+
+### FR-02 - Active Requester Retrieval
+
+The Development Requester Selection screen shall load active Development
+Requesters from PostgreSQL.
+
+Inactive Development Requesters shall not be selectable.
+
+### FR-03 - Development Requester Context
+
+After selection, the Development Requester shall become the current
+requester context for:
+
+- Create Ticket;
+- My Tickets;
+- Ticket Detail; and
+- Attachment operations.
+
+### FR-04 - Requester Context Persistence
+
+The selected Development Requester ID shall be retained in sessionStorage
+for the current browser tab.
+
+### FR-05 - Change Requester
+
+The system shall provide a Change Requester action.
+
+When the requester changes, requester-specific data shall be reloaded for
+the newly selected Requester.
+
+### FR-06 - Invalid Stored Requester
+
+If a stored Development Requester no longer exists or becomes inactive,
+the system shall clear that requester context and require a new active
+Requester to be selected.
+
+### FR-07 - Create Ticket Information
+
+The Create Ticket screen shall capture or display at least:
+
+- Ticket Number
+- Ticket Date
+- Requester
+- Category
+- Related System
+- Ticket Summary
+- Requested Priority
+- Description
+- Attachments
+
+### FR-08 - System-Generated Ticket Values
+
+Ticket Number and Ticket Date shall be generated by the backend/system and
+shall not be editable by the Requester.
+
+### FR-09 - Ticket Creation
+
+Given valid Ticket information, the system shall create exactly one Ticket
+owned by the currently selected Development Requester.
+
+### FR-10 - Official Ticket Number
+
+The backend shall generate the official unique Ticket Number using the
+approved system-level format:
+
+TKT-YYYY-NNNNN
+
+The annual sequence shall reset for a new calendar year according to the
+approved System-Level SDS.
+
+### FR-11 - Ticket Date
+
+The system shall record the Ticket creation date/time when the Ticket is
+created.
+
+Dates and times shall follow the approved system-wide UTC storage and API
+conventions.
+
+### FR-12 - Initial Ticket Status
+
+Every newly created Ticket shall begin with Current Status = New.
+
+### FR-13 - Requested Priority
+
+The Requester shall be able to select Requested Priority from:
+
+- Low
+- Medium
+- High
+- Urgent
+
+### FR-14 - Duplicate Submission Prevention
+
+The system shall prevent accidental duplicate Ticket creation caused by
+repeated submission of the same creation request.
+
+### FR-15 - Creation Failure Preservation
+
+If Ticket creation fails because of validation or a recoverable API
+failure, the Requester's entered form data shall be preserved so it can
+be corrected or retried.
+
+### FR-16 - Successful Creation Result
+
+After successful Ticket creation, the system shall clearly show the
+backend-generated official Ticket Number and allow the Requester to open
+the newly created Ticket Detail.
+
+### FR-17 - My Tickets
+
+The selected Requester shall be able to view only Tickets belonging to
+that Requester.
+
+### FR-18 - Ticket Search
+
+My Tickets shall support requester-owned Ticket search by:
+
+- Ticket Number
+- Summary
+- Description
+
+Search shall be case-insensitive.
+
+### FR-19 - Ticket Filtering
+
+My Tickets shall support filtering by:
+
+- Category
+- Related System
+- Requested Priority
+- Current Status
+
+Filters may be combined.
+
+### FR-20 - Ticket Sorting
+
+My Tickets shall provide predictable supported sorting.
+
+At minimum, the approved Lab 2 design shall support:
+
+- newest created first;
+- oldest created first;
+- recently updated first; and
+- Ticket Number ascending.
+
+### FR-21 - Ticket Pagination
+
+My Tickets shall provide paginated results.
+
+The approved Lab 2 design shall support page sizes of 10, 20, and 50,
+with 10 as the default.
+
+### FR-22 - My Tickets Empty State
+
+If the selected Requester owns no Tickets, My Tickets shall present a
+clear empty state and a Create Ticket action.
+
+### FR-23 - My Tickets No-Results State
+
+If Tickets exist but none match the current search/filter conditions, My
+Tickets shall present a separate no-results state and an action to clear
+the current query controls.
+
+### FR-24 - Ticket Detail
+
+A Requester shall be able to open Ticket Detail for a Ticket that belongs
+to that Requester.
+
+### FR-25 - Read-Only Ticket Detail
+
+Requester Ticket Detail shall present submitted Ticket information as
+read-only in Lab 2.
+
+### FR-26 - Ownership Protection
+
+The backend shall prevent a Requester from retrieving or managing a Ticket
+belonging to another Requester.
+
+### FR-27 - Neutral Missing/Ownership Response
+
+A Ticket that does not exist and a Ticket unavailable to the current
+Requester shall use the same neutral not-found behavior so that another
+Requester's Ticket existence is not disclosed.
+
+### FR-28 - Attachment Upload
+
+A Requester shall be able to add permitted Attachments:
+
+- during Create Ticket; and
+- to an existing requester-owned Ticket.
+
+### FR-29 - Attachment Type Validation
+
+Permitted Attachment formats are:
+
+- JPG/JPEG
+- PNG
+- WEBP
+- PDF
+
+### FR-30 - Attachment Size Validation
+
+Each Attachment shall be no larger than 5 MB.
+
+### FR-31 - Active Attachment Limit
+
+A Ticket shall contain no more than five active Attachments.
+
+### FR-32 - Mixed Attachment Selection
+
+When valid and invalid files are selected together, valid files may be
+accepted while invalid files are individually rejected with useful
+feedback.
+
+### FR-33 - Duplicate Original Filenames
+
+Different Attachments may have the same original filename.
+
+Internally stored objects must use generated identifiers so files cannot
+overwrite each other.
+
+### FR-34 - Attachment Retrieval
+
+A Requester shall be able to retrieve an active permitted Attachment from
+a requester-owned Ticket through an authorized backend endpoint.
+
+### FR-35 - Image Preview
+
+Active JPG/JPEG, PNG, and WEBP Attachments may be previewed in the
+requester UI.
+
+### FR-36 - PDF Behavior
+
+Active PDF Attachments shall provide Open/Download behavior.
+
+Lab 2 does not require a custom PDF-viewer component.
+
+### FR-37 - Attachment Removal
+
+A Requester shall be able to remove one of their own permitted active
+Attachments while the applicable Ticket state allows removal.
+
+### FR-38 - Attachment Removal Confirmation
+
+Attachment removal shall require explicit confirmation.
+
+### FR-39 - Attachment Removal Reason
+
+Attachment removal shall require a reason.
+
+### FR-40 - Attachment Removal Record
+
+Removal shall preserve the Attachment database metadata as a deleted
+tombstone and record removal information.
+
+The removed Attachment shall no longer be available for preview, open, or
+download.
+
+### FR-41 - Attachment Binary Removal
+
+After Attachment metadata is marked removed, the stored binary object
+shall be deleted according to the approved System-Level SDS attachment
+lifecycle.
+
+Failure to delete the binary shall not restore user visibility. Cleanup
+must be retried or recorded according to the approved storage design.
+
+### FR-42 - Active Reference Data
+
+New Ticket creation shall use active Category and Related System values
+retrieved from PostgreSQL.
+
+### FR-43 - Historical Reference Data
+
+An existing Ticket shall continue displaying its historical Category and
+Related System even if the reference record later becomes inactive.
+
+### FR-44 - Requester Navigation
+
+After requester selection, the application shall provide:
+
+- TokTickIT application identity
+- My Tickets
+- Create Ticket
+- current Development Requester display
+- Change Requester
+
+### FR-45 - Loading States
+
+Required requester screens shall display meaningful loading states while
+waiting for backend data or mutations.
+
+### FR-46 - Failure States
+
+Required requester screens shall display safe and useful API-failure
+states without exposing internal implementation details.
+
+### FR-47 - Responsive Behavior
+
+Development Requester Selection, Create Ticket, My Tickets, Ticket Detail,
+Attachment controls, and application navigation shall remain usable on
+desktop, tablet, and mobile layouts.
+
+### FR-48 - Accessible Operation
+
+Required controls shall support keyboard operation, visible focus, proper
+labels, and understandable validation/error feedback.
+
+---
+
+## 5. Business Rules
+
+### BR-01 - Official Ticket Number
+
+The official Ticket Number is generated by the backend and must be unique.
+
+### BR-02 - Ticket Number Format
+
+The approved Ticket Number format is TKT-YYYY-NNNNN with a transactional
+annual sequence reset.
+
+### BR-03 - New Ticket Status
+
+A newly created Ticket begins with Current Status New.
+
+### BR-04 - Development Requester Purpose
+
+The Development Requester selector is for Lab 2 testing only and is not
+authentication.
+
+### BR-05 - Active Requester Rule
+
+Only active Development Requesters may be newly selected.
+
+### BR-06 - Stored Requester Rule
+
+A stored requester identity that becomes inactive or no longer exists
+must be rejected and cleared.
+
+### BR-07 - Requester Ownership
+
+Each Ticket belongs to exactly one Development Requester.
+
+### BR-08 - Requester Switching
+
+Changing the selected Development Requester must reload requester-owned
+data and clear unfinished requester-specific Create Ticket state.
+
+### BR-09 - Ticket Number Authority
+
+The frontend must never calculate, assign, or override the official Ticket
+Number.
+
+### BR-10 - Ticket Date Authority
+
+Ticket Date is system generated and read-only to the Requester.
+
+### BR-11 - Requested Priority Vocabulary
+
+Requested Priority shall use the approved values:
+
+- Low
+- Medium
+- High
+- Urgent
+
+The requester-facing default for Lab 2 is Medium.
+
+### BR-12 - Requested Priority Meaning
+
+Requested Priority represents the Requester's requested urgency and is
+separate from IT Priority.
+
+IT Priority workflow is outside Lab 2.
+
+### BR-13 - Summary Validation
+
+Ticket Summary is required.
+
+After trimming, it must contain between 5 and 120 characters.
+
+Whitespace-only input is invalid.
+
+### BR-14 - Description Validation
+
+Description is required.
+
+After trimming, it must contain between 10 and 2000 characters.
+
+Whitespace-only input is invalid.
+
+### BR-15 - Shared Validation
+
+Ticket Summary and Description validation shall be enforced by both the
+frontend for usability and the backend as the authoritative validation
+boundary.
+
+### BR-16 - Duplicate Submission Protection
+
+Repeated processing of the same approved creation-request identifier must
+not create duplicate Tickets.
+
+### BR-17 - Recoverable Failure Data
+
+Requester-entered form values shall be preserved after recoverable
+validation or API failures.
+
+### BR-18 - Search Scope
+
+Ticket search shall operate only within the selected Requester's Tickets.
+
+### BR-19 - Combined Ticket Query
+
+Search, filtering, sorting, and pagination shall work together within the
+selected Requester's Ticket dataset.
+
+### BR-20 - Search Behavior
+
+Search shall cover Ticket Number, Summary, and Description and shall be
+case-insensitive.
+
+### BR-21 - Filter Behavior
+
+Category, Related System, Requested Priority, and Current Status filters
+may be combined.
+
+### BR-22 - Pagination Reset
+
+Changing search, filtering, sorting, or page size shall reset the result
+set to page 1.
+
+### BR-23 - Ticket Detail Ownership
+
+A Requester may view only their own Ticket Detail.
+
+### BR-24 - Cross-Requester Resource Protection
+
+Requests for another Requester's Ticket or Attachment shall not disclose
+the resource.
+
+The approved Lab 2 contract shall use the same neutral not-found behavior
+for missing and requester-inaccessible resources.
+
+### BR-25 - Submitted Ticket Fields
+
+Requester Ticket header fields are read-only after creation in Lab 2.
+
+### BR-26 - Attachment Allowed Types
+
+Only JPG/JPEG, PNG, WEBP, and PDF Attachments are allowed.
+
+### BR-27 - Attachment Size
+
+Maximum Attachment size is 5 MB per file.
+
+### BR-28 - Active Attachment Count
+
+A Ticket may contain a maximum of five active Attachments.
+
+### BR-29 - Removed Attachment Count
+
+Removed Attachment tombstones do not count toward the five-active-file
+limit.
+
+### BR-30 - Attachment Filename
+
+Original filenames are display metadata only.
+
+The original filename must not be used as the unique object-storage key.
+
+### BR-31 - Attachment Removal Confirmation
+
+Attachment removal requires user confirmation.
+
+### BR-32 - Attachment Removal Reason
+
+Attachment removal requires a trimmed reason containing 1-200 characters.
+
+### BR-33 - Attachment Removal Metadata
+
+Removed Attachment metadata remains stored for traceability.
+
+It records the removal state, remover information required by the
+approved design, reason, and removal timestamp.
+
+### BR-34 - Removed Attachment Access
+
+A removed Attachment cannot be previewed, opened, or downloaded.
+
+### BR-35 - Removed Attachment Binary
+
+The removed Attachment binary is deleted from object storage according to
+the System-Level SDS.
+
+### BR-36 - Partial Attachment Failure
+
+If a Ticket has already been successfully created and a later Attachment
+upload fails, the Ticket remains created.
+
+Successful Attachment uploads remain available and the failed upload is
+reported so the Requester may retry.
+
+### BR-37 - Partial File Selection
+
+When multiple files are selected, files that violate Attachment rules may
+be rejected individually while valid files remain selected or uploaded.
+
+### BR-38 - Reference Data
+
+New Tickets may use only active Category and Related System values.
+
+### BR-39 - Historical Reference Data
+
+Inactive reference records remain available for display on existing
+Tickets.
+
+### BR-40 - Empty and No-Results States
+
+My Tickets must distinguish:
+
+- no Tickets owned by the Requester;
+- no matching search/filter results; and
+- backend/API failure.
+
+### BR-41 - Future Authentication
+
+Lab 2 Development Requester context must remain replaceable by real
+authentication in Lab 3 and must not introduce fake password/session
+security behavior.
+
+---
+
+## 6. Non-Functional Requirements
+
+### NFR-01 - Responsive Usability
+
+The required requester-facing screens shall provide usable desktop,
+tablet, and mobile layouts without unintended horizontal overflow,
+clipped controls, or unusable actions.
+
+### NFR-02 - Accessibility
+
+Lab 2 requester-facing UI shall follow the accessibility baseline from
+the approved System-Level SDS, including semantic controls, visible focus,
+programmatic labels, keyboard usability, and feedback that does not rely
+on color alone.
+
+### NFR-03 - Safe Error Handling
+
+Unexpected backend failures shall return safe messages and must not expose
+stack traces, SQL/database details, filesystem/object-storage keys,
+credentials, or other sensitive implementation details.
+
+### NFR-04 - Backend Validation Authority
+
+Client-side validation shall improve usability but shall not substitute
+for backend validation and database constraints.
+
+### NFR-05 - Ownership Enforcement
+
+Requester ownership rules shall be enforced by the backend even when API
+endpoints are called directly outside the UI.
+
+### NFR-06 - Ticket Number Concurrency Safety
+
+Concurrent valid Ticket creation requests shall not produce duplicate
+official Ticket Numbers.
+
+### NFR-07 - Database Integrity
+
+Schema changes shall use reviewed Prisma migrations and appropriate
+database keys, relationships, uniqueness constraints, and indexes.
+
+### NFR-08 - Attachment Safety
+
+Attachment operations shall enforce the approved type, size, ownership,
+storage, retrieval, and removal controls on the backend.
+
+### NFR-09 - Maintainability
+
+Lab 2 shall preserve the approved React/TypeScript/Vite/Bootstrap
+frontend, Node.js/Express/TypeScript backend, PostgreSQL/Prisma data layer,
+and system-level separation of UI, API, domain behavior, and persistence.
+
+### NFR-10 - Testability
+
+The implementation shall support automated verification at unit, API or
+integration, UI component, responsive/visual, and end-to-end levels.
+
+### NFR-11 - Traceability
+
+Every approved Lab 2 Acceptance Criterion shall map to at least one
+planned test before implementation is declared complete.
+
+### NFR-12 - Secrets and Configuration
+
+Secrets and real database credentials shall not be committed to Git.
+
+Safe example configuration may be provided through .env.example.
+
+---
+
+## 7. System-Level Design Constraints
+
+This Lab 2 SRS shall be interpreted together with the approved TokTickIT
+System-Level SDS.
+
+The following approved system-level decisions remain binding where
+applicable:
+
+- Product name is TokTickIT.
+- Ticket Status uses the approved system-wide vocabulary.
+- Priority uses Low, Medium, High, and Urgent.
+- Attachment storage follows the approved object-storage architecture.
+- Ticket Number uses TKT-YYYY-NNNNN with a transactional annual sequence.
+- Tickets are not hard deleted.
+- Attachment binary removal follows the approved attachment lifecycle.
+- New application APIs follow the approved /api/v1 convention.
+- Dates and times follow the approved UTC transport and storage
+  conventions.
+- Backend validation and ownership enforcement are authoritative.
+
+---
+
+## 8. UI Theme Decision
+
+The Lab 2 handout describes a Zen Green requester-facing design language.
+The approved TokTickIT System-Level SDS defines the system-wide KMUTT
+visual identity.
+
+For this implementation, TokTickIT will follow the approved System-Level
+SDS and use the KMUTT theme as the shared visual foundation.
+
+This decision keeps the Lab 2 requester screens consistent with the
+approved system-level design and with the design direction reviewed for
+this sprint.
+
+The detailed colors, typography, spacing, components, responsive behavior,
+form states, validation states, loading states, empty states, error states,
+and accessibility rules will be defined in docs/lab-02/ui-spec.md.
+
+All functional UI requirements from the Lab 2 brief remain applicable.
+
+---
+
+## 9. Approved Sprint Decisions
+
+### D-L2-01 - Requester Context Storage
+
+The selected Development Requester ID is stored in sessionStorage.
+
+### D-L2-02 - Requester Switching
+
+Changing Requester immediately changes the requester context, reloads
+requester-owned information, and clears unfinished requester-specific
+Create Ticket state.
+
+### D-L2-03 - Summary Validation
+
+Ticket Summary contains 5-120 trimmed characters.
+
+### D-L2-04 - Description Validation
+
+Description contains 10-2000 trimmed characters.
+
+### D-L2-05 - Requested Priority Default
+
+Requested Priority defaults to Medium while preserving the approved
+Low, Medium, High, and Urgent vocabulary.
+
+### D-L2-06 - Ticket Search
+
+Search covers Ticket Number, Summary, and Description.
+
+### D-L2-07 - Ticket Filters
+
+Filters cover Category, Related System, Requested Priority, and Current
+Status.
+
+### D-L2-08 - Ticket Sorting
+
+Supported sorting includes newest created, oldest created, recently
+updated, and Ticket Number ascending.
+
+Newest created is the default.
+
+### D-L2-09 - Pagination
+
+Pagination defaults to 10 items per page and supports 10, 20, and 50.
+
+### D-L2-10 - Ownership Response
+
+Cross-requester Ticket and Attachment access uses neutral HTTP 404
+behavior.
+
+### D-L2-11 - Duplicate Submission
+
+Ticket creation uses frontend busy-state protection together with backend
+duplicate-submission protection.
+
+### D-L2-12 - Attachment Removal
+
+Attachment removal requires confirmation and a 1-200 character reason.
+
+### D-L2-13 - Partial Attachment Failure
+
+A successfully created Ticket remains created if a later Attachment upload
+fails.
+
+### D-L2-14 - Related System Seed Data
+
+Initial active Related Systems are:
+
+- Campus Wi-Fi
+- VPN
+- Email
+- LEB2
+- Student Information System
+- Printing Service
+- University Computer/Laptop
+
+### D-L2-15 - Development Requester Seed Data
+
+Initial Development Requesters are:
+
+Active:
+- Alice Developer
+- Bob Developer
+- Charlie Developer
+- Diana Developer
+
+Inactive:
+- Evan Developer
+
+### D-L2-16 - My Tickets States
+
+My Tickets distinguishes true empty, no-results, loading, and API-failure
+states.
+
+### D-L2-17 - Creation Navigation
+
+After successful Ticket creation, TokTickIT navigates to the newly created
+Ticket Detail.
+
+### D-L2-18 - Duplicate Attachment Filenames
+
+Duplicate original Attachment filenames are allowed.
+
+Each stored Attachment uses its own unique internal storage identity.
+
+### D-L2-19 - Initial Status
+
+Every newly created Ticket begins with Current Status New.
+
+### D-L2-20 - Invalid Stored Requester
+
+A missing or inactive stored Development Requester invalidates the current
+requester context and requires another active Requester to be selected.
+
+### D-L2-21 - Mixed Attachment Selection
+
+Valid files in a mixed selection remain accepted while invalid files are
+rejected individually with a useful reason.
+
+### D-L2-22 - Attachment Preview
+
+JPG/JPEG, PNG, and WEBP may be previewed in the UI.
+
+PDF uses Open/Download rather than a custom PDF viewer.
+
+### D-L2-23 - Ticket Not Found
+
+A nonexistent Ticket and a Ticket unavailable to the selected Requester
+use the same neutral Ticket Not Found experience.
+
+### D-L2-24 - Search Timing
+
+My Tickets search uses approximately a 300 ms debounce.
+
+Filter, sorting, pagination, and page-size changes refresh without the
+search debounce.
+
+### D-L2-25 - Inactive Reference Data
+
+Inactive Categories and Related Systems cannot be newly selected but
+remain visible on historical Tickets.
+
+### D-L2-26 - Ticket Editing
+
+Requester Ticket fields are read-only after creation in Lab 2.
+
+### D-L2-27 - Requester Navigation
+
+After Requester selection, the application navigation provides:
+
+- TokTickIT
+- Create Ticket
+- My Tickets
+- current Development Requester
+- Change Requester
+
+### D-L2-28 - Requester Landing Page
+
+After selecting a valid Development Requester, TokTickIT opens My Tickets.
+
+### D-L2-29 - Development Requester Information
+
+Development Requesters contain:
+
+- id
+- name
+- email
+- isActive
+- createdAt
+- updatedAt
+
+### D-L2-30 - Ticket Number Generation
+
+Ticket Number generation follows the approved System-Level SDS:
+TKT-YYYY-NNNNN using a database-safe transactional annual sequence.
+
+### D-L2-31 - Attachment Capacity
+
+When fewer than five Attachment slots remain, valid files are accepted up
+to the remaining capacity and excess files are rejected with useful
+feedback.
+
+### D-L2-32 - Preserve My Tickets State
+
+Returning from Ticket Detail to My Tickets preserves the previous search,
+filters, sorting, page size, and current page while the Requester context
+remains unchanged.
+
+### D-L2-33 - UI Theme
+
+Lab 2 requester-facing screens use the KMUTT visual theme defined by the
+approved System-Level SDS.
+
+The detailed theme implementation will be specified in ui-spec.md.
+
+---
+
+## 10. Complete Feature Inventory
+
+| ID | Feature | Feature Scope |
+|---|---|---|
+| Feature-A | Development Requester Context | Select an active Development Requester, store the selected requester in the browser tab, restore and validate requester context, change requester, and handle inactive or missing requesters. This is a Lab 2 testing mechanism only, not authentication. |
+| Feature-B | Requester UI Foundation | Provide the shared TokTickIT requester navigation and KMUTT visual foundation, including reusable responsive layouts, loading states, validation states, empty states, error states, accessibility behavior, and common UI conventions. |
+| Feature-C | Ticket Reference Data | Provide active Category and Related System data for new Ticket forms while preserving inactive reference values for historical Tickets. |
+| Feature-D | Create Ticket | Allow the selected Requester to create a Ticket with Category, Related System, Summary, Requested Priority, and Description. Generate Ticket Number and Ticket Date on the backend, set initial status to New, validate input, prevent duplicate submission, and handle creation success/failure. |
+| Feature-E | My Tickets | Allow the selected Requester to view only their own Tickets and support search, combined filtering, sorting, pagination, loading, true-empty, no-results, and failure states. |
+| Feature-F | Requester Ticket Detail | Allow the selected Requester to open only their own Ticket and view submitted Ticket information in read-only form. Provide neutral not-found behavior for nonexistent or inaccessible Tickets. |
+| Feature-G | Attachment Management | Allow permitted JPG/JPEG, PNG, WEBP, and PDF Attachments to be added to requester-owned Tickets, enforce type, size, and count rules, preview/open/download permitted files, and remove Attachments using confirmation, reason, tombstone metadata, and binary deletion rules. |
+
+---
+
+## 11. Requirements-to-Features Traceability
+
+This section maps the approved Lab 2 Functional Requirements, Business
+Rules, and Non-Functional Requirements to the Features responsible for
+implementing and verifying them.
+
+A requirement may map to more than one Feature when the behavior crosses
+feature boundaries.
+
+### 11.1 Functional Requirement Traceability
+
+| Requirement | Covered By | Reason |
+|---|---|---|
+| FR-01 Development Requester Selection | Feature-A | Feature-A provides the Development Requester Selection workflow. |
+| FR-02 Active Requester Retrieval | Feature-A | Feature-A retrieves and presents active Development Requesters. |
+| FR-03 Development Requester Context | Feature-A | Feature-A establishes the current Development Requester context. |
+| FR-04 Requester Context Persistence | Feature-A | Feature-A stores the current Development Requester in sessionStorage. |
+| FR-05 Change Requester | Feature-A, Feature-B | Feature-A changes requester context; Feature-B provides the Change Requester navigation action. |
+| FR-06 Invalid Stored Requester | Feature-A | Feature-A validates and clears missing or inactive stored requester context. |
+| FR-07 Create Ticket Information | Feature-D | Feature-D provides the required Create Ticket fields and generated information. |
+| FR-08 System-Generated Ticket Values | Feature-D | Feature-D handles backend-generated Ticket Number and Ticket Date. |
+| FR-09 Ticket Creation | Feature-D | Feature-D owns Ticket creation. |
+| FR-10 Official Ticket Number | Feature-D | Feature-D generates and returns the official Ticket Number. |
+| FR-11 Ticket Date | Feature-D | Feature-D records the system-generated Ticket creation date/time. |
+| FR-12 Initial Ticket Status | Feature-D | Feature-D creates new Tickets with Current Status New. |
+| FR-13 Requested Priority | Feature-D | Feature-D provides Requested Priority during Ticket creation. |
+| FR-14 Duplicate Submission Prevention | Feature-D | Feature-D prevents duplicate Ticket creation. |
+| FR-15 Creation Failure Preservation | Feature-D | Feature-D preserves Requester input after recoverable creation failures. |
+| FR-16 Successful Creation Result | Feature-D, Feature-F | Feature-D creates the Ticket and Feature-F presents the newly created Ticket Detail. |
+| FR-17 My Tickets | Feature-E | Feature-E provides requester-owned Ticket listing. |
+| FR-18 Ticket Search | Feature-E | Feature-E implements Ticket Number, Summary, and Description search. |
+| FR-19 Ticket Filtering | Feature-E | Feature-E implements Category, Related System, Requested Priority, and Current Status filters. |
+| FR-20 Ticket Sorting | Feature-E | Feature-E implements supported sorting options. |
+| FR-21 Ticket Pagination | Feature-E | Feature-E implements paginated requester-owned Ticket results. |
+| FR-22 My Tickets Empty State | Feature-E, Feature-B | Feature-E determines the empty condition; Feature-B provides shared empty-state presentation rules. |
+| FR-23 My Tickets No-Results State | Feature-E, Feature-B | Feature-E determines no matching results; Feature-B provides shared state presentation. |
+| FR-24 Ticket Detail | Feature-F | Feature-F provides Requester Ticket Detail. |
+| FR-25 Read-Only Ticket Detail | Feature-F | Feature-F presents submitted Ticket information as read-only. |
+| FR-26 Ownership Protection | Feature-E, Feature-F, Feature-G | Ticket listing, Ticket Detail, and Attachment operations must all enforce Requester ownership. |
+| FR-27 Neutral Missing/Ownership Response | Feature-F, Feature-G | Ticket and Attachment access use neutral missing-resource behavior. |
+| FR-28 Attachment Upload | Feature-D, Feature-G | Feature-D supports Attachments during Ticket creation; Feature-G manages Attachment operations. |
+| FR-29 Attachment Type Validation | Feature-G | Feature-G validates permitted file types. |
+| FR-30 Attachment Size Validation | Feature-G | Feature-G enforces the 5 MB file-size limit. |
+| FR-31 Active Attachment Limit | Feature-G | Feature-G enforces the maximum of five active Attachments. |
+| FR-32 Mixed Attachment Selection | Feature-G | Feature-G handles valid and invalid files in the same selection. |
+| FR-33 Duplicate Original Filenames | Feature-G | Feature-G supports duplicate display filenames with unique internal storage identities. |
+| FR-34 Attachment Retrieval | Feature-G | Feature-G provides protected Attachment retrieval. |
+| FR-35 Image Preview | Feature-G, Feature-B | Feature-G provides the data/action; Feature-B provides reusable presentation behavior. |
+| FR-36 PDF Behavior | Feature-G | Feature-G provides PDF Open/Download behavior. |
+| FR-37 Attachment Removal | Feature-G | Feature-G owns Attachment removal. |
+| FR-38 Attachment Removal Confirmation | Feature-G, Feature-B | Feature-G defines removal behavior; Feature-B supplies shared confirmation/UI conventions. |
+| FR-39 Attachment Removal Reason | Feature-G | Feature-G validates and stores the removal reason. |
+| FR-40 Attachment Removal Record | Feature-G | Feature-G preserves removed Attachment metadata as a tombstone. |
+| FR-41 Attachment Binary Removal | Feature-G | Feature-G follows the approved Attachment binary-deletion lifecycle. |
+| FR-42 Active Reference Data | Feature-C, Feature-D | Feature-C provides active reference values; Feature-D consumes them during Ticket creation. |
+| FR-43 Historical Reference Data | Feature-C, Feature-F | Feature-C preserves reference semantics; Feature-F displays historical values in Ticket Detail. |
+| FR-44 Requester Navigation | Feature-B, Feature-A | Feature-B provides navigation; Feature-A supplies current Requester context and Change Requester behavior. |
+| FR-45 Loading States | Feature-A, Feature-B, Feature-D, Feature-E, Feature-F, Feature-G | All requester workflows require loading feedback using shared UI conventions. |
+| FR-46 Failure States | Feature-A, Feature-B, Feature-D, Feature-E, Feature-F, Feature-G | All requester workflows require safe failure handling and shared UI behavior. |
+| FR-47 Responsive Behavior | Feature-B, Feature-A, Feature-D, Feature-E, Feature-F, Feature-G | Feature-B defines shared responsive behavior and each UI Feature applies it. |
+| FR-48 Accessible Operation | Feature-B, Feature-A, Feature-D, Feature-E, Feature-F, Feature-G | Feature-B defines shared accessibility rules and all interactive Features must follow them. |
+
+### 11.2 Business Rule Traceability
+
+| Business Rule | Covered By | Reason |
+|---|---|---|
+| BR-01 Official Ticket Number | Feature-D | Ticket Number generation belongs to Ticket creation. |
+| BR-02 Ticket Number Format | Feature-D | Feature-D follows TKT-YYYY-NNNNN and annual sequencing. |
+| BR-03 New Ticket Status | Feature-D | Feature-D creates new Tickets with status New. |
+| BR-04 Development Requester Purpose | Feature-A | Feature-A implements the temporary testing identity mechanism. |
+| BR-05 Active Requester Rule | Feature-A | Feature-A allows selection of active Requesters only. |
+| BR-06 Stored Requester Rule | Feature-A | Feature-A validates stored requester context. |
+| BR-07 Requester Ownership | Feature-D, Feature-E, Feature-F, Feature-G | Ownership begins at Ticket creation and applies to listing, detail, and Attachments. |
+| BR-08 Requester Switching | Feature-A, Feature-B | Feature-A switches data context; Feature-B exposes the UI action. |
+| BR-09 Ticket Number Authority | Feature-D | Feature-D keeps Ticket Number generation on the backend. |
+| BR-10 Ticket Date Authority | Feature-D | Feature-D creates the system-generated Ticket Date. |
+| BR-11 Requested Priority Vocabulary | Feature-D, Feature-E, Feature-F | Priority is selected during creation, filterable in My Tickets, and displayed in Ticket Detail. |
+| BR-12 Requested Priority Meaning | Feature-D, Feature-F | Feature-D captures Requested Priority and Feature-F displays it without IT Priority behavior. |
+| BR-13 Summary Validation | Feature-D | Feature-D enforces Summary validation. |
+| BR-14 Description Validation | Feature-D | Feature-D enforces Description validation. |
+| BR-15 Shared Validation | Feature-D | Create Ticket requires matching frontend and authoritative backend validation. |
+| BR-16 Duplicate Submission Protection | Feature-D | Feature-D prevents duplicate Ticket creation. |
+| BR-17 Recoverable Failure Data | Feature-D | Feature-D preserves form data after recoverable failures. |
+| BR-18 Search Scope | Feature-E | Feature-E limits search to requester-owned Tickets. |
+| BR-19 Combined Ticket Query | Feature-E | Feature-E combines search, filters, sorting, and pagination. |
+| BR-20 Search Behavior | Feature-E | Feature-E implements case-insensitive search. |
+| BR-21 Filter Behavior | Feature-E | Feature-E supports combined filters. |
+| BR-22 Pagination Reset | Feature-E | Feature-E resets to page 1 when query controls change. |
+| BR-23 Ticket Detail Ownership | Feature-F | Feature-F allows detail retrieval only for requester-owned Tickets. |
+| BR-24 Cross-Requester Resource Protection | Feature-F, Feature-G | Feature-F and Feature-G use neutral not-found behavior for protected resources. |
+| BR-25 Submitted Ticket Fields | Feature-F | Feature-F presents Ticket fields as read-only. |
+| BR-26 Attachment Allowed Types | Feature-G | Feature-G validates permitted Attachment formats. |
+| BR-27 Attachment Size | Feature-G | Feature-G enforces the 5 MB limit. |
+| BR-28 Active Attachment Count | Feature-G | Feature-G enforces five active Attachments maximum. |
+| BR-29 Removed Attachment Count | Feature-G | Feature-G excludes tombstones from the active Attachment count. |
+| BR-30 Attachment Filename | Feature-G | Feature-G separates original filename from internal storage identity. |
+| BR-31 Attachment Removal Confirmation | Feature-G, Feature-B | Feature-G requires confirmation and Feature-B supplies shared UI behavior. |
+| BR-32 Attachment Removal Reason | Feature-G | Feature-G validates the 1-200 character removal reason. |
+| BR-33 Attachment Removal Metadata | Feature-G | Feature-G preserves removal metadata. |
+| BR-34 Removed Attachment Access | Feature-G | Feature-G prevents retrieval of removed Attachments. |
+| BR-35 Removed Attachment Binary | Feature-G | Feature-G follows the approved binary-deletion lifecycle. |
+| BR-36 Partial Attachment Failure | Feature-D, Feature-G | Ticket creation remains successful while Feature-G reports failed Attachment uploads. |
+| BR-37 Partial File Selection | Feature-G | Feature-G accepts valid files and rejects invalid files individually. |
+| BR-38 Reference Data | Feature-C, Feature-D | Feature-C provides active data and Feature-D uses it for new Tickets. |
+| BR-39 Historical Reference Data | Feature-C, Feature-F | Feature-C preserves history and Feature-F displays it. |
+| BR-40 Empty and No-Results States | Feature-E, Feature-B | Feature-E determines the data state and Feature-B defines shared presentation conventions. |
+| BR-41 Future Authentication | Feature-A | Feature-A must remain a temporary requester-context mechanism that can later be replaced by authentication. |
+
+### 11.3 Non-Functional Requirement Traceability
+
+| NFR | Covered By | Reason |
+|---|---|---|
+| NFR-01 Responsive Usability | Feature-B, Feature-A, Feature-D, Feature-E, Feature-F, Feature-G | Feature-B defines the responsive foundation; each requester-facing Feature applies it. |
+| NFR-02 Accessibility | Feature-B, Feature-A, Feature-D, Feature-E, Feature-F, Feature-G | Feature-B defines shared accessibility conventions and all interactive Features comply. |
+| NFR-03 Safe Error Handling | Feature-A, Feature-C, Feature-D, Feature-E, Feature-F, Feature-G | Every backend-connected Feature must return/display safe failure information. |
+| NFR-04 Backend Validation Authority | Feature-A, Feature-C, Feature-D, Feature-E, Feature-F, Feature-G | Backend APIs remain authoritative for input, resource, and ownership rules. |
+| NFR-05 Ownership Enforcement | Feature-E, Feature-F, Feature-G | These Features access requester-owned resources and must enforce ownership server-side. |
+| NFR-06 Ticket Number Concurrency Safety | Feature-D | Feature-D owns concurrent Ticket Number generation. |
+| NFR-07 Database Integrity | Feature-A, Feature-C, Feature-D, Feature-G | These Features introduce or depend on persistent models, relations, constraints, indexes, and migrations. |
+| NFR-08 Attachment Safety | Feature-G | Feature-G owns Attachment type, size, storage, retrieval, ownership, and deletion controls. |
+| NFR-09 Maintainability | Feature-A, Feature-B, Feature-C, Feature-D, Feature-E, Feature-F, Feature-G | All Features must preserve the approved architecture and technology conventions. |
+| NFR-10 Testability | Feature-A, Feature-B, Feature-C, Feature-D, Feature-E, Feature-F, Feature-G | Every Feature must be specified so required automated and manual verification can be written. |
+| NFR-11 Traceability | Feature-A, Feature-B, Feature-C, Feature-D, Feature-E, Feature-F, Feature-G | Every Feature must trace requirements to Acceptance Criteria and tests. |
+| NFR-12 Secrets and Configuration | Feature-A, Feature-C, Feature-D, Feature-G | Backend/database/storage Features must not introduce committed credentials or secrets. |
+
+### 11.4 Coverage Check
+
+All FR-01 through FR-48 are assigned to at least one Feature.
+
+All BR-01 through BR-41 are assigned to at least one Feature.
+
+All NFR-01 through NFR-12 are assigned to at least one Feature.
+
+No approved Lab 2 requirement is intentionally left without Feature
+ownership.
+
+The Feature Inventory and this traceability matrix shall be used as the
+basis for Feature-Level SDS / Engineering Contract preparation.
+
+---
+
+## 12. Feature-Level Engineering Contracts
+
+# Feature-A - Development Requester Context
+
+## 12.1 Identity
+
+| Item | Value |
+|---|---|
+| Feature ID | Feature-A |
+| Feature Name | Development Requester Context |
+| Purpose | Provide the temporary Development Requester identity used to test requester-owned behavior during Lab 2. |
+| Sprint | Lab 2 |
+| Status | Approved for Lab 2 Design |
+| Related GitHub Issue | Development Requester Context |
+| Dependency | Lab 1 baseline and Lab 2 reference/database setup |
+| Future Replacement | Real authentication introduced in Lab 3 |
+
+Feature-A is a temporary development/testing mechanism only.
+
+It must not be represented as authentication and must not introduce
+passwords, login credentials, authentication sessions, tokens, or
+role-based authorization.
+
+---
+
+## 12.2 Traceability
+
+### Functional Requirements
+
+Feature-A is responsible for:
+
+- FR-01 Development Requester Selection
+- FR-02 Active Requester Retrieval
+- FR-03 Development Requester Context
+- FR-04 Requester Context Persistence
+- FR-05 Change Requester
+- FR-06 Invalid Stored Requester
+
+Feature-A also contributes to:
+
+- FR-44 Requester Navigation
+- FR-45 Loading States
+- FR-46 Failure States
+- FR-47 Responsive Behavior
+- FR-48 Accessible Operation
+
+### Business Rules
+
+Feature-A is responsible for:
+
+- BR-04 Development Requester Purpose
+- BR-05 Active Requester Rule
+- BR-06 Stored Requester Rule
+- BR-08 Requester Switching
+- BR-41 Future Authentication
+
+Feature-A also participates in BR-07 Requester Ownership by establishing
+the requester identity used by later Ticket features.
+
+### Non-Functional Requirements
+
+Feature-A must comply with:
+
+- NFR-01 Responsive Usability
+- NFR-02 Accessibility
+- NFR-03 Safe Error Handling
+- NFR-04 Backend Validation Authority
+- NFR-07 Database Integrity
+- NFR-09 Maintainability
+- NFR-10 Testability
+- NFR-11 Traceability
+- NFR-12 Secrets and Configuration
+
+### Approved Sprint Decisions
+
+Feature-A uses:
+
+- D-L2-01 Requester Context Storage
+- D-L2-02 Requester Switching
+- D-L2-15 Development Requester Seed Data
+- D-L2-20 Invalid Stored Requester
+- D-L2-27 Requester Navigation
+- D-L2-28 Requester Landing Page
+- D-L2-29 Development Requester Information
+- D-L2-33 UI Theme
+
+---
+
+## 12.3 Actors and Preconditions
+
+### Actor
+
+Development user acting as a seeded Requester for Lab 2 testing.
+
+### Preconditions
+
+- TokTickIT is running.
+- PostgreSQL is reachable.
+- Development Requester data has been migrated and seeded.
+- At least four active Development Requesters exist for the normal test
+  case.
+- Real authentication is not enabled in Lab 2.
+
+---
+
+## 12.4 Main Workflow
+
+### Flow A1 - Initial Requester Selection
+
+1. The user opens TokTickIT.
+2. No valid Development Requester exists in sessionStorage.
+3. TokTickIT displays the Development Requester Selection screen.
+4. The frontend requests the active Development Requester list from the
+   backend.
+5. The backend retrieves only active Development Requesters from
+   PostgreSQL.
+6. The frontend displays the available Requesters.
+7. The user selects one Requester.
+8. The user activates Continue.
+9. The selected Requester ID is stored in sessionStorage.
+10. The application establishes that Requester as the current testing
+    context.
+11. The application navigates to My Tickets.
+
+### Flow A2 - Restore Existing Requester Context
+
+1. A requester ID already exists in sessionStorage.
+2. The application validates the stored requester through the backend.
+3. If the Requester exists and remains active, the requester context is
+   restored.
+4. The application continues to the requested requester-facing screen.
+
+### Flow A3 - Change Requester
+
+1. A Development Requester is currently selected.
+2. The user activates Change Requester.
+3. The application returns to Development Requester Selection.
+4. The user selects another active Requester.
+5. The new requester ID replaces the previous requester ID in
+   sessionStorage.
+6. Unfinished requester-specific Create Ticket state is cleared.
+7. Requester-owned data is reloaded for the newly selected Requester.
+8. The application navigates to My Tickets.
+
+---
+
+## 12.5 Alternative and Failure Flows
+
+### A1 - Requester List Loading
+
+While active Development Requesters are being requested, the selector
+shall show a visible loading state.
+
+The Continue action shall not allow an invalid submission while required
+requester data is unavailable.
+
+### A2 - No Active Requesters
+
+If the backend returns no active Development Requesters:
+
+- display a clear empty state;
+- explain that no active Development Requesters are available;
+- do not allow Continue to proceed.
+
+### A3 - Requester API Failure
+
+If the Requester API fails:
+
+- show a safe and useful error state;
+- do not expose internal server/database details;
+- provide a Retry action.
+
+### A4 - Continue Without Selection
+
+If the user activates Continue without selecting a Requester:
+
+- do not establish requester context;
+- display validation near the selector;
+- keep the user on Development Requester Selection.
+
+### A5 - Stored Requester Becomes Inactive
+
+If a requester ID exists in sessionStorage but that Requester is now
+inactive:
+
+1. Clear the stored requester ID.
+2. Clear requester-specific client state.
+3. Return to Development Requester Selection.
+4. Show a useful message that the previously selected Requester is no
+   longer available.
+
+### A6 - Stored Requester Does Not Exist
+
+A missing stored Requester is handled in the same way as an inactive
+stored Requester.
+
+---
+
+## 12.6 Permissions and Access Rules
+
+Feature-A does not implement real security authentication or authorization.
+
+The Development Requester ID establishes only the current Lab 2 testing
+context.
+
+Later Ticket APIs must independently enforce ownership rules rather than
+assuming that hiding UI controls provides security.
+
+Inactive Development Requesters:
+
+- cannot be newly selected;
+- cannot be restored as the active development context.
+
+The presence of a requester ID in sessionStorage is not proof of a secure
+authenticated identity.
+
+---
+
+## 12.7 Workflow State
+
+Feature-A has the following client context states:
+
+- no requester selected
+- requester list loading
+- requester list loaded
+- requester selection invalid
+- requester context validating
+- valid requester selected
+- requester list empty
+- requester API failure
+
+Changing Requester moves the application from:
+
+valid requester selected
+→ no requester selected
+→ new valid requester selected
+
+Changing requester invalidates requester-specific unfinished client state.
+
+---
+
+## 12.8 Data Design
+
+### DevelopmentRequester
+
+Feature-A requires a Development Requester persistence model containing at
+least:
+
+- id
+- name
+- email
+- isActive
+- createdAt
+- updatedAt
+
+### Constraints
+
+- id is the primary key.
+- email is unique.
+- name is required.
+- email is required.
+- isActive is required.
+- createdAt is system generated.
+- updatedAt is system maintained.
+
+### Seed Data
+
+The seed must be idempotent and contain at least:
+
+Active:
+- Alice Developer
+- Bob Developer
+- Charlie Developer
+- Diana Developer
+
+Inactive:
+- Evan Developer
+
+The seed must be safe to run repeatedly without creating duplicate
+Development Requesters.
+
+### Migration
+
+Feature-A requires a reviewed Prisma migration for the Development
+Requester model.
+
+The migration must preserve the existing Lab 1 Category data and behavior.
+
+---
+
+## 12.9 API Design
+
+Feature-A uses the approved System-Level SDS API conventions:
+
+- new application APIs are rooted at /api/v1;
+- JSON request/response property names use camelCase;
+- DTOs are returned instead of Prisma models directly;
+- safe error responses use the approved error envelope;
+- unexpected failures map to a generic server error.
+
+The detailed endpoint contract will be defined in:
+
+docs/lab-02/api-spec.md
+
+Feature-A requires API capability for:
+
+1. retrieving active Development Requesters; and
+2. validating/retrieving a selected Development Requester.
+
+The detailed routes, response DTOs, error codes, and HTTP statuses will be
+finalized in api-spec.md before implementation.
+
+---
+
+## 12.10 UI Design
+
+The detailed Feature-A UI rules will be defined in:
+
+docs/lab-02/ui-spec.md
+
+### Development Requester Selection Screen
+
+The screen shall contain:
+
+- TokTickIT application identity;
+- explanatory text that the selector is for Lab 2 testing only;
+- Development Requester dropdown;
+- active Requesters loaded from PostgreSQL;
+- Requester name and email presentation;
+- Continue button;
+- loading state;
+- empty state;
+- API-failure state;
+- Retry action where appropriate;
+- field-level validation;
+- keyboard-accessible controls.
+
+Suggested explanatory text:
+
+"Select a Development Requester to test requester-specific ticket
+behavior. This is not a login screen. Authentication and role-based
+access will be introduced in Lab 3."
+
+### After Selection
+
+The application shell shall display:
+
+- the current Development Requester name; and
+- a Change Requester action.
+
+### Responsive Behavior
+
+The selector and actions shall remain usable on desktop, tablet, and
+mobile layouts.
+
+### Accessibility
+
+- the Requester dropdown has a programmatic label;
+- validation is associated with the selector;
+- Continue is keyboard operable;
+- focus indicators remain visible;
+- loading and error information is communicated through text, not color
+  alone.
+
+### Visual Theme
+
+Feature-A follows the approved KMUTT visual theme decision recorded for
+Lab 2.
+
+---
+
+## 12.11 Non-Functional Requirements
+
+Feature-A shall:
+
+- preserve the existing React/TypeScript/Vite/Bootstrap architecture;
+- use centralized typed frontend API access;
+- use Express/TypeScript backend APIs;
+- use PostgreSQL through Prisma;
+- use reviewed Prisma migrations;
+- expose no credentials or secrets;
+- provide safe backend errors;
+- meet the responsive and accessibility baseline;
+- remain replaceable by real authentication in Lab 3 without requiring
+  Ticket ownership data to be redesigned.
+
+---
+
+## 12.12 Testing Obligations
+
+Feature-A requires planned tests for at least:
+
+### Unit / Component
+
+- selector renders;
+- loading state renders;
+- active Requesters render;
+- inactive Requester is not available;
+- Continue without selection shows validation;
+- valid selection stores requester ID;
+- Change Requester clears the previous context;
+- API failure shows safe error feedback;
+- empty Requester list shows the empty state.
+
+### API / Integration
+
+- active Requester endpoint returns only active Requesters;
+- inactive Requester is excluded;
+- valid Requester can be retrieved/validated;
+- inactive Requester cannot be restored as active context;
+- missing Requester produces the documented missing-resource behavior;
+- seed may be run repeatedly without duplicates.
+
+### E2E
+
+- user opens TokTickIT with no Requester selected;
+- selects Alice Developer;
+- continues to My Tickets;
+- Alice appears as the current requester;
+- Change Requester is used;
+- Bob Developer is selected;
+- current requester changes to Bob;
+- previous requester-specific client state is not retained.
+
+Exact Test IDs and test-file paths will be defined in
+docs/lab-02/tests.md.
+
+---
+
+## 12.13 Dependencies
+
+Feature-A depends on:
+
+- completed Lab 1 baseline;
+- PostgreSQL;
+- Prisma;
+- existing frontend/backend project foundation;
+- approved Lab 2 SRS;
+- approved System-Level SDS.
+
+Later Features depending on Feature-A include:
+
+- Feature-D Create Ticket;
+- Feature-E My Tickets;
+- Feature-F Requester Ticket Detail;
+- Feature-G Attachment Management.
+
+---
+
+## 12.14 Out of Scope for Feature-A
+
+Feature-A does not implement:
+
+- passwords;
+- login forms;
+- password hashing;
+- authentication cookies;
+- JWT;
+- authentication tokens;
+- secure sessions;
+- user roles;
+- RBAC;
+- IT Staff identity;
+- Administrator identity;
+- Ticket creation;
+- My Tickets data implementation;
+- Ticket Detail implementation;
+- Attachment implementation.
+
+Those functions belong to later features or later labs.
+
+---
+
+## 12.15 Feature-A Acceptance Criteria
+
+### FA-AC-01 - Active Requesters Load
+
+Given active and inactive Development Requesters exist,
+when the Development Requester Selection screen loads,
+then only active Requesters are available for selection.
+
+### FA-AC-02 - Development Identity Is Clearly Temporary
+
+Given the selector is displayed,
+when the user reads the page,
+then the page clearly states that Development Requester Selection is for
+Lab 2 testing and is not authentication.
+
+### FA-AC-03 - Selection Required
+
+Given no Development Requester has been selected,
+when Continue is activated,
+then requester context is not established and useful validation is shown.
+
+### FA-AC-04 - Valid Selection
+
+Given Alice Developer is active,
+when Alice is selected and Continue is activated,
+then Alice's ID is stored in sessionStorage and My Tickets is opened.
+
+### FA-AC-05 - Context Restored
+
+Given a valid active requester ID exists in sessionStorage,
+when the application reloads,
+then the requester is validated and the requester context is restored.
+
+### FA-AC-06 - Inactive Stored Requester Rejected
+
+Given the stored Requester has become inactive,
+when the application validates the stored context,
+then the stored requester is cleared and Requester Selection is shown.
+
+### FA-AC-07 - Missing Stored Requester Rejected
+
+Given the stored requester ID does not exist,
+when requester context is validated,
+then the stored requester is cleared and Requester Selection is shown.
+
+### FA-AC-08 - Change Requester
+
+Given Alice is the current Requester,
+when Change Requester is used and Bob is selected,
+then Bob replaces Alice as the current requester context and requester-
+specific data is reloaded.
+
+### FA-AC-09 - Empty State
+
+Given no active Development Requesters exist,
+when the selector loads,
+then a clear empty state appears and Continue cannot establish requester
+context.
+
+### FA-AC-10 - API Failure
+
+Given the active Requester API fails,
+when the selection screen loads,
+then a safe error state and Retry action are presented.
+
+### FA-AC-11 - Responsive Operation
+
+Given desktop, tablet, and mobile viewport sizes,
+when the Requester Selection screen is used,
+then the form and actions remain readable and operable without unintended
+overflow.
+
+### FA-AC-12 - Keyboard Operation
+
+Given a keyboard-only user,
+when navigating the Requester Selection screen,
+then the selector and Continue action can be reached and operated with
+visible focus.
+
+---
+
+# Feature-B - Requester UI Foundation
+
+## 12.16 Identity
+
+| Item | Value |
+|---|---|
+| Feature ID | Feature-B |
+| Feature Name | Requester UI Foundation |
+| Purpose | Provide the shared requester-facing application shell, navigation, visual identity, responsive behavior, accessibility baseline, and reusable UI-state conventions used throughout Lab 2. |
+| Sprint | Lab 2 |
+| Status | Approved for Lab 2 Design |
+| Related GitHub Issue | Requester UI Foundation |
+| Dependency | Lab 1 frontend foundation and approved System-Level SDS |
+| Used By | Feature-A, Feature-D, Feature-E, Feature-F, Feature-G |
+
+Feature-B establishes shared requester-facing UI behavior.
+
+It does not implement the business logic of Create Ticket, My Tickets,
+Ticket Detail, or Attachment Management.
+
+---
+
+## 12.17 Traceability
+
+### Functional Requirements
+
+Feature-B contributes to:
+
+- FR-05 Change Requester
+- FR-22 My Tickets Empty State
+- FR-23 My Tickets No-Results State
+- FR-35 Image Preview
+- FR-38 Attachment Removal Confirmation
+- FR-44 Requester Navigation
+- FR-45 Loading States
+- FR-46 Failure States
+- FR-47 Responsive Behavior
+- FR-48 Accessible Operation
+
+### Business Rules
+
+Feature-B contributes to:
+
+- BR-08 Requester Switching
+- BR-31 Attachment Removal Confirmation
+- BR-40 Empty and No-Results States
+
+### Non-Functional Requirements
+
+Feature-B is primarily responsible for:
+
+- NFR-01 Responsive Usability
+- NFR-02 Accessibility
+- NFR-09 Maintainability
+- NFR-10 Testability
+- NFR-11 Traceability
+
+Feature-B also supports:
+
+- NFR-03 Safe Error Handling
+
+### Approved Sprint Decisions
+
+Feature-B uses:
+
+- D-L2-16 My Tickets States
+- D-L2-22 Attachment Preview
+- D-L2-27 Requester Navigation
+- D-L2-28 Requester Landing Page
+- D-L2-33 UI Theme
+
+---
+
+## 12.18 Actors and Preconditions
+
+### Actor
+
+Development user acting as the currently selected Development Requester.
+
+### Preconditions
+
+- TokTickIT frontend is running.
+- The Lab 1 React, TypeScript, Vite, and Bootstrap foundation is
+  available.
+- The applicable requester context has been established by Feature-A
+  before requester-specific screens are used.
+- The approved System-Level SDS is available as the system-wide design
+  baseline.
+
+---
+
+## 12.19 Main UI Foundation Behavior
+
+### Flow B1 - Requester Application Shell
+
+After a valid Development Requester has been selected:
+
+1. TokTickIT displays the shared requester-facing application shell.
+2. The application identity is visible.
+3. Navigation provides access to My Tickets.
+4. Navigation provides access to Create Ticket.
+5. The current Development Requester is visible.
+6. A Change Requester action is available.
+7. The active requester-facing screen is presented inside the shared
+   layout.
+
+### Flow B2 - Navigate to My Tickets
+
+1. The user activates My Tickets.
+2. TokTickIT navigates to the requester-owned Ticket list.
+3. The shared application shell remains available.
+
+### Flow B3 - Navigate to Create Ticket
+
+1. The user activates Create Ticket.
+2. TokTickIT navigates to the Create Ticket screen.
+3. The shared application shell remains available.
+
+### Flow B4 - Change Requester
+
+1. The user activates Change Requester.
+2. Feature-A handles the requester-context change.
+3. Requester-specific unfinished state is cleared according to the
+   approved Feature-A rules.
+4. A new Development Requester may be selected.
+
+---
+
+## 12.20 Shared UI States
+
+Requester-facing features shall use consistent UI treatment for common
+application states.
+
+### Loading
+
+When required data or an operation is pending:
+
+- show visible loading feedback;
+- prevent actions that would cause invalid duplicate operations where
+  appropriate;
+- do not display stale information as though it were newly loaded.
+
+### Validation
+
+Validation feedback shall:
+
+- identify the affected field or action;
+- use understandable text;
+- remain visible long enough for the user to understand the problem;
+- not rely on color alone.
+
+### Empty State
+
+When a collection contains no data:
+
+- show a clear explanation;
+- provide an appropriate next action where applicable.
+
+For My Tickets, the true-empty state shall provide a Create Ticket action.
+
+### No-Results State
+
+When data exists but the current search/filter combination returns no
+matches:
+
+- clearly distinguish the condition from a true empty dataset;
+- provide an action to clear or adjust the current query controls.
+
+### Success
+
+Successful user operations shall provide clear feedback when needed.
+
+Success feedback must not hide important resulting information such as
+the official Ticket Number after Ticket creation.
+
+### Error
+
+Recoverable failures shall:
+
+- show a safe user-facing explanation;
+- provide Retry or another recovery action where appropriate;
+- not expose internal backend, database, filesystem, or storage details.
+
+---
+
+## 12.21 Responsive Design Behavior
+
+The requester-facing UI shall support desktop, tablet, and mobile
+layouts.
+
+The detailed breakpoints and component layouts will be defined in
+`docs/lab-02/ui-spec.md`.
+
+At all supported layouts:
+
+- required content remains readable;
+- primary actions remain accessible;
+- controls do not unintentionally overlap;
+- important content is not clipped;
+- unintended horizontal page scrolling is avoided;
+- forms remain usable;
+- Ticket information remains understandable;
+- Attachment actions remain operable;
+- navigation remains usable.
+
+Dense desktop presentations may adapt to a more suitable mobile
+presentation when necessary.
+
+Responsive changes must not remove required functionality.
+
+---
+
+## 12.22 Accessibility Foundation
+
+Requester-facing screens shall follow the approved accessibility
+baseline.
+
+At minimum:
+
+- interactive controls use appropriate semantic elements;
+- form controls have programmatic labels;
+- keyboard users can reach and operate required controls;
+- visible focus indicators are preserved;
+- validation and errors are communicated using text;
+- meaning does not depend only on color;
+- disabled controls remain understandable;
+- headings and content use a meaningful structure;
+- buttons and links use understandable labels.
+
+Detailed screen-specific accessibility behavior will be defined in
+`docs/lab-02/ui-spec.md`.
+
+---
+
+## 12.23 Visual Foundation
+
+Lab 2 requester-facing screens use the KMUTT visual theme decision
+recorded in the approved Lab 2 specification.
+
+The shared visual foundation shall provide consistent treatment for:
+
+- application navigation;
+- page headings;
+- content containers;
+- forms;
+- buttons;
+- links;
+- badges;
+- status indicators;
+- read-only information;
+- validation feedback;
+- success feedback;
+- warning feedback;
+- error feedback;
+- loading states;
+- empty states;
+- confirmation interactions.
+
+Exact theme tokens, typography, spacing, component appearance, and
+screen-level presentation will be defined in `docs/lab-02/ui-spec.md`.
+
+The UI must remain accessible regardless of the selected visual theme.
+
+---
+
+## 12.24 Shared Navigation
+
+After a valid Development Requester is selected, requester navigation
+shall provide:
+
+- TokTickIT application identity;
+- My Tickets;
+- Create Ticket;
+- current Development Requester information;
+- Change Requester.
+
+The current Development Requester must remain understandable while the
+user moves between requester-facing screens.
+
+Feature-B provides the navigation presentation.
+
+Feature-A remains responsible for actual requester-context behavior.
+
+---
+
+## 12.25 Shared Component Responsibilities
+
+Feature-B may establish reusable UI components or patterns for:
+
+- application shell;
+- navigation;
+- page headings;
+- loading feedback;
+- error feedback;
+- empty states;
+- no-results states;
+- validation messages;
+- confirmation interactions;
+- badges;
+- read-only field presentation;
+- responsive content containers.
+
+Reusable components shall remain generic enough to be shared by later
+Lab 2 features.
+
+Feature-specific business behavior shall remain owned by the applicable
+Feature rather than being embedded into generic UI components.
+
+---
+
+## 12.26 API and Data Responsibilities
+
+Feature-B does not require a dedicated business API endpoint.
+
+It consumes data supplied by the applicable feature APIs.
+
+For example:
+
+- Feature-A supplies Development Requester context;
+- Feature-D supplies Create Ticket results;
+- Feature-E supplies My Tickets data;
+- Feature-F supplies Ticket Detail data;
+- Feature-G supplies Attachment data and operations.
+
+Feature-B does not introduce a separate persistent domain model.
+
+---
+
+## 12.27 Non-Functional Requirements
+
+Feature-B shall:
+
+- preserve the approved React/TypeScript/Vite/Bootstrap frontend stack;
+- provide reusable and maintainable UI patterns;
+- avoid unnecessary duplication between requester-facing screens;
+- meet the responsive usability baseline;
+- meet the accessibility baseline;
+- present safe user-facing errors;
+- preserve clear separation between UI presentation and feature business
+  logic;
+- remain compatible with the approved System-Level SDS.
+
+---
+
+## 12.28 Testing Obligations
+
+Feature-B requires planned verification for at least:
+
+### Component / UI
+
+- requester navigation renders correctly;
+- TokTickIT application identity is visible;
+- My Tickets navigation is available;
+- Create Ticket navigation is available;
+- current Development Requester is displayed;
+- Change Requester is available;
+- loading-state components render correctly;
+- validation feedback is understandable;
+- empty-state presentation renders correctly;
+- no-results presentation is distinguishable from true empty;
+- safe error presentation renders correctly;
+- confirmation interaction is keyboard operable;
+- required controls have appropriate labels;
+- visible keyboard focus is preserved.
+
+### Responsive / Visual
+
+Required requester-facing layouts shall be checked at representative:
+
+- desktop;
+- tablet; and
+- mobile
+
+viewport sizes.
+
+Verification shall check for:
+
+- unintended horizontal overflow;
+- clipped content;
+- overlapping controls;
+- inaccessible actions;
+- unreadable content;
+- broken navigation.
+
+### E2E
+
+End-to-end requester workflows shall verify that the shared application
+shell and navigation remain usable while moving between the applicable
+Lab 2 requester screens.
+
+Exact Test IDs and test-file paths will be defined in
+`docs/lab-02/tests.md`.
+
+---
+
+## 12.29 Dependencies
+
+Feature-B depends on:
+
+- Lab 1 frontend foundation;
+- approved Lab 2 SRS;
+- approved System-Level SDS;
+- Feature-A for current Development Requester context.
+
+Feature-B is used by:
+
+- Feature-A Development Requester Context;
+- Feature-D Create Ticket;
+- Feature-E My Tickets;
+- Feature-F Requester Ticket Detail;
+- Feature-G Attachment Management.
+
+Feature-C primarily supplies reference data and does not depend on
+Feature-B for backend behavior.
+
+---
+
+## 12.30 Out of Scope for Feature-B
+
+Feature-B does not implement:
+
+- Development Requester persistence;
+- real authentication;
+- Ticket creation business logic;
+- Ticket Number generation;
+- Ticket querying;
+- search/filter/sort/pagination logic;
+- Ticket ownership enforcement;
+- Ticket Detail retrieval;
+- Attachment storage;
+- Attachment retrieval;
+- Attachment deletion;
+- Category or Related System persistence;
+- IT Staff UI;
+- Administrator UI.
+
+Those responsibilities belong to their corresponding features.
+
+---
+
+## 12.31 Feature-B Acceptance Criteria
+
+### FB-AC-01 - Shared Application Identity
+
+Given a valid Development Requester context,
+when a requester-facing screen is displayed,
+then the TokTickIT application identity is clearly visible.
+
+### FB-AC-02 - Required Navigation
+
+Given a valid Development Requester context,
+when the shared application shell is displayed,
+then My Tickets, Create Ticket, current Requester information, and
+Change Requester are available.
+
+### FB-AC-03 - Consistent Navigation
+
+Given the Requester moves between Lab 2 requester-facing screens,
+when navigation occurs,
+then the shared requester application shell remains consistent.
+
+### FB-AC-04 - Loading State
+
+Given required data is loading,
+when a requester-facing screen is waiting,
+then meaningful loading feedback is presented.
+
+### FB-AC-05 - Error State
+
+Given a recoverable operation fails,
+when the failure is presented,
+then the user receives a safe and understandable error without internal
+implementation details.
+
+### FB-AC-06 - Empty State
+
+Given a requester-facing collection contains no data,
+when the screen is displayed,
+then a clear empty state and an appropriate next action are presented
+where applicable.
+
+### FB-AC-07 - No-Results State
+
+Given data exists but the current search/filter conditions match
+nothing,
+when the result is displayed,
+then the UI distinguishes this from a true empty state.
+
+### FB-AC-08 - Responsive Desktop
+
+Given a supported desktop viewport,
+when the requester UI is used,
+then required content and actions are readable and operable without
+unintended layout overflow.
+
+### FB-AC-09 - Responsive Tablet
+
+Given a supported tablet viewport,
+when the requester UI is used,
+then required content and actions remain readable and operable.
+
+### FB-AC-10 - Responsive Mobile
+
+Given a supported mobile viewport,
+when the requester UI is used,
+then required functionality remains accessible without unintended
+horizontal page scrolling.
+
+### FB-AC-11 - Keyboard Accessibility
+
+Given a keyboard-only user,
+when required requester-facing controls are used,
+then those controls can be reached and operated with visible focus.
+
+### FB-AC-12 - Accessible Feedback
+
+Given validation, success, warning, or error information is displayed,
+when the user receives that feedback,
+then its meaning is understandable without relying only on color.
+
+### FB-AC-13 - Shared UI Reuse
+
+Given multiple requester-facing Features require the same general UI
+behavior,
+when those screens are implemented,
+then reusable shared patterns are used where appropriate rather than
+duplicating equivalent presentation logic.
+
+---
+
+# Feature-C - Ticket Reference Data
+
+## 12.32 Identity
+
+| Item | Value |
+|---|---|
+| Feature ID | Feature-C |
+| Feature Name | Ticket Reference Data |
+| Purpose | Provide the Category and Related System reference data required by Lab 2 Ticket workflows while preserving historical reference values for existing Tickets. |
+| Sprint | Lab 2 |
+| Status | Approved for Lab 2 Design |
+| Related GitHub Issue | Ticket Reference Data |
+| Dependency | Lab 1 Category baseline, PostgreSQL, Prisma, approved System-Level SDS |
+| Used By | Feature-D Create Ticket, Feature-E My Tickets, Feature-F Requester Ticket Detail |
+
+Feature-C provides shared Ticket reference data.
+
+For new Ticket creation, only active reference values may be selected.
+
+Inactive reference values must remain available where necessary to display
+historical Tickets correctly.
+
+---
+
+## 12.33 Traceability
+
+### Functional Requirements
+
+Feature-C is responsible for:
+
+- FR-42 Active Reference Data
+- FR-43 Historical Reference Data
+
+Feature-C also supports:
+
+- FR-07 Create Ticket Information
+- FR-19 Ticket Filtering
+- FR-25 Read-Only Ticket Detail
+- FR-46 Failure States
+
+### Business Rules
+
+Feature-C is responsible for:
+
+- BR-38 Reference Data
+- BR-39 Historical Reference Data
+
+### Non-Functional Requirements
+
+Feature-C must comply with:
+
+- NFR-03 Safe Error Handling
+- NFR-04 Backend Validation Authority
+- NFR-07 Database Integrity
+- NFR-09 Maintainability
+- NFR-10 Testability
+- NFR-11 Traceability
+- NFR-12 Secrets and Configuration
+
+### Approved Sprint Decisions
+
+Feature-C uses:
+
+- D-L2-14 Related System Seed Data
+- D-L2-25 Inactive Reference Data
+
+---
+
+## 12.34 Actors and Preconditions
+
+### Actors
+
+Feature-C is primarily consumed by other Lab 2 features rather than used
+as a standalone requester workflow.
+
+The reference data is used by:
+
+- Feature-D Create Ticket;
+- Feature-E My Tickets;
+- Feature-F Requester Ticket Detail.
+
+### Preconditions
+
+- PostgreSQL is reachable.
+- Prisma is configured.
+- Lab 1 Category functionality is preserved.
+- Required Prisma migrations have been applied.
+- Category and Related System reference data has been seeded.
+
+---
+
+## 12.35 Reference Data Types
+
+Feature-C provides two reference-data types:
+
+1. Category
+2. Related System
+
+### Category
+
+Category represents the type of IT support request.
+
+The existing Lab 1 Category foundation shall be reused and extended only
+where required for Lab 2.
+
+### Related System
+
+Related System represents the university system or service associated
+with a Ticket.
+
+Examples required by the approved Lab 2 decision include:
+
+- Campus Wi-Fi
+- VPN
+- Email
+- LEB2
+- Student Information System
+- Printing Service
+- University Computer/Laptop
+
+---
+
+## 12.36 Main Workflow
+
+### Flow C1 - Load Categories for New Ticket
+
+1. The Create Ticket feature requests Category reference data.
+2. The backend retrieves active Categories from PostgreSQL.
+3. The backend returns the active Category DTOs.
+4. The Create Ticket UI presents those Categories as selectable values.
+5. Inactive Categories are not offered for a new Ticket.
+
+### Flow C2 - Load Related Systems for New Ticket
+
+1. The Create Ticket feature requests Related System reference data.
+2. The backend retrieves active Related Systems from PostgreSQL.
+3. The backend returns the active Related System DTOs.
+4. The Create Ticket UI presents those Related Systems as selectable
+   values.
+5. Inactive Related Systems are not offered for a new Ticket.
+
+### Flow C3 - Use Reference Data in My Tickets
+
+1. My Tickets loads requester-owned Tickets.
+2. Category and Related System values are available for Ticket display
+   and supported filtering.
+3. Reference information remains understandable even when a historical
+   Ticket refers to a reference value that is now inactive.
+
+### Flow C4 - Display Historical Ticket Reference Data
+
+1. A Requester opens an existing Ticket.
+2. The Ticket refers to a Category or Related System that has become
+   inactive.
+3. Ticket Detail still displays the historical reference value.
+4. The inactive value is not made available for new Ticket selection.
+
+---
+
+## 12.37 Active and Inactive Rules
+
+### Active Reference Values
+
+Active Categories and Related Systems:
+
+- may be returned for new Ticket selection;
+- may be used when creating a new Ticket;
+- may be used in applicable requester-facing filters.
+
+### Inactive Reference Values
+
+Inactive Categories and Related Systems:
+
+- shall not be newly selectable during Create Ticket;
+- remain stored in PostgreSQL;
+- remain associated with historical Tickets;
+- remain displayable where required for historical Ticket information.
+
+Deactivating a reference value must not break an existing Ticket that
+already refers to that value.
+
+---
+
+## 12.38 Data Design
+
+### Category
+
+Feature-C preserves the existing Lab 1 Category persistence model and
+extends it only if required by the approved Lab 2 design.
+
+Category must support, at minimum:
+
+- unique identity;
+- display name;
+- active/inactive state.
+
+Existing Lab 1 Category behavior must not be broken.
+
+### RelatedSystem
+
+Feature-C requires a Related System persistence model supporting at least:
+
+- id
+- name
+- isActive
+- createdAt
+- updatedAt
+
+### Related System Constraints
+
+- id is the primary key.
+- name is required.
+- name is unique.
+- isActive is required.
+- createdAt is system generated.
+- updatedAt is system maintained.
+
+### Ticket Relationships
+
+A Ticket shall reference:
+
+- one Category; and
+- one Related System.
+
+The database relationships must preserve historical Ticket references if
+a Category or Related System becomes inactive.
+
+Reference records shall not be hard deleted merely because they are no
+longer available for new selection.
+
+---
+
+## 12.39 Seed Data
+
+### Category Seed
+
+Existing Lab 1 Category seed behavior shall be preserved.
+
+Feature-C shall not create duplicate Category records when the seed is
+run repeatedly.
+
+### Related System Seed
+
+Initial Related System seed data shall include:
+
+- Campus Wi-Fi
+- VPN
+- Email
+- LEB2
+- Student Information System
+- Printing Service
+- University Computer/Laptop
+
+These initial Related Systems are active.
+
+The seed must be idempotent.
+
+Running the seed repeatedly shall not create duplicate Related Systems.
+
+---
+
+## 12.40 Migration Requirements
+
+Feature-C requires reviewed Prisma schema changes and migration where
+needed for Related System support and Ticket reference relationships.
+
+The migration shall:
+
+- preserve existing Lab 1 data;
+- preserve existing Category behavior;
+- create required keys and constraints;
+- support active/inactive reference data;
+- support later Ticket relationships;
+- avoid destructive changes that unnecessarily remove historical
+  reference information.
+
+Migration details shall be finalized before implementation.
+
+---
+
+## 12.41 API Responsibilities
+
+Feature-C requires API capability for:
+
+1. retrieving active Categories; and
+2. retrieving active Related Systems.
+
+The detailed API contracts will be defined in:
+
+`docs/lab-02/api-spec.md`
+
+Feature-C API behavior shall follow the approved system-wide conventions:
+
+- `/api/v1` base path;
+- camelCase JSON;
+- explicit DTOs;
+- safe error responses;
+- backend-authoritative validation;
+- no direct exposure of Prisma models.
+
+No selected Development Requester is required merely to retrieve the
+reference data needed to construct the requester Ticket form.
+
+---
+
+## 12.42 Reference Data DTO Requirements
+
+### Category DTO
+
+The requester-facing Category DTO requires sufficient information to:
+
+- uniquely identify the Category; and
+- display its name.
+
+Persistence-only information does not need to be exposed unless another
+approved feature requires it.
+
+### Related System DTO
+
+The requester-facing Related System DTO requires sufficient information
+to:
+
+- uniquely identify the Related System; and
+- display its name.
+
+Exact DTO property names and response envelopes will be defined in
+`docs/lab-02/api-spec.md`.
+
+---
+
+## 12.43 Failure Behavior
+
+### Category API Failure
+
+If active Categories cannot be loaded:
+
+- the UI shall not pretend that valid Category choices are available;
+- a safe error state shall be presented;
+- Retry shall be available where appropriate;
+- internal database details shall not be exposed.
+
+### Related System API Failure
+
+If active Related Systems cannot be loaded:
+
+- the UI shall not pretend that valid Related System choices are
+  available;
+- a safe error state shall be presented;
+- Retry shall be available where appropriate;
+- internal database details shall not be exposed.
+
+### Empty Active Reference Data
+
+An empty active Category or Related System dataset is different from an
+API failure.
+
+The API may successfully return an empty collection.
+
+The consuming feature must prevent invalid Ticket submission when a
+required reference value cannot be selected.
+
+---
+
+## 12.44 Backend Validation Responsibilities
+
+Feature-C API data helps construct valid UI choices, but the backend must
+not trust a Category ID or Related System ID merely because it came from
+the frontend.
+
+When Feature-D creates a Ticket, the backend shall independently verify
+that:
+
+- the Category exists;
+- the Category is active for new Ticket selection;
+- the Related System exists; and
+- the Related System is active for new Ticket selection.
+
+The final Ticket-creation validation behavior belongs to Feature-D.
+
+---
+
+## 12.45 UI Responsibilities
+
+Feature-C does not define a standalone requester-facing page.
+
+Its data is consumed by other screens.
+
+### Create Ticket
+
+Feature-D uses active Category and Related System values in required
+selection controls.
+
+### My Tickets
+
+Feature-E uses applicable Category and Related System information for
+display and filtering.
+
+### Ticket Detail
+
+Feature-F displays the Ticket's Category and Related System, including
+historical values that have become inactive.
+
+Exact control appearance, loading behavior, empty behavior, and responsive
+presentation are defined in `docs/lab-02/ui-spec.md`.
+
+---
+
+## 12.46 Non-Functional Requirements
+
+Feature-C shall:
+
+- use PostgreSQL through Prisma;
+- preserve existing Lab 1 Category functionality;
+- use reviewed migrations;
+- use idempotent seed behavior;
+- maintain database referential integrity;
+- provide predictable reference-data retrieval;
+- return safe errors;
+- expose explicit DTOs rather than Prisma models;
+- avoid committed secrets or credentials;
+- remain compatible with later Administrator management of reference
+  data.
+
+---
+
+## 12.47 Testing Obligations
+
+Feature-C requires planned tests for at least:
+
+### API / Integration
+
+- active Categories are returned;
+- inactive Categories are excluded from new-selection data;
+- active Related Systems are returned;
+- inactive Related Systems are excluded from new-selection data;
+- empty active Category data is handled as a successful empty result;
+- empty active Related System data is handled as a successful empty
+  result;
+- unexpected failures return safe errors;
+- persistence-only information is not unnecessarily exposed.
+
+### Database / Seed
+
+- Related System seed data is created;
+- repeated seeding does not create duplicates;
+- existing Lab 1 Category data remains valid;
+- active/inactive state is preserved;
+- existing Ticket reference relationships can survive later reference
+  deactivation.
+
+### Cross-Feature
+
+Feature-D tests shall verify that:
+
+- an active Category can be used for Ticket creation;
+- an inactive Category cannot be newly selected/accepted;
+- an active Related System can be used;
+- an inactive Related System cannot be newly selected/accepted.
+
+Feature-F tests shall verify that historical inactive reference values
+remain displayable.
+
+Exact Test IDs and implementation test paths will be defined in
+`docs/lab-02/tests.md`.
+
+---
+
+## 12.48 Dependencies
+
+Feature-C depends on:
+
+- Lab 1 Category foundation;
+- PostgreSQL;
+- Prisma;
+- approved Lab 2 SRS;
+- approved System-Level SDS.
+
+Feature-C is consumed by:
+
+- Feature-D Create Ticket;
+- Feature-E My Tickets;
+- Feature-F Requester Ticket Detail.
+
+---
+
+## 12.49 Out of Scope for Feature-C
+
+Feature-C does not implement:
+
+- Administrator Category management UI;
+- Administrator Related System management UI;
+- requester creation of Categories;
+- requester creation of Related Systems;
+- requester editing of reference data;
+- Ticket creation itself;
+- Ticket listing;
+- Ticket Detail;
+- Attachment management;
+- real authentication;
+- IT Staff workflows.
+
+Administrative management of reference data belongs to later scope.
+
+---
+
+## 12.50 Feature-C Acceptance Criteria
+
+### FC-AC-01 - Active Categories
+
+Given active and inactive Categories exist,
+when Category reference data is requested for a new Ticket,
+then only active Categories are available for new selection.
+
+### FC-AC-02 - Active Related Systems
+
+Given active and inactive Related Systems exist,
+when Related System reference data is requested for a new Ticket,
+then only active Related Systems are available for new selection.
+
+### FC-AC-03 - Required Related System Seed
+
+Given the Lab 2 seed is executed,
+when Related Systems are inspected,
+then the approved initial active Related Systems exist.
+
+### FC-AC-04 - Idempotent Seed
+
+Given the reference-data seed has already run,
+when it is run again,
+then duplicate Category or Related System records are not created.
+
+### FC-AC-05 - Historical Category
+
+Given an existing Ticket references a Category that later becomes
+inactive,
+when the Ticket is displayed,
+then its historical Category remains available for display.
+
+### FC-AC-06 - Historical Related System
+
+Given an existing Ticket references a Related System that later becomes
+inactive,
+when the Ticket is displayed,
+then its historical Related System remains available for display.
+
+### FC-AC-07 - Inactive Reference Not Newly Selectable
+
+Given a Category or Related System is inactive,
+when a Requester creates a new Ticket,
+then that reference value is not available for new selection.
+
+### FC-AC-08 - Backend Reference Validation
+
+Given a Ticket-creation request contains an inactive or invalid Category
+or Related System identifier,
+when the backend validates the request,
+then the invalid reference is rejected rather than trusted from the
+frontend.
+
+### FC-AC-09 - Empty Reference Dataset
+
+Given no active values exist for a reference-data type,
+when that reference data is requested,
+then the API successfully represents the empty dataset and the consuming
+UI does not allow an invalid required selection.
+
+### FC-AC-10 - Safe Failure
+
+Given reference-data retrieval fails unexpectedly,
+when the failure is returned,
+then the client receives a safe error without internal implementation
+details.
+
+### FC-AC-11 - Lab 1 Compatibility
+
+Given the existing Lab 1 Category implementation,
+when Feature-C is introduced,
+then existing Category functionality and data remain valid.
+
+---
+
+# Feature-D - Create Ticket
+
+## 12.51 Identity
+
+| Item | Value |
+|---|---|
+| Feature ID | Feature-D |
+| Feature Name | Create Ticket |
+| Purpose | Allow the selected Development Requester to create a new requester-owned IT support Ticket using valid reference data, validated Ticket information, backend-generated system values, and duplicate-submission protection. |
+| Sprint | Lab 2 |
+| Status | Approved for Lab 2 Design |
+| Related GitHub Issue | Ticket Creation |
+| Dependency | Feature-A Development Requester Context, Feature-B Requester UI Foundation, Feature-C Ticket Reference Data |
+| Produces | Newly created requester-owned Ticket available to Feature-E My Tickets and Feature-F Requester Ticket Detail |
+
+Feature-D owns the creation of the Ticket record.
+
+Attachment lifecycle behavior is primarily owned by Feature-G, although
+Feature-D supports selecting permitted Attachments during the Create
+Ticket workflow.
+
+---
+
+## 12.52 Traceability
+
+### Functional Requirements
+
+Feature-D is responsible for:
+
+- FR-07 Create Ticket Information
+- FR-08 System-Generated Ticket Values
+- FR-09 Ticket Creation
+- FR-10 Official Ticket Number
+- FR-11 Ticket Date
+- FR-12 Initial Ticket Status
+- FR-13 Requested Priority
+- FR-14 Duplicate Submission Prevention
+- FR-15 Creation Failure Preservation
+- FR-16 Successful Creation Result
+
+Feature-D also contributes to:
+
+- FR-28 Attachment Upload
+- FR-42 Active Reference Data
+- FR-45 Loading States
+- FR-46 Failure States
+- FR-47 Responsive Behavior
+- FR-48 Accessible Operation
+
+### Business Rules
+
+Feature-D is responsible for:
+
+- BR-01 Official Ticket Number
+- BR-02 Ticket Number Format
+- BR-03 New Ticket Status
+- BR-07 Requester Ownership
+- BR-09 Ticket Number Authority
+- BR-10 Ticket Date Authority
+- BR-11 Requested Priority Vocabulary
+- BR-12 Requested Priority Meaning
+- BR-13 Summary Validation
+- BR-14 Description Validation
+- BR-15 Shared Validation
+- BR-16 Duplicate Submission Protection
+- BR-17 Recoverable Failure Data
+
+Feature-D also participates in:
+
+- BR-36 Partial Attachment Failure
+- BR-38 Reference Data
+
+### Non-Functional Requirements
+
+Feature-D must comply with:
+
+- NFR-01 Responsive Usability
+- NFR-02 Accessibility
+- NFR-03 Safe Error Handling
+- NFR-04 Backend Validation Authority
+- NFR-06 Ticket Number Concurrency Safety
+- NFR-07 Database Integrity
+- NFR-09 Maintainability
+- NFR-10 Testability
+- NFR-11 Traceability
+- NFR-12 Secrets and Configuration
+
+### Approved Sprint Decisions
+
+Feature-D uses:
+
+- D-L2-03 Summary Validation
+- D-L2-04 Description Validation
+- D-L2-05 Requested Priority Default
+- D-L2-11 Duplicate Submission
+- D-L2-13 Partial Attachment Failure
+- D-L2-17 Creation Navigation
+- D-L2-19 Initial Status
+- D-L2-30 Ticket Number Generation
+- D-L2-33 UI Theme
+
+---
+
+## 12.53 Actors and Preconditions
+
+### Actor
+
+The currently selected active Development Requester.
+
+### Preconditions
+
+- TokTickIT is running.
+- Feature-A has established a valid active Development Requester context.
+- Feature-B shared requester UI foundation is available.
+- Feature-C active Category and Related System reference data is available.
+- PostgreSQL and Prisma are available.
+- Required Lab 2 migrations have been applied.
+- Real authentication is not implemented in Lab 2.
+
+---
+
+## 12.54 Create Ticket Fields
+
+The Create Ticket screen shall capture or display:
+
+- Ticket Number
+- Ticket Date
+- Requester
+- Category
+- Related System
+- Ticket Summary
+- Requested Priority
+- Description
+- Attachments
+
+### System-Generated / Read-Only Values
+
+The following values are system generated and not editable by the
+Requester:
+
+- Ticket Number
+- Ticket Date
+- Requester
+- Current Status
+
+### Requester-Editable Values
+
+The Requester provides or selects:
+
+- Category
+- Related System
+- Requested Priority
+- Ticket Summary
+- Description
+- permitted Attachments
+
+The detailed field layout and presentation will be defined in
+`docs/lab-02/ui-spec.md`.
+
+---
+
+## 12.55 Main Workflow
+
+### Flow D1 - Open Create Ticket
+
+1. A valid Development Requester is selected.
+2. The Requester opens Create Ticket.
+3. The screen displays the current Requester.
+4. Active Category data is loaded from Feature-C.
+5. Active Related System data is loaded from Feature-C.
+6. Requested Priority defaults to Medium.
+7. Ticket Number and Ticket Date are presented as system-generated values.
+8. The Requester enters the required Ticket information.
+
+### Flow D2 - Submit Valid Ticket
+
+1. The Requester selects an active Category.
+2. The Requester selects an active Related System.
+3. The Requester selects or accepts the Requested Priority.
+4. The Requester enters a valid Ticket Summary.
+5. The Requester enters a valid Description.
+6. The Requester may select permitted Attachments.
+7. The Requester activates Submit.
+8. The frontend validates applicable form rules.
+9. Submit enters a busy state and is disabled while the creation request
+   is processing.
+10. The backend validates the requester context and all Ticket data.
+11. The backend creates exactly one Ticket.
+12. The backend generates the official Ticket Number.
+13. The backend records the Ticket Date.
+14. The backend sets Current Status to New.
+15. The Ticket is associated with the selected Development Requester.
+16. The creation operation returns the newly created Ticket information.
+17. Any approved initial Attachment processing continues according to
+    Feature-G.
+18. TokTickIT navigates to the new Ticket Detail.
+
+---
+
+## 12.56 Ticket Number Behavior
+
+The backend exclusively generates the official Ticket Number.
+
+The format is:
+
+`TKT-YYYY-NNNNN`
+
+Example:
+
+`TKT-2026-00001`
+
+Ticket Number generation shall:
+
+- occur on the backend;
+- use the approved transactional annual sequence;
+- reset the sequence for a new calendar year;
+- remain unique under concurrent Ticket creation;
+- never use frontend-generated numbering;
+- never rely on a simple count-existing-Tickets-plus-one strategy.
+
+The database shall enforce the required uniqueness.
+
+---
+
+## 12.57 Ticket Date Behavior
+
+Ticket Date is generated by the system when the Ticket is created.
+
+The Requester cannot edit Ticket Date.
+
+The stored and API date/time representation shall follow the approved
+UTC conventions from the System-Level SDS.
+
+Display localization belongs to the frontend presentation layer.
+
+---
+
+## 12.58 Initial Status
+
+Every newly created Ticket begins with:
+
+`Current Status = New`
+
+Feature-D does not implement later status transitions.
+
+Requester status changes, IT Staff status workflow, resolution, closure,
+reopening, and cancellation are outside Lab 2 scope.
+
+---
+
+## 12.59 Requested Priority
+
+Requested Priority supports:
+
+- Low
+- Medium
+- High
+- Urgent
+
+Default:
+
+`Medium`
+
+Requested Priority represents the Requester's requested urgency.
+
+It is separate from IT Priority.
+
+Feature-D shall not provide IT Priority editing or IT Staff priority
+behavior.
+
+---
+
+## 12.60 Summary Validation
+
+Ticket Summary is required.
+
+Validation rules:
+
+- trim leading and trailing whitespace;
+- minimum 5 characters after trimming;
+- maximum 120 characters after trimming;
+- whitespace-only input is invalid.
+
+The frontend validates for usability.
+
+The backend independently enforces the same rule.
+
+---
+
+## 12.61 Description Validation
+
+Description is required.
+
+Validation rules:
+
+- trim leading and trailing whitespace;
+- minimum 10 characters after trimming;
+- maximum 2000 characters after trimming;
+- whitespace-only input is invalid.
+
+The frontend validates for usability.
+
+The backend independently enforces the same rule.
+
+---
+
+## 12.62 Category Validation
+
+Category is required.
+
+For a new Ticket:
+
+- the Category identifier must exist;
+- the Category must be active;
+- the backend must independently validate the Category;
+- a value supplied by the frontend must not be trusted merely because it
+  appeared in the selection control.
+
+Inactive Categories remain available only for historical display
+according to Feature-C.
+
+---
+
+## 12.63 Related System Validation
+
+Related System is required.
+
+For a new Ticket:
+
+- the Related System identifier must exist;
+- the Related System must be active;
+- the backend must independently validate the Related System;
+- a value supplied by the frontend must not be trusted merely because it
+  appeared in the selection control.
+
+Inactive Related Systems remain available only for historical display
+according to Feature-C.
+
+---
+
+## 12.64 Requester Ownership
+
+The newly created Ticket shall belong to exactly one Development
+Requester.
+
+The requester relationship is determined from the current Lab 2
+Development Requester context.
+
+The Requester field displayed in Create Ticket is read-only.
+
+The frontend must not allow the user to manually replace the Ticket
+requester with another Development Requester during Ticket creation.
+
+The backend remains authoritative for the stored requester relationship.
+
+---
+
+## 12.65 Duplicate Submission Protection
+
+Feature-D shall prevent accidental duplicate Ticket creation.
+
+### Frontend Protection
+
+While a Ticket creation request is processing:
+
+- Submit enters a visible busy state;
+- Submit is disabled;
+- repeated activation must not create additional client requests.
+
+### Backend Protection
+
+The creation request uses an approved request/idempotency identifier.
+
+Repeated processing of the same identifier shall not create multiple
+Tickets.
+
+The exact request mechanism and API field/header design will be defined in
+`docs/lab-02/api-spec.md`.
+
+---
+
+## 12.66 Create Ticket Failure Behavior
+
+### Frontend Validation Failure
+
+If local form validation fails:
+
+- the API shall not be called;
+- field-level validation shall identify the invalid fields;
+- entered valid values remain in the form;
+- the Requester may correct and resubmit.
+
+### Backend Validation Failure
+
+If backend validation rejects the request:
+
+- no invalid Ticket shall be stored;
+- useful validation feedback shall be returned;
+- the form values remain available for correction.
+
+### Recoverable API Failure
+
+If the request fails because of a recoverable API/backend problem:
+
+- the form values remain available;
+- a safe error is displayed;
+- the Requester may retry;
+- internal server/database details are not exposed.
+
+### Unexpected Failure
+
+Unexpected server failures shall use the approved safe error envelope and
+generic server-error behavior.
+
+---
+
+## 12.67 Successful Creation Behavior
+
+After successful creation:
+
+- exactly one Ticket exists;
+- the Ticket belongs to the current Development Requester;
+- an official Ticket Number exists;
+- Ticket Date exists;
+- Current Status is New;
+- submitted Ticket information is stored;
+- the successful result comes from the backend/database;
+- the Requester is navigated to the new Ticket Detail.
+
+The UI shall clearly expose the official Ticket Number after creation.
+
+---
+
+## 12.68 Attachment Behavior During Create Ticket
+
+Feature-D allows the Requester to select permitted Attachments as part of
+the Create Ticket workflow.
+
+Attachment validation and lifecycle behavior is owned by Feature-G.
+
+Feature-D shall integrate with Feature-G so that:
+
+- valid attachments may be processed after the Ticket exists;
+- invalid files receive useful feedback;
+- Ticket creation and Attachment results are distinguishable.
+
+### Partial Attachment Failure
+
+If the Ticket has already been created successfully and one or more
+Attachment uploads fail:
+
+- the Ticket remains created;
+- successful Attachment uploads remain;
+- failed Attachment uploads are reported;
+- the Requester may retry failed uploads from Ticket Detail.
+
+A failed Attachment upload shall not automatically delete an already
+successfully created Ticket.
+
+---
+
+## 12.69 Data Design
+
+### Ticket
+
+Feature-D requires a Ticket persistence model supporting at least:
+
+- internal Ticket ID
+- official Ticket Number
+- requester relationship
+- Category relationship
+- Related System relationship
+- Ticket Summary
+- Description
+- Requested Priority
+- Current Status
+- Ticket creation date/time
+- createdAt
+- updatedAt
+
+Additional persistence fields required by approved implementation
+decisions, including duplicate-submission protection, shall be documented
+before implementation.
+
+### Required Relationships
+
+- one Development Requester may own many Tickets;
+- each Ticket belongs to one Development Requester;
+- each Ticket belongs to one Category;
+- each Ticket belongs to one Related System.
+
+### Constraints
+
+The design shall enforce:
+
+- unique official Ticket Number;
+- valid foreign keys;
+- required ownership;
+- required Category;
+- required Related System;
+- required Summary;
+- required Description;
+- valid Requested Priority;
+- valid Current Status.
+
+---
+
+## 12.70 Transaction Boundaries
+
+The Ticket creation transaction shall protect database state that must be
+created consistently together.
+
+At minimum, the database-safe operation must ensure that:
+
+- Ticket Number generation remains unique;
+- the Ticket is stored once;
+- the Ticket ownership and required references are stored consistently.
+
+Attachment binary upload is a separate lifecycle concern governed by
+Feature-G.
+
+Failure of a later Attachment upload does not roll back an already
+successfully created Ticket.
+
+---
+
+## 12.71 API Responsibilities
+
+Feature-D requires API capability for creating one new Ticket.
+
+The detailed API contract will be defined in:
+
+`docs/lab-02/api-spec.md`
+
+The Create Ticket API contract must define:
+
+- requester-context transport;
+- request DTO;
+- response DTO;
+- duplicate-submission identifier;
+- successful HTTP status;
+- validation status/error behavior;
+- invalid reference-data behavior;
+- invalid/inactive requester behavior;
+- unexpected failure behavior;
+- generated Ticket Number;
+- generated Ticket Date;
+- initial Current Status.
+
+The API shall follow the approved `/api/v1`, JSON, DTO, error-envelope,
+and backend-validation conventions.
+
+---
+
+## 12.72 UI Responsibilities
+
+The detailed Create Ticket UI design will be defined in:
+
+`docs/lab-02/ui-spec.md`
+
+The screen shall make system-generated/read-only values visually distinct
+from editable controls.
+
+The Create Ticket UI shall provide:
+
+- current Requester display;
+- Category selection;
+- Related System selection;
+- Requested Priority selection;
+- Ticket Summary control;
+- Description control;
+- Attachment selection area;
+- Submit action;
+- field-level validation;
+- submitting/busy state;
+- safe failure state;
+- responsive behavior;
+- keyboard-accessible controls.
+
+The Lab 2 sheet specifically expects system-generated and read-only values
+to be visually distinct and the Submit action to show a busy state while
+processing. :contentReference[oaicite:2]{index=2}
+
+---
+
+## 12.73 Non-Functional Requirements
+
+Feature-D shall:
+
+- preserve the approved frontend/backend architecture;
+- keep Ticket business rules authoritative on the backend;
+- use PostgreSQL through Prisma;
+- use reviewed migrations;
+- generate Ticket Numbers safely under concurrency;
+- protect referential integrity;
+- provide safe errors;
+- preserve user input after recoverable failures;
+- support responsive and accessible UI behavior;
+- avoid committed credentials or secrets;
+- remain compatible with later Lab 3 authentication.
+
+---
+
+## 12.74 Testing Obligations
+
+Feature-D requires planned tests for at least:
+
+### Unit
+
+- valid Ticket Number format;
+- sequence behavior required by the approved design;
+- Summary lower boundary;
+- Summary upper boundary;
+- Description lower boundary;
+- Description upper boundary;
+- whitespace-only Summary rejection;
+- whitespace-only Description rejection;
+- Requested Priority validation;
+- default Requested Priority behavior.
+
+### API / Integration
+
+- valid Ticket creation returns a created response;
+- exactly one Ticket is stored;
+- generated Ticket Number is returned;
+- generated Ticket Date is returned;
+- Current Status is New;
+- stored requester matches current Development Requester context;
+- active Category is accepted;
+- inactive Category is rejected;
+- missing Category is rejected;
+- active Related System is accepted;
+- inactive Related System is rejected;
+- missing Related System is rejected;
+- invalid Summary is rejected;
+- invalid Description is rejected;
+- invalid Requested Priority is rejected;
+- duplicate request does not create duplicate Tickets;
+- concurrent creation does not generate duplicate Ticket Numbers;
+- safe unexpected-error behavior is returned.
+
+### UI / Component
+
+- required Create Ticket controls render;
+- current Requester is shown as read-only;
+- Requested Priority defaults to Medium;
+- required reference data is loaded;
+- invalid fields show field-level messages;
+- invalid frontend submission does not call the API;
+- Submit shows a busy state;
+- Submit is disabled while processing;
+- entered form values remain after recoverable failure;
+- successful creation exposes the Ticket Number.
+
+### E2E
+
+- select a Development Requester;
+- open Create Ticket;
+- load reference data from the database;
+- enter valid Ticket data;
+- submit;
+- observe the busy state;
+- receive an official Ticket Number;
+- open the new Ticket Detail;
+- verify the stored Ticket belongs to the selected Requester.
+
+The Lab 2 submission evidence explicitly expects screenshots of initial,
+validation failure, submitting, success, API failure, invalid attachment,
+selected Requester, reference data loaded from the database, and saved
+requester ownership. :contentReference[oaicite:3]{index=3}
+
+Exact Test IDs and implementation file paths will be defined in
+`docs/lab-02/tests.md`.
+
+---
+
+## 12.75 Dependencies
+
+Feature-D depends on:
+
+- Feature-A Development Requester Context;
+- Feature-B Requester UI Foundation;
+- Feature-C Ticket Reference Data;
+- PostgreSQL;
+- Prisma;
+- approved Lab 2 SRS;
+- approved System-Level SDS.
+
+Feature-D produces data consumed by:
+
+- Feature-E My Tickets;
+- Feature-F Requester Ticket Detail;
+- Feature-G Attachment Management.
+
+---
+
+## 12.76 Out of Scope for Feature-D
+
+Feature-D does not implement:
+
+- real authentication;
+- IT Staff assignment;
+- IT Priority editing;
+- post-creation Ticket editing;
+- status transitions beyond initial New;
+- Public Comments;
+- Internal Notes;
+- Actions Taken;
+- resolution;
+- closure;
+- reopening;
+- cancellation;
+- full Attachment lifecycle logic;
+- Administrator functions.
+
+Attachment-specific rules are owned by Feature-G.
+
+---
+
+## 12.77 Feature-D Acceptance Criteria
+
+### FD-AC-01 - Create Ticket Screen Information
+
+Given a valid Development Requester is selected,
+when Create Ticket opens,
+then the required Ticket information is displayed or available for entry,
+including Ticket Number, Ticket Date, Requester, Category, Related System,
+Ticket Summary, Requested Priority, Description, and Attachments.
+
+### FD-AC-02 - Read-Only System Values
+
+Given Create Ticket is displayed,
+when the Requester views Ticket Number, Ticket Date, and Requester,
+then those values are not requester-editable.
+
+### FD-AC-03 - Requested Priority Default
+
+Given Create Ticket opens,
+when the Requester has not changed Requested Priority,
+then Medium is selected by default.
+
+### FD-AC-04 - Summary Minimum
+
+Given the trimmed Ticket Summary contains fewer than 5 characters,
+when submission is attempted,
+then the Ticket is rejected with useful validation.
+
+### FD-AC-05 - Summary Maximum
+
+Given the trimmed Ticket Summary exceeds 120 characters,
+when submission is attempted,
+then the Ticket is rejected with useful validation.
+
+### FD-AC-06 - Description Minimum
+
+Given the trimmed Description contains fewer than 10 characters,
+when submission is attempted,
+then the Ticket is rejected with useful validation.
+
+### FD-AC-07 - Description Maximum
+
+Given the trimmed Description exceeds 2000 characters,
+when submission is attempted,
+then the Ticket is rejected with useful validation.
+
+### FD-AC-08 - Whitespace Validation
+
+Given Ticket Summary or Description contains only whitespace,
+when submission is attempted,
+then the Ticket is not created.
+
+### FD-AC-09 - Active Category Required
+
+Given an active Category exists,
+when that Category is selected in a valid creation request,
+then it may be used by the new Ticket.
+
+### FD-AC-10 - Inactive Category Rejected
+
+Given a Category is inactive,
+when its identifier is submitted for a new Ticket,
+then the backend rejects it.
+
+### FD-AC-11 - Active Related System Required
+
+Given an active Related System exists,
+when that Related System is selected in a valid creation request,
+then it may be used by the new Ticket.
+
+### FD-AC-12 - Inactive Related System Rejected
+
+Given a Related System is inactive,
+when its identifier is submitted for a new Ticket,
+then the backend rejects it.
+
+### FD-AC-13 - Valid Ticket Creation
+
+Given valid Ticket data and a valid Development Requester,
+when the Ticket is submitted,
+then exactly one Ticket is stored.
+
+### FD-AC-14 - Correct Requester Ownership
+
+Given Alice Developer is the current Development Requester,
+when Alice creates a Ticket,
+then the stored Ticket belongs to Alice.
+
+### FD-AC-15 - Generated Ticket Number
+
+Given a Ticket is successfully created,
+when the creation result is returned,
+then the backend supplies a unique Ticket Number using the approved
+TKT-YYYY-NNNNN format.
+
+### FD-AC-16 - Generated Ticket Date
+
+Given a Ticket is successfully created,
+when its data is inspected,
+then Ticket Date is system generated and stored.
+
+### FD-AC-17 - Initial New Status
+
+Given a Ticket is successfully created,
+when its stored state is inspected,
+then Current Status is New.
+
+### FD-AC-18 - Duplicate Submission Prevention
+
+Given the same approved creation-request identifier is processed more
+than once,
+when the backend handles the repeated request,
+then no more than one Ticket is created.
+
+### FD-AC-19 - Concurrent Ticket Number Safety
+
+Given two valid Ticket creation requests occur concurrently,
+when both complete,
+then they receive different official Ticket Numbers.
+
+### FD-AC-20 - Submitting State
+
+Given a valid Ticket submission is processing,
+when the Requester waits for completion,
+then Submit shows a busy state and cannot be activated again.
+
+### FD-AC-21 - Validation Failure Preserves Input
+
+Given the Requester enters some valid values and one or more invalid
+values,
+when validation fails,
+then the entered form values remain available for correction.
+
+### FD-AC-22 - Recoverable API Failure Preserves Input
+
+Given the backend request fails recoverably,
+when the error is shown,
+then the Requester's entered form values remain available for retry.
+
+### FD-AC-23 - Safe API Failure
+
+Given an unexpected Ticket creation failure occurs,
+when the failure is returned,
+then the UI receives a safe error without internal implementation details.
+
+### FD-AC-24 - Success Navigation
+
+Given Ticket creation succeeds,
+when the operation completes,
+then the Requester is taken to the newly created Ticket Detail and the
+official Ticket Number is clearly visible.
+
+### FD-AC-25 - Partial Attachment Failure
+
+Given the Ticket has been created successfully and a later Attachment
+upload fails,
+when Attachment processing completes,
+then the Ticket remains created and the Attachment failure is reported.
+
+### FD-AC-26 - Responsive Create Ticket
+
+Given desktop, tablet, and mobile viewport sizes,
+when Create Ticket is used,
+then required fields, validation, Attachments, and actions remain readable
+and operable.
+
+### FD-AC-27 - Accessible Create Ticket
+
+Given a keyboard-only user,
+when Create Ticket is used,
+then required controls can be reached and operated with visible focus and
+associated labels.
+
+---
+
+# Feature-E - My Tickets
+
+## 12.78 Identity
+
+| Item | Value |
+|---|---|
+| Feature ID | Feature-E |
+| Feature Name | My Tickets |
+| Purpose | Allow the selected Development Requester to locate, search, filter, sort, page through, and open only Tickets owned by that Requester. |
+| Sprint | Lab 2 |
+| Status | Approved for Lab 2 Design |
+| Related GitHub Issue | My Tickets |
+| Dependency | Feature-A Development Requester Context, Feature-B Requester UI Foundation, Feature-C Ticket Reference Data, Feature-D Ticket data |
+| Produces | Requester-owned Ticket list and navigation to Feature-F Ticket Detail |
+
+Feature-E provides requester-owned Ticket discovery.
+
+It must never expose another Development Requester's Ticket through list,
+search, filtering, sorting, or pagination behavior.
+
+---
+
+## 12.79 Traceability
+
+### Functional Requirements
+
+Feature-E is responsible for:
+
+- FR-17 My Tickets
+- FR-18 Ticket Search
+- FR-19 Ticket Filtering
+- FR-20 Ticket Sorting
+- FR-21 Ticket Pagination
+- FR-22 My Tickets Empty State
+- FR-23 My Tickets No-Results State
+
+Feature-E also contributes to:
+
+- FR-26 Ownership Protection
+- FR-45 Loading States
+- FR-46 Failure States
+- FR-47 Responsive Behavior
+- FR-48 Accessible Operation
+
+### Business Rules
+
+Feature-E is responsible for:
+
+- BR-18 Search Scope
+- BR-19 Combined Ticket Query
+- BR-20 Search Behavior
+- BR-21 Filter Behavior
+- BR-22 Pagination Reset
+
+Feature-E also participates in:
+
+- BR-07 Requester Ownership
+- BR-11 Requested Priority Vocabulary
+- BR-40 Empty and No-Results States
+
+### Non-Functional Requirements
+
+Feature-E must comply with:
+
+- NFR-01 Responsive Usability
+- NFR-02 Accessibility
+- NFR-03 Safe Error Handling
+- NFR-04 Backend Validation Authority
+- NFR-05 Ownership Enforcement
+- NFR-09 Maintainability
+- NFR-10 Testability
+- NFR-11 Traceability
+
+### Approved Sprint Decisions
+
+Feature-E uses:
+
+- D-L2-06 Ticket Search
+- D-L2-07 Ticket Filters
+- D-L2-08 Ticket Sorting
+- D-L2-09 Pagination
+- D-L2-10 Ownership Response
+- D-L2-16 My Tickets States
+- D-L2-24 Search Timing
+- D-L2-25 Inactive Reference Data
+- D-L2-33 UI Theme
+
+---
+
+## 12.80 Actors and Preconditions
+
+### Actor
+
+The currently selected active Development Requester.
+
+### Preconditions
+
+- TokTickIT is running.
+- Feature-A has established a valid Development Requester context.
+- Feature-B requester navigation is available.
+- Ticket persistence is available.
+- Feature-C reference data is available where needed for filters.
+- Real authentication is not implemented in Lab 2.
+
+---
+
+## 12.81 Main Workflow
+
+### Flow E1 - Open My Tickets
+
+1. A valid Development Requester is selected.
+2. The Requester opens My Tickets.
+3. The UI displays a loading state.
+4. The frontend requests Tickets for the current Requester.
+5. The backend applies requester ownership before returning results.
+6. Default sorting is newest created first.
+7. Default page size is 10.
+8. The first page of requester-owned Tickets is returned.
+9. The UI displays the Ticket results and pagination information.
+
+### Flow E2 - Open a Ticket
+
+1. My Tickets displays a requester-owned Ticket.
+2. The Requester activates that Ticket.
+3. TokTickIT navigates to Feature-F Requester Ticket Detail.
+4. Feature-F independently enforces ownership when retrieving the Ticket.
+
+---
+
+## 12.82 Requester Ownership
+
+My Tickets shall return only Tickets owned by the current Development
+Requester.
+
+Ownership filtering is authoritative on the backend.
+
+The frontend shall not:
+
+- retrieve all Tickets and hide other Requesters' Tickets;
+- rely on client-side filtering as ownership protection;
+- treat hidden UI elements as security.
+
+Search, filters, sorting, and pagination shall operate only within the
+current Requester's owned Ticket dataset.
+
+Changing Requester causes My Tickets data to be reloaded for the newly
+selected Requester.
+
+---
+
+## 12.83 Ticket Search
+
+My Tickets search covers:
+
+- Ticket Number
+- Summary
+- Description
+
+Search is case-insensitive.
+
+The same search term is applied across the supported searchable fields.
+
+Search is limited to requester-owned Tickets.
+
+### Search Input Behavior
+
+- leading and trailing whitespace in the search term is ignored;
+- an empty search value represents no search restriction;
+- changing the search value resets pagination to page 1;
+- search uses approximately a 300 ms debounce;
+- stale search results must not incorrectly replace newer results.
+
+The exact API query parameter will be defined in
+`docs/lab-02/api-spec.md`.
+
+---
+
+## 12.84 Ticket Filtering
+
+My Tickets supports filtering by:
+
+- Category
+- Related System
+- Requested Priority
+- Current Status
+
+Filters may be combined.
+
+When multiple filters are active, a Ticket must satisfy all active filter
+conditions to appear.
+
+Each filter is also combined with any active search term.
+
+Changing a filter resets pagination to page 1.
+
+Filter changes refresh results without the search debounce.
+
+### Reference Data
+
+Category and Related System filter choices are supported by Feature-C.
+
+Historical Tickets that refer to inactive reference values must remain
+understandable and must not become inaccessible merely because the
+reference value later became inactive.
+
+---
+
+## 12.85 Ticket Sorting
+
+My Tickets supports:
+
+- newest created first;
+- oldest created first;
+- recently updated first;
+- Ticket Number ascending.
+
+Default:
+
+`newest created first`
+
+Sorting is performed by the backend before pagination.
+
+Changing the sort option resets pagination to page 1.
+
+Sort changes refresh results without the search debounce.
+
+The API shall use an approved fixed vocabulary rather than accepting
+arbitrary database field names from the client.
+
+---
+
+## 12.86 Pagination
+
+My Tickets uses backend pagination.
+
+Supported page sizes:
+
+- 10
+- 20
+- 50
+
+Default page size:
+
+`10`
+
+The pagination result must provide enough information for the frontend to
+determine:
+
+- current page;
+- selected page size;
+- total matching Tickets;
+- total pages;
+- whether navigation to another page is possible.
+
+### Pagination Reset
+
+The current page resets to page 1 when:
+
+- search changes;
+- a filter changes;
+- sorting changes;
+- page size changes.
+
+Changing only the page number does not alter the other active query
+controls.
+
+---
+
+## 12.87 Combined Query Behavior
+
+Search, filters, sorting, and pagination form one combined My Tickets
+query.
+
+Conceptually:
+
+1. restrict Tickets to the current Requester;
+2. apply search;
+3. apply all active filters;
+4. apply the selected sorting;
+5. calculate matching-result totals;
+6. apply pagination;
+7. return only the requested page.
+
+Ownership protection always applies and cannot be disabled by a query
+parameter.
+
+---
+
+## 12.88 My Tickets Result Information
+
+Each Ticket result shall provide enough information for the Requester to:
+
+- identify the Ticket;
+- understand its basic subject;
+- understand its current state; and
+- open Ticket Detail.
+
+The exact result DTO and final visible fields will be defined in:
+
+- `docs/lab-02/api-spec.md`
+- `docs/lab-02/ui-spec.md`
+
+Possible display information is not finalized here because the Lab 2
+handout requires the student to determine and justify the final list/card
+fields in the UI specification.
+
+---
+
+## 12.89 Loading State
+
+While a My Tickets request is pending:
+
+- visible loading feedback is shown;
+- the previous result must not be presented as though it were the new
+  completed query;
+- required query controls remain understandable;
+- duplicate or conflicting result updates shall be avoided.
+
+Feature-B provides the shared loading presentation convention.
+
+---
+
+## 12.90 True Empty State
+
+A true empty state occurs when the current Development Requester owns no
+Tickets.
+
+The UI shall:
+
+- clearly explain that the Requester has no Tickets;
+- provide a Create Ticket action;
+- not present this state as a search failure.
+
+This state is different from a no-results state.
+
+---
+
+## 12.91 No-Results State
+
+A no-results state occurs when the Requester owns Tickets, but the current
+search/filter combination matches none.
+
+The UI shall:
+
+- clearly explain that no Tickets match the current query;
+- preserve the current query controls;
+- provide a useful way to clear or adjust search/filters;
+- distinguish this state from owning no Tickets.
+
+---
+
+## 12.92 API Failure State
+
+If My Tickets cannot be loaded:
+
+- show a safe failure message;
+- do not expose internal implementation details;
+- provide Retry where appropriate;
+- do not falsely display the failure as an empty Ticket list.
+
+After Retry, the active search, filters, sorting, and page settings should
+remain understandable and consistent.
+
+---
+
+## 12.93 Requester Switching Behavior
+
+When the Development Requester changes:
+
+1. existing My Tickets data is no longer treated as current;
+2. requester-owned results are cleared or replaced appropriately;
+3. a new My Tickets request is performed for the new Requester;
+4. no Ticket belonging only to the previous Requester remains exposed as
+   current data.
+
+Feature-A owns requester switching.
+
+Feature-E owns reloading the requester-owned Ticket list.
+
+---
+
+## 12.94 Data and Query Responsibilities
+
+Feature-E primarily reads Ticket data created by Feature-D.
+
+The database/query design shall support efficient requester-owned
+retrieval for:
+
+- ownership;
+- Ticket Number search;
+- Summary search;
+- Description search;
+- Category filtering;
+- Related System filtering;
+- Requested Priority filtering;
+- Current Status filtering;
+- creation-date sorting;
+- updated-date sorting;
+- Ticket Number sorting;
+- pagination.
+
+Required indexes shall be determined with the approved PostgreSQL/Prisma
+design and documented before implementation where needed.
+
+Feature-E does not create a separate My Tickets persistence model.
+
+---
+
+## 12.95 API Responsibilities
+
+Feature-E requires API capability for retrieving a paginated
+requester-owned Ticket collection.
+
+The detailed contract will be defined in:
+
+`docs/lab-02/api-spec.md`
+
+The API contract must define:
+
+- requester-context transport;
+- search parameter;
+- Category filter;
+- Related System filter;
+- Requested Priority filter;
+- Current Status filter;
+- sorting parameter;
+- page parameter;
+- page-size parameter;
+- response Ticket DTO;
+- pagination metadata;
+- invalid-query behavior;
+- ownership enforcement;
+- safe unexpected-error behavior.
+
+The API shall follow the approved `/api/v1`, camelCase JSON, DTO,
+validation, and error-envelope conventions.
+
+---
+
+## 12.96 UI Responsibilities
+
+The detailed My Tickets UI will be defined in:
+
+`docs/lab-02/ui-spec.md`.
+
+The screen shall include:
+
+- page identity/title;
+- Create Ticket action;
+- search control;
+- Category filter;
+- Related System filter;
+- Requested Priority filter;
+- Current Status filter;
+- sorting control;
+- requester-owned Ticket results;
+- Ticket-opening interaction;
+- pagination controls;
+- page-size control;
+- loading state;
+- true empty state;
+- no-results state;
+- API failure state.
+
+The desktop and smaller-screen representations may differ.
+
+The Lab 2 handout explicitly requires search, suitable filters, sorting,
+pagination, a Create Ticket action, and meaningful loading, empty,
+no-results, and failure states. :contentReference[oaicite:2]{index=2}
+
+---
+
+## 12.97 Responsive Behavior
+
+My Tickets shall remain usable on desktop, tablet, and mobile layouts.
+
+The UI may use different representations such as a wider desktop list and
+a compact smaller-screen presentation.
+
+Regardless of representation:
+
+- Ticket identity remains clear;
+- search remains usable;
+- filters remain usable;
+- sorting remains usable;
+- Ticket Detail remains reachable;
+- pagination remains operable;
+- important information is not clipped;
+- unintended horizontal page scrolling is avoided.
+
+Exact layouts belong in `docs/lab-02/ui-spec.md`.
+
+---
+
+## 12.98 Accessibility Behavior
+
+My Tickets shall provide:
+
+- programmatic labels for search/filter/sort controls;
+- keyboard-operable Ticket navigation;
+- keyboard-operable pagination;
+- visible focus indicators;
+- understandable loading and failure feedback;
+- textual status information where meaning would otherwise rely only on
+  color;
+- meaningful labels for controls and actions.
+
+---
+
+## 12.99 Non-Functional Requirements
+
+Feature-E shall:
+
+- enforce ownership on the backend;
+- provide predictable query behavior;
+- keep query parameter vocabularies controlled;
+- use backend pagination;
+- provide safe errors;
+- remain responsive and accessible;
+- use explicit API DTOs;
+- avoid exposing persistence models directly;
+- preserve the approved architecture;
+- remain testable at API, component, responsive, and E2E levels.
+
+---
+
+## 12.100 Testing Obligations
+
+Feature-E requires planned tests for at least:
+
+### API / Integration
+
+- Requester sees only owned Tickets;
+- another Requester's Tickets are excluded;
+- search by Ticket Number works;
+- search by Summary works;
+- search by Description works;
+- search is case-insensitive;
+- Category filter works;
+- Related System filter works;
+- Requested Priority filter works;
+- Current Status filter works;
+- multiple filters combine correctly;
+- search and filters combine correctly;
+- newest-created sorting works;
+- oldest-created sorting works;
+- recently-updated sorting works;
+- Ticket Number ascending sorting works;
+- default sorting is newest created;
+- default page size is 10;
+- page size 20 works;
+- page size 50 works;
+- pagination metadata is correct;
+- invalid query values are safely rejected;
+- empty owned dataset is represented correctly;
+- no matching query is represented correctly;
+- unexpected failures use safe errors.
+
+### UI / Component
+
+- My Tickets controls render;
+- search uses the approved debounce behavior;
+- filter changes refresh results;
+- sort changes refresh results;
+- page-size changes refresh results;
+- search/filter/sort/page-size changes reset to page 1;
+- loading state renders;
+- true empty state renders;
+- Create Ticket action appears in true empty state;
+- no-results state renders separately;
+- API failure state renders;
+- Ticket can be opened from the result;
+- pagination controls are usable.
+
+### Responsive / Accessibility
+
+- desktop representation is usable;
+- tablet representation is usable;
+- mobile representation is usable;
+- no unintended horizontal page overflow occurs;
+- required controls are keyboard operable;
+- visible focus is preserved.
+
+### E2E
+
+- select Requester A;
+- create or use Tickets owned by Requester A;
+- open My Tickets;
+- locate a Ticket;
+- search for it;
+- filter results;
+- change sorting;
+- navigate between pages where applicable;
+- open the Ticket Detail;
+- switch to Requester B;
+- verify Requester A-only Tickets are no longer exposed.
+
+Every acceptance criterion must later map to at least one planned test,
+as required by the Lab 2 Test DD process. :contentReference[oaicite:3]{index=3}
+
+Exact Test IDs and file paths will be defined in
+`docs/lab-02/tests.md`.
+
+---
+
+## 12.101 Dependencies
+
+Feature-E depends on:
+
+- Feature-A Development Requester Context;
+- Feature-B Requester UI Foundation;
+- Feature-C Ticket Reference Data;
+- Feature-D-created Ticket data;
+- PostgreSQL;
+- Prisma;
+- approved Lab 2 SRS;
+- approved System-Level SDS.
+
+Feature-E navigates to:
+
+- Feature-F Requester Ticket Detail.
+
+---
+
+## 12.102 Out of Scope for Feature-E
+
+Feature-E does not implement:
+
+- Ticket creation;
+- editing submitted Ticket fields;
+- IT Staff queues;
+- Ticket assignment;
+- IT Priority;
+- status transitions;
+- Public Comments;
+- Internal Notes;
+- Actions Taken;
+- Attachment lifecycle operations;
+- real authentication;
+- Administrator functionality.
+
+---
+
+## 12.103 Feature-E Acceptance Criteria
+
+### FE-AC-01 - Requester-Owned Tickets Only
+
+Given Requester A is selected,
+when My Tickets loads,
+then only Tickets owned by Requester A are returned.
+
+### FE-AC-02 - Requester Isolation
+
+Given a Ticket belongs to Requester B,
+when Requester A uses search, filters, sorting, or pagination,
+then Requester B's Ticket is never returned.
+
+### FE-AC-03 - Ticket Number Search
+
+Given an owned Ticket has a matching Ticket Number,
+when the Requester searches for that value,
+then the Ticket appears in the matching results.
+
+### FE-AC-04 - Summary Search
+
+Given an owned Ticket contains a matching Summary,
+when the Requester searches for that text,
+then the Ticket appears.
+
+### FE-AC-05 - Description Search
+
+Given an owned Ticket contains matching Description text,
+when the Requester searches for that text,
+then the Ticket appears.
+
+### FE-AC-06 - Case-Insensitive Search
+
+Given searchable Ticket text differs only by letter case,
+when the Requester searches,
+then matching owned Tickets are still returned.
+
+### FE-AC-07 - Category Filter
+
+Given owned Tickets belong to different Categories,
+when a Category filter is selected,
+then only owned Tickets matching that Category are returned.
+
+### FE-AC-08 - Related System Filter
+
+Given owned Tickets use different Related Systems,
+when a Related System filter is selected,
+then only owned Tickets matching that Related System are returned.
+
+### FE-AC-09 - Requested Priority Filter
+
+Given owned Tickets have different Requested Priorities,
+when a Requested Priority filter is selected,
+then only matching owned Tickets are returned.
+
+### FE-AC-10 - Current Status Filter
+
+Given owned Tickets have different Current Status values,
+when a Current Status filter is selected,
+then only matching owned Tickets are returned.
+
+### FE-AC-11 - Combined Filters
+
+Given multiple filters are active,
+when My Tickets is queried,
+then returned Tickets satisfy all active filters.
+
+### FE-AC-12 - Search and Filter Combination
+
+Given search text and filters are active,
+when My Tickets is queried,
+then returned Tickets satisfy the search and all active filters.
+
+### FE-AC-13 - Default Sorting
+
+Given My Tickets opens without a changed sort option,
+when results are returned,
+then newest-created-first sorting is used.
+
+### FE-AC-14 - Supported Sorting
+
+Given owned Tickets have different creation/update values and Ticket
+Numbers,
+when each supported sort option is selected,
+then results follow the selected approved order.
+
+### FE-AC-15 - Default Pagination
+
+Given more than 10 matching Tickets exist,
+when My Tickets first loads,
+then the first page contains at most 10 results and pagination metadata is
+available.
+
+### FE-AC-16 - Supported Page Sizes
+
+Given sufficient matching Tickets exist,
+when page size 10, 20, or 50 is selected,
+then the returned page respects that supported size.
+
+### FE-AC-17 - Pagination Reset
+
+Given the Requester is on a page after page 1,
+when search, a filter, sorting, or page size changes,
+then the current page resets to page 1.
+
+### FE-AC-18 - True Empty State
+
+Given the selected Requester owns no Tickets,
+when My Tickets loads,
+then a clear empty state and Create Ticket action are shown.
+
+### FE-AC-19 - No-Results State
+
+Given the selected Requester owns Tickets but none match the current
+query,
+when My Tickets loads,
+then a no-results state is shown instead of the true empty state.
+
+### FE-AC-20 - Loading State
+
+Given My Tickets data is being retrieved,
+when the request is pending,
+then visible loading feedback is presented.
+
+### FE-AC-21 - Safe Failure State
+
+Given My Tickets retrieval fails,
+when the error is presented,
+then a safe failure state is shown without internal implementation
+details.
+
+### FE-AC-22 - Open Ticket Detail
+
+Given a requester-owned Ticket appears in My Tickets,
+when the Requester activates it,
+then TokTickIT navigates to that Ticket's Requester Ticket Detail.
+
+### FE-AC-23 - Requester Switching
+
+Given Requester A's My Tickets data is displayed,
+when the current Development Requester changes to Requester B,
+then Requester A's results are no longer treated as current and My
+Tickets reloads for Requester B.
+
+### FE-AC-24 - Responsive My Tickets
+
+Given desktop, tablet, and mobile viewport sizes,
+when My Tickets is used,
+then search, filters, sorting, results, Ticket opening, and pagination
+remain readable and operable.
+
+### FE-AC-25 - Accessible My Tickets
+
+Given a keyboard-only user,
+when My Tickets is used,
+then required controls and Ticket navigation can be reached and operated
+with visible focus.
+
+---
+
+# Feature-F - Requester Ticket Detail
+
+## 12.104 Identity
+
+| Item | Value |
+|---|---|
+| Feature ID | Feature-F |
+| Feature Name | Requester Ticket Detail |
+| Purpose | Allow the selected Development Requester to inspect the complete read-only information of one owned Ticket and access the permitted Attachment functions associated with that Ticket. |
+| Sprint | Lab 2 |
+| Status | Approved for Lab 2 Design |
+| Related GitHub Issue | Requester Ticket Detail |
+| Dependency | Feature-A Development Requester Context, Feature-B Requester UI Foundation, Feature-C Ticket Reference Data, Feature-D Ticket data |
+| Integrates With | Feature-G Attachment Management |
+
+Feature-F owns retrieval and presentation of one requester-owned Ticket.
+
+Submitted Ticket information is read-only in Lab 2.
+
+Attachment lifecycle operations displayed from Ticket Detail are owned by
+Feature-G.
+
+---
+
+## 12.105 Traceability
+
+### Functional Requirements
+
+Feature-F is responsible for:
+
+- FR-24 Ticket Detail
+- FR-25 Read-Only Ticket Detail
+- FR-26 Ownership Protection
+- FR-27 Neutral Missing/Ownership Response
+
+Feature-F also contributes to:
+
+- FR-34 Attachment Retrieval
+- FR-35 Image Preview
+- FR-36 PDF Behavior
+- FR-43 Historical Reference Data
+- FR-45 Loading States
+- FR-46 Failure States
+- FR-47 Responsive Behavior
+- FR-48 Accessible Operation
+
+### Business Rules
+
+Feature-F is responsible for:
+
+- BR-23 Ticket Detail Ownership
+- BR-24 Cross-Requester Resource Protection
+- BR-25 Submitted Ticket Fields
+
+Feature-F also participates in:
+
+- BR-07 Requester Ownership
+- BR-11 Requested Priority Vocabulary
+- BR-12 Requested Priority Meaning
+- BR-39 Historical Reference Data
+
+### Non-Functional Requirements
+
+Feature-F must comply with:
+
+- NFR-01 Responsive Usability
+- NFR-02 Accessibility
+- NFR-03 Safe Error Handling
+- NFR-04 Backend Validation Authority
+- NFR-05 Ownership Enforcement
+- NFR-07 Database Integrity
+- NFR-09 Maintainability
+- NFR-10 Testability
+- NFR-11 Traceability
+
+### Approved Sprint Decisions
+
+Feature-F uses:
+
+- D-L2-10 Ownership Response
+- D-L2-22 Attachment Preview
+- D-L2-23 Ticket Not Found
+- D-L2-25 Inactive Reference Data
+- D-L2-33 UI Theme
+
+---
+
+## 12.106 Actors and Preconditions
+
+### Actor
+
+The currently selected active Development Requester.
+
+### Preconditions
+
+- TokTickIT is running.
+- Feature-A has established a valid Development Requester context.
+- The requested Ticket identifier is available from navigation or the
+  requested route.
+- Ticket data exists in PostgreSQL.
+- Real authentication is not implemented in Lab 2.
+
+A Ticket does not have to exist or belong to the current Requester for the
+route to be requested.
+
+Those conditions are validated by the backend.
+
+---
+
+## 12.107 Main Workflow
+
+### Flow F1 - Open Owned Ticket
+
+1. A valid Development Requester is selected.
+2. The Requester opens a Ticket from My Tickets or after successful Ticket
+   creation.
+3. Ticket Detail enters a loading state.
+4. The frontend requests the Ticket identified by the route.
+5. The backend applies requester ownership to the lookup.
+6. The backend finds the Ticket belonging to the current Requester.
+7. The backend returns the Ticket Detail DTO.
+8. The UI displays the current Ticket information as read-only.
+9. Active Attachment information is presented through Feature-G.
+10. The Requester may perform only the Attachment actions permitted by
+    Lab 2.
+
+---
+
+## 12.108 Ticket Ownership
+
+A Requester may retrieve Ticket Detail only for a Ticket owned by that
+Requester.
+
+Ownership enforcement is authoritative on the backend.
+
+The backend shall not:
+
+- retrieve a Ticket by ID and rely on the frontend to hide it;
+- return another Requester's Ticket and expect the client to reject it;
+- expose another Requester's Ticket data through error details.
+
+The ownership condition must be part of the protected Ticket retrieval
+behavior.
+
+---
+
+## 12.109 Neutral Ticket Not Found Behavior
+
+The following cases use the same client-visible Ticket Not Found
+behavior:
+
+1. the Ticket identifier does not identify an existing Ticket; or
+2. the Ticket exists but belongs to another Development Requester.
+
+The response must not reveal which condition occurred.
+
+This prevents the Requester from using Ticket Detail to discover whether
+another Requester's Ticket exists.
+
+The exact HTTP status and error envelope will be defined in
+`docs/lab-02/api-spec.md`.
+
+---
+
+## 12.110 Read-Only Ticket Information
+
+Requester Ticket Detail is view-only for submitted Ticket fields in
+Lab 2.
+
+The Requester shall be able to inspect the Ticket's current information,
+including applicable information such as:
+
+- official Ticket Number;
+- Ticket Date;
+- Requester;
+- Category;
+- Related System;
+- Ticket Summary;
+- Requested Priority;
+- Description;
+- Current Status;
+- applicable timestamps;
+- active Attachment information.
+
+The exact UI grouping and exact API DTO fields will be finalized in:
+
+- `docs/lab-02/ui-spec.md`
+- `docs/lab-02/api-spec.md`
+
+Feature-F does not provide controls for editing submitted Ticket fields.
+
+---
+
+## 12.111 Ticket Number
+
+Ticket Detail displays the official backend-generated Ticket Number.
+
+The Ticket Number:
+
+- identifies the Ticket to the Requester;
+- is read-only;
+- uses the approved `TKT-YYYY-NNNNN` format;
+- must not be regenerated by the frontend.
+
+---
+
+## 12.112 Ticket Date
+
+Ticket Detail displays the system-generated Ticket Date.
+
+Ticket Date is read-only.
+
+The API and database use the approved UTC conventions.
+
+The frontend may format the value appropriately for display without
+changing the stored meaning.
+
+---
+
+## 12.113 Requester Information
+
+Ticket Detail shall make the Ticket's Requester ownership understandable.
+
+Requester information is read-only.
+
+Feature-F does not allow the Ticket to be reassigned to another
+Development Requester.
+
+---
+
+## 12.114 Category and Related System
+
+Ticket Detail displays the Ticket's:
+
+- Category; and
+- Related System.
+
+These values are read-only.
+
+### Historical Reference Values
+
+If the Category or Related System associated with the Ticket later
+becomes inactive:
+
+- the historical value remains visible;
+- the Ticket relationship remains valid;
+- the value is not removed merely because it is no longer selectable for
+  new Tickets.
+
+Feature-C owns the underlying reference-data rules.
+
+---
+
+## 12.115 Requested Priority and Current Status
+
+Ticket Detail displays:
+
+- Requested Priority; and
+- Current Status.
+
+Both are read-only for the Requester in Lab 2.
+
+Requested Priority is the urgency requested by the Requester.
+
+It is not IT Priority.
+
+Current Status is initially New for Tickets created in Lab 2.
+
+Feature-F does not implement later Ticket status transitions.
+
+---
+
+## 12.116 Summary and Description
+
+Ticket Detail displays the submitted:
+
+- Ticket Summary; and
+- Description.
+
+These values are read-only.
+
+The UI shall provide sufficient space for the Requester to understand the
+submitted information without presenting editable form behavior.
+
+---
+
+## 12.117 Attachment Integration
+
+Ticket Detail provides the main requester-facing location for inspecting
+and managing permitted Attachments on an existing Ticket.
+
+Feature-G owns:
+
+- Attachment upload;
+- Attachment validation;
+- Attachment metadata;
+- image preview;
+- PDF Open/Download;
+- Attachment download;
+- Attachment removal;
+- Attachment removal reason;
+- soft-removal metadata;
+- binary-removal lifecycle.
+
+Feature-F provides the Ticket context in which these operations are
+presented.
+
+Only Attachments belonging to the current requester-owned Ticket may be
+managed.
+
+---
+
+## 12.118 Loading State
+
+While Ticket Detail is being retrieved:
+
+- visible loading feedback is shown;
+- stale Ticket data must not be presented as though it belongs to the
+  newly requested Ticket;
+- protected Attachment actions shall not operate against an unresolved
+  Ticket context.
+
+Feature-B provides the shared loading-state presentation.
+
+---
+
+## 12.119 Ticket Not Found State
+
+If the backend returns the approved neutral not-found result:
+
+- show a clear Ticket Not Found experience;
+- do not reveal whether the Ticket is missing or owned by another
+  Requester;
+- do not display protected Ticket information;
+- do not display protected Attachment information;
+- provide appropriate navigation back to requester-owned functionality,
+  such as My Tickets.
+
+---
+
+## 12.120 API Failure State
+
+If Ticket Detail cannot be loaded because of an unexpected or recoverable
+API failure:
+
+- show a safe failure message;
+- do not expose internal server/database information;
+- provide Retry where appropriate;
+- distinguish the failure from Ticket Not Found.
+
+The UI must not treat an unexpected server failure as evidence that the
+Ticket does not exist.
+
+---
+
+## 12.121 Requester Switching Behavior
+
+If the Development Requester changes while Ticket Detail is being used:
+
+1. the previous Ticket data is no longer treated as valid current
+   requester data;
+2. protected Ticket information is cleared or replaced appropriately;
+3. the Ticket must be revalidated under the newly selected Requester
+   context before being shown;
+4. a Ticket owned only by the previous Requester must not remain visible
+   to the new Requester.
+
+Feature-A owns the requester-context switch.
+
+Feature-F owns protected Ticket Detail revalidation.
+
+---
+
+## 12.122 Data Responsibilities
+
+Feature-F reads Ticket data created by Feature-D.
+
+It does not create a separate Ticket Detail persistence model.
+
+Ticket Detail retrieval requires relationships sufficient to present:
+
+- Development Requester;
+- Category;
+- Related System;
+- Ticket fields;
+- applicable active Attachment information.
+
+Historical Category and Related System relationships must remain valid
+when those reference records become inactive.
+
+---
+
+## 12.123 API Responsibilities
+
+Feature-F requires API capability for retrieving one requester-owned
+Ticket.
+
+The detailed API contract will be defined in:
+
+`docs/lab-02/api-spec.md`
+
+The API contract must define:
+
+- Ticket identifier parameter;
+- requester-context transport;
+- ownership enforcement;
+- Ticket Detail response DTO;
+- reference-data representation;
+- Attachment representation or relationship;
+- neutral not-found behavior;
+- invalid identifier behavior;
+- safe unexpected-error behavior.
+
+The Lab 2 handout explicitly requires the REST API to support retrieval of
+one owned Ticket. :contentReference[oaicite:2]{index=2}
+
+---
+
+## 12.124 UI Responsibilities
+
+The detailed Ticket Detail layout will be defined in:
+
+`docs/lab-02/ui-spec.md`
+
+The screen shall:
+
+- clearly identify the Ticket;
+- present current Ticket information as read-only;
+- distinguish Ticket information from Attachment actions;
+- provide appropriate navigation;
+- support loading;
+- support neutral Ticket Not Found;
+- support safe API failure;
+- support responsive layouts;
+- support accessible operation.
+
+The UI shall not visually imply that submitted Ticket fields can be edited.
+
+The Lab 2 handout specifically requires the Requester Ticket Detail screen
+to present current Ticket information as read-only and provide the
+required Attachment functions. :contentReference[oaicite:3]{index=3}
+
+---
+
+## 12.125 Responsive Behavior
+
+Ticket Detail shall remain usable on:
+
+- desktop;
+- tablet;
+- mobile.
+
+Responsive presentation may reorganize field groups and Attachment
+presentation.
+
+At all supported sizes:
+
+- Ticket Number remains identifiable;
+- important Ticket information remains readable;
+- long Summary/Description content remains understandable;
+- Attachment actions remain accessible;
+- navigation remains usable;
+- content does not unintentionally overflow horizontally.
+
+Exact layout decisions belong in `docs/lab-02/ui-spec.md`.
+
+---
+
+## 12.126 Accessibility Behavior
+
+Ticket Detail shall provide:
+
+- meaningful heading structure;
+- understandable labels for read-only values;
+- keyboard-operable navigation;
+- keyboard-operable Attachment actions;
+- visible focus indicators;
+- textual status meaning rather than color-only meaning;
+- accessible labels for icon-only controls where used;
+- understandable loading, not-found, and error feedback.
+
+---
+
+## 12.127 Non-Functional Requirements
+
+Feature-F shall:
+
+- enforce Ticket ownership on the backend;
+- use neutral cross-requester not-found behavior;
+- expose explicit DTOs rather than Prisma models;
+- preserve historical reference relationships;
+- provide safe errors;
+- remain responsive and accessible;
+- avoid requester editing of submitted Ticket fields;
+- preserve the approved architecture;
+- remain testable at API, UI, responsive, and E2E levels.
+
+---
+
+## 12.128 Testing Obligations
+
+Feature-F requires planned tests for at least:
+
+### API / Integration
+
+- Requester can retrieve an owned Ticket;
+- returned Ticket data is correct;
+- Ticket Number is returned;
+- Ticket Date is returned;
+- Requester information is returned correctly;
+- Category is returned correctly;
+- Related System is returned correctly;
+- Requested Priority is returned correctly;
+- Current Status is returned correctly;
+- Summary and Description are returned correctly;
+- historical inactive Category remains displayable;
+- historical inactive Related System remains displayable;
+- nonexistent Ticket uses neutral not-found behavior;
+- another Requester's Ticket uses the same neutral not-found behavior;
+- another Requester's Ticket data is not returned;
+- unexpected failure uses a safe error.
+
+### UI / Component
+
+- Ticket Detail renders read-only Ticket information;
+- Ticket Number is clearly visible;
+- submitted fields do not provide requester editing controls;
+- loading state renders;
+- Ticket Not Found state renders;
+- API failure state renders separately from Ticket Not Found;
+- appropriate navigation is available;
+- Attachment area is distinguishable from Ticket information.
+
+### Ownership
+
+- Requester A can open Requester A's Ticket;
+- Requester B cannot retrieve Requester A's Ticket;
+- cross-requester failure does not reveal Ticket existence;
+- switching Requesters does not leave the previous Requester's Ticket
+  visible.
+
+### Responsive / Accessibility
+
+- desktop Ticket Detail is usable;
+- tablet Ticket Detail is usable;
+- mobile Ticket Detail is usable;
+- no unintended horizontal overflow occurs;
+- required navigation and Attachment actions are keyboard operable;
+- visible focus is preserved;
+- status meaning does not depend only on color.
+
+### E2E
+
+- select Requester A;
+- create or locate Requester A's Ticket;
+- open Ticket Detail;
+- verify the expected read-only Ticket information;
+- inspect the Attachment area;
+- switch to Requester B;
+- attempt to access Requester A's Ticket;
+- verify the neutral Ticket Not Found experience.
+
+Exact Test IDs and test-file paths will be defined in
+`docs/lab-02/tests.md`.
+
+---
+
+## 12.129 Dependencies
+
+Feature-F depends on:
+
+- Feature-A Development Requester Context;
+- Feature-B Requester UI Foundation;
+- Feature-C Ticket Reference Data;
+- Feature-D Ticket data;
+- PostgreSQL;
+- Prisma;
+- approved Lab 2 SRS;
+- approved System-Level SDS.
+
+Feature-F integrates with:
+
+- Feature-G Attachment Management.
+
+---
+
+## 12.130 Out of Scope for Feature-F
+
+Feature-F does not implement:
+
+- editing submitted Ticket fields;
+- changing Requested Priority after submission;
+- IT Priority;
+- Ticket assignment or reassignment;
+- status transitions;
+- Public Comments;
+- Internal Notes;
+- Actions Taken;
+- resolving;
+- closing;
+- reopening;
+- cancelling;
+- real authentication;
+- IT Staff controls;
+- Administrator controls.
+
+Those capabilities are explicitly outside Lab 2 or belong to other
+features.
+
+---
+
+## 12.131 Feature-F Acceptance Criteria
+
+### FF-AC-01 - Owned Ticket Detail
+
+Given Requester A owns a Ticket,
+when Requester A opens that Ticket,
+then the Ticket Detail is returned and displayed.
+
+### FF-AC-02 - Read-Only Submitted Fields
+
+Given an owned Ticket Detail is displayed,
+when the Requester inspects its submitted information,
+then those Ticket fields are presented as read-only.
+
+### FF-AC-03 - Official Ticket Number
+
+Given an owned Ticket is displayed,
+when Ticket Detail loads,
+then its official backend-generated Ticket Number is clearly visible.
+
+### FF-AC-04 - Ticket Information
+
+Given an owned Ticket exists,
+when Ticket Detail loads,
+then the applicable Requester, Category, Related System, Summary,
+Description, Requested Priority, Current Status, and Ticket Date are
+available for inspection.
+
+### FF-AC-05 - Historical Category
+
+Given an owned Ticket references a Category that later becomes inactive,
+when Ticket Detail is opened,
+then the historical Category remains visible.
+
+### FF-AC-06 - Historical Related System
+
+Given an owned Ticket references a Related System that later becomes
+inactive,
+when Ticket Detail is opened,
+then the historical Related System remains visible.
+
+### FF-AC-07 - Cross-Requester Protection
+
+Given Requester B is selected and a Ticket belongs to Requester A,
+when Requester B requests that Ticket,
+then Requester A's Ticket data is not returned.
+
+### FF-AC-08 - Neutral Missing Response
+
+Given a requested Ticket does not exist,
+when Ticket Detail is requested,
+then the approved neutral Ticket Not Found behavior is used.
+
+### FF-AC-09 - Neutral Ownership Response
+
+Given a requested Ticket exists but belongs to another Requester,
+when Ticket Detail is requested,
+then the same client-visible Ticket Not Found behavior is used.
+
+### FF-AC-10 - No Ownership Disclosure
+
+Given a protected Ticket request fails because of ownership,
+when the response is inspected,
+then it does not reveal that another Requester's Ticket exists.
+
+### FF-AC-11 - Loading State
+
+Given Ticket Detail retrieval is pending,
+when the screen is displayed,
+then meaningful loading feedback is shown.
+
+### FF-AC-12 - Safe Failure State
+
+Given Ticket Detail retrieval fails unexpectedly,
+when the error is displayed,
+then a safe failure state is shown without internal implementation
+details.
+
+### FF-AC-13 - Not Found and Failure Are Distinct
+
+Given Ticket Not Found and unexpected API failure are different
+conditions,
+when either occurs,
+then the UI presents the appropriate distinct state.
+
+### FF-AC-14 - Requester Switching Protection
+
+Given Requester A's Ticket Detail is displayed,
+when the current Requester changes to Requester B,
+then Requester A's protected Ticket data is no longer displayed unless
+the Ticket is valid under the new requester context.
+
+### FF-AC-15 - Attachment Area
+
+Given an owned Ticket Detail is displayed,
+when the Requester views the screen,
+then the permitted Attachment information and actions supplied by
+Feature-G are presented separately from read-only Ticket information.
+
+### FF-AC-16 - No Out-of-Scope Workflow
+
+Given Requester Ticket Detail is displayed,
+when the Requester views available functionality,
+then Public Comments, Internal Notes, Actions Taken, IT Staff controls,
+and later status-workflow functions are not implemented.
+
+### FF-AC-17 - Responsive Ticket Detail
+
+Given desktop, tablet, and mobile viewport sizes,
+when Ticket Detail is used,
+then required Ticket information, navigation, and Attachment functions
+remain readable and operable.
+
+### FF-AC-18 - Accessible Ticket Detail
+
+Given a keyboard-only user,
+when Ticket Detail is used,
+then required navigation and permitted actions can be reached and
+operated with visible focus.
+
+---
+
+# Feature-G - Attachment Management
+
+## 12.132 Identity
+
+| Item | Value |
+|---|---|
+| Feature ID | Feature-G |
+| Feature Name | Attachment Management |
+| Purpose | Allow the selected Development Requester to add, inspect, preview/open, download, and soft-remove permitted Attachments on requester-owned Tickets while enforcing ownership, file validation, storage safety, and removal lifecycle rules. |
+| Sprint | Lab 2 |
+| Status | Approved for Lab 2 Design |
+| Related GitHub Issue | Attachment Management |
+| Dependency | Feature-A Development Requester Context, Feature-B Requester UI Foundation, Feature-D Ticket creation, Feature-F Requester Ticket Detail |
+| Storage Dependency | Approved System-Level SDS attachment/object-storage architecture |
+
+Feature-G owns the Attachment lifecycle required by Lab 2.
+
+It applies both to:
+
+- Attachments selected during Create Ticket; and
+- Attachments added later from an existing requester-owned Ticket Detail.
+
+---
+
+## 12.133 Traceability
+
+### Functional Requirements
+
+Feature-G is responsible for:
+
+- FR-28 Attachment Upload
+- FR-29 Attachment Type Validation
+- FR-30 Attachment Size Validation
+- FR-31 Active Attachment Limit
+- FR-32 Mixed Attachment Selection
+- FR-33 Duplicate Original Filenames
+- FR-34 Attachment Retrieval
+- FR-35 Image Preview
+- FR-36 PDF Behavior
+- FR-37 Attachment Removal
+- FR-38 Attachment Removal Confirmation
+- FR-39 Attachment Removal Reason
+- FR-40 Attachment Removal Record
+- FR-41 Attachment Binary Removal
+
+Feature-G also contributes to:
+
+- FR-26 Ownership Protection
+- FR-27 Neutral Missing/Ownership Response
+- FR-45 Loading States
+- FR-46 Failure States
+- FR-47 Responsive Behavior
+- FR-48 Accessible Operation
+
+### Business Rules
+
+Feature-G is responsible for:
+
+- BR-24 Cross-Requester Resource Protection
+- BR-26 Attachment Allowed Types
+- BR-27 Attachment Size
+- BR-28 Active Attachment Count
+- BR-29 Removed Attachment Count
+- BR-30 Attachment Filename
+- BR-31 Attachment Removal Confirmation
+- BR-32 Attachment Removal Reason
+- BR-33 Attachment Removal Metadata
+- BR-34 Removed Attachment Access
+- BR-35 Removed Attachment Binary
+- BR-36 Partial Attachment Failure
+- BR-37 Partial File Selection
+
+Feature-G also participates in:
+
+- BR-07 Requester Ownership
+
+### Non-Functional Requirements
+
+Feature-G must comply with:
+
+- NFR-01 Responsive Usability
+- NFR-02 Accessibility
+- NFR-03 Safe Error Handling
+- NFR-04 Backend Validation Authority
+- NFR-05 Ownership Enforcement
+- NFR-07 Database Integrity
+- NFR-08 Attachment Safety
+- NFR-09 Maintainability
+- NFR-10 Testability
+- NFR-11 Traceability
+- NFR-12 Secrets and Configuration
+
+### Approved Sprint Decisions
+
+Feature-G uses:
+
+- D-L2-10 Ownership Response
+- D-L2-12 Attachment Removal
+- D-L2-13 Partial Attachment Failure
+- D-L2-18 Duplicate Attachment Filenames
+- D-L2-21 Mixed Attachment Selection
+- D-L2-22 Attachment Preview
+- D-L2-23 Ticket Not Found
+- D-L2-31 Attachment Capacity
+- D-L2-33 UI Theme
+
+---
+
+## 12.134 Actors and Preconditions
+
+### Actor
+
+The currently selected active Development Requester.
+
+### Preconditions
+
+- TokTickIT is running.
+- Feature-A has established a valid Development Requester context.
+- The target Ticket exists.
+- The target Ticket belongs to the current Development Requester.
+- Approved Attachment storage is available.
+- Required Attachment database migrations have been applied.
+
+For initial Attachments selected during Create Ticket, the Ticket must
+exist before its stored Attachment records can be associated with it.
+
+---
+
+## 12.135 Attachment Operations
+
+Feature-G supports:
+
+1. select Attachment files during Create Ticket;
+2. upload an Attachment to an existing owned Ticket;
+3. retrieve Attachment metadata;
+4. preview permitted active image Attachments;
+5. open/download active PDF Attachments;
+6. download permitted active Attachments;
+7. soft-remove an active Attachment;
+8. retain removed Attachment metadata for traceability.
+
+---
+
+## 12.136 Allowed File Types
+
+Only the following file formats are permitted:
+
+- JPG/JPEG
+- PNG
+- WEBP
+- PDF
+
+The backend shall validate the uploaded file type.
+
+The frontend may perform early validation for usability, but backend
+validation remains authoritative.
+
+Unsupported file types shall not be stored as active Attachments.
+
+---
+
+## 12.137 File Size Limit
+
+Maximum Attachment size:
+
+`5 MB per file`
+
+The size limit applies independently to each uploaded file.
+
+Files larger than 5 MB shall be rejected.
+
+Frontend validation may identify oversized files before upload, but the
+backend shall independently enforce the limit.
+
+---
+
+## 12.138 Maximum Active Attachments
+
+A Ticket may have at most:
+
+`5 active Attachments`
+
+Removed Attachment tombstones do not count toward this limit.
+
+The backend shall calculate the current number of active Attachments
+before accepting new uploads.
+
+The frontend shall not be trusted as the authoritative source of the
+current active count.
+
+---
+
+## 12.139 Remaining-Capacity Behavior
+
+If a Ticket has fewer remaining Attachment slots than the number of valid
+files selected:
+
+1. accept valid files up to the remaining active-Attachment capacity;
+2. reject additional files that exceed the five-active-file limit;
+3. provide useful feedback explaining why the excess files were rejected.
+
+Example:
+
+A Ticket has four active Attachments.
+
+The Requester selects three additional valid files.
+
+Result:
+
+- one file may be accepted;
+- two files are rejected because the Ticket has reached five active
+  Attachments.
+
+---
+
+## 12.140 Mixed File Selection
+
+If a Requester selects multiple files and some are invalid:
+
+- valid files remain accepted;
+- unsupported files are rejected individually;
+- oversized files are rejected individually;
+- files beyond the active-Attachment limit are rejected individually;
+- each rejected file receives a useful reason.
+
+A single invalid file must not automatically cause unrelated valid files
+to be rejected.
+
+---
+
+## 12.141 Duplicate Original Filenames
+
+Multiple Attachments may have the same original filename.
+
+Example:
+
+- screenshot.png
+- screenshot.png
+
+Both may exist on the same Ticket if both satisfy all other rules.
+
+The original filename is display metadata only.
+
+The storage system shall use a generated unique internal identity or key
+for each stored object.
+
+Uploading a file with the same original filename must not overwrite an
+existing Attachment.
+
+---
+
+## 12.142 Attachment Metadata
+
+Each Attachment record shall preserve enough metadata to support:
+
+- unique Attachment identity;
+- Ticket relationship;
+- original filename;
+- internal storage identity;
+- media/MIME type;
+- file size;
+- upload/creation timestamp;
+- active/removed state;
+- removal timestamp where applicable;
+- removal reason where applicable;
+- remover information required by the approved design.
+
+Exact Prisma field names will be finalized before implementation.
+
+---
+
+## 12.143 Attachment Ownership
+
+Every Attachment belongs to exactly one Ticket.
+
+Attachment permissions are inherited from Ticket ownership.
+
+A Development Requester may interact with an Attachment only when:
+
+1. the Attachment belongs to the specified Ticket; and
+2. the Ticket belongs to the current Development Requester.
+
+Ownership shall be enforced by the backend for:
+
+- metadata retrieval;
+- preview;
+- open/download;
+- upload;
+- removal.
+
+The frontend must not be relied upon as the ownership boundary.
+
+---
+
+## 12.144 Cross-Requester Protection
+
+If Requester B attempts to retrieve or manipulate an Attachment belonging
+to Requester A's Ticket:
+
+- Attachment data shall not be returned;
+- the binary shall not be returned;
+- the Attachment shall not be modified;
+- the API shall use the approved neutral missing-resource behavior.
+
+The response must not reveal whether the Attachment exists for another
+Requester.
+
+---
+
+## 12.145 Upload to Existing Ticket
+
+### Flow G1 - Upload Attachment
+
+1. A requester-owned Ticket Detail is open.
+2. The Requester selects one or more files.
+3. Frontend validation identifies obvious invalid files.
+4. Valid candidate files are submitted.
+5. The backend validates Ticket ownership.
+6. The backend validates file type.
+7. The backend validates file size.
+8. The backend checks the number of active Attachments.
+9. A unique internal storage identity is generated.
+10. The binary is stored using the approved object-storage architecture.
+11. Attachment metadata is stored in PostgreSQL.
+12. The updated Attachment state is returned.
+13. Ticket Detail refreshes the Attachment section.
+
+The exact transaction/compensation sequence will be reflected in the API
+and implementation plan.
+
+---
+
+## 12.146 Attachment During Ticket Creation
+
+Attachments may be selected during Create Ticket.
+
+The Ticket itself must be successfully created before stored Attachments
+can reference it.
+
+Conceptual flow:
+
+1. validate Ticket information;
+2. create the Ticket;
+3. obtain the new Ticket identity;
+4. process selected valid Attachments against that Ticket;
+5. report each Attachment result;
+6. navigate to Ticket Detail.
+
+If one or more Attachment uploads fail after Ticket creation, Feature-D's
+partial-failure rule applies.
+
+---
+
+## 12.147 Partial Upload Failure
+
+If a Ticket has already been successfully created and an Attachment upload
+fails:
+
+- the Ticket remains created;
+- successful Attachment uploads remain;
+- failed Attachment uploads are reported;
+- failed files are not represented as successfully active Attachments;
+- the Requester may retry from Ticket Detail.
+
+A failed Attachment upload does not cause automatic deletion of the
+successfully created Ticket.
+
+---
+
+## 12.148 Storage/Metadata Compensation
+
+Attachment binary storage and Attachment database metadata must not be
+allowed to silently become inconsistent.
+
+The implementation shall use a documented transaction or compensation
+strategy.
+
+At minimum:
+
+- metadata must not claim an Attachment is usable when its binary was
+  never successfully stored;
+- failed persistence after successful binary storage must trigger
+  appropriate cleanup/compensation;
+- internal storage failures must return safe errors;
+- internal storage keys must not be exposed as public business data.
+
+The exact implementation sequence will follow the approved System-Level
+SDS storage architecture and the implementation plan.
+
+---
+
+## 12.149 Attachment Retrieval
+
+An active Attachment may be retrieved only through the backend after
+ownership validation.
+
+Direct knowledge of an internal storage key must not bypass Ticket
+ownership.
+
+Feature-G shall provide enough backend capability for:
+
+- Attachment metadata retrieval;
+- permitted file retrieval/download;
+- image preview;
+- PDF Open/Download.
+
+Exact endpoints will be defined in `docs/lab-02/api-spec.md`.
+
+---
+
+## 12.150 Image Preview
+
+For active permitted image Attachments:
+
+- JPG/JPEG may be previewed;
+- PNG may be previewed;
+- WEBP may be previewed.
+
+Preview must still pass backend ownership checks.
+
+Preview must not use an unrestricted public object-storage URL that
+bypasses Ticket ownership.
+
+---
+
+## 12.151 PDF Behavior
+
+For an active PDF Attachment:
+
+- provide Open/Download behavior;
+- do not require a custom PDF-viewer component.
+
+The backend still enforces ownership before the PDF content is returned.
+
+---
+
+## 12.152 Attachment Download
+
+An active permitted Attachment may be downloaded only when:
+
+- the Attachment exists;
+- the Attachment is active;
+- it belongs to the specified Ticket;
+- that Ticket belongs to the current Development Requester.
+
+Removed Attachments are not downloadable.
+
+---
+
+## 12.153 Attachment Removal Permission
+
+A Requester may soft-remove only an active Attachment belonging to one of
+their own Tickets.
+
+Lab 2 does not authorize a Requester to remove another Requester's
+Attachment.
+
+Removal behavior shall follow the applicable Ticket-state restriction from
+the approved System-Level SDS where such restriction applies.
+
+Feature-G does not introduce later Ticket status transitions.
+
+---
+
+## 12.154 Removal Confirmation
+
+Before an Attachment is removed:
+
+- the UI shall ask for explicit confirmation;
+- removal shall not occur solely from an accidental single destructive
+  activation.
+
+The exact confirmation-dialog design will be defined in
+`docs/lab-02/ui-spec.md`.
+
+---
+
+## 12.155 Removal Reason
+
+Attachment removal requires a reason.
+
+Validation rules:
+
+- required;
+- trim leading and trailing whitespace;
+- minimum 1 character after trimming;
+- maximum 200 characters;
+- whitespace-only reason is invalid.
+
+Backend validation is authoritative.
+
+---
+
+## 12.156 Soft-Removal Metadata
+
+When an Attachment is successfully removed:
+
+- the Attachment database record is retained;
+- the record is marked removed/deleted according to the approved design;
+- removal reason is retained;
+- removal timestamp is retained;
+- remover information required by the approved design is retained.
+
+The removed record acts as a tombstone for history and traceability.
+
+---
+
+## 12.157 Binary Deletion
+
+Soft removal refers to retaining the database record, not retaining an
+accessible binary forever.
+
+After successful removal is recorded:
+
+- the stored binary object shall be deleted according to the approved
+  System-Level SDS Attachment lifecycle;
+- the removed Attachment immediately becomes unavailable to the
+  Requester;
+- failure of physical binary deletion must not make the Attachment
+  downloadable again;
+- failed binary cleanup shall be retried or recorded according to the
+  approved design.
+
+---
+
+## 12.158 Removed Attachment Behavior
+
+A removed Attachment:
+
+- remains represented by retained metadata;
+- is clearly shown as Removed where historical metadata is displayed;
+- does not count toward the five-active-Attachment limit;
+- cannot be previewed;
+- cannot be opened;
+- cannot be downloaded;
+- cannot be treated as an active Attachment.
+
+The removal reason may be displayed where appropriate according to
+`docs/lab-02/ui-spec.md`.
+
+---
+
+## 12.159 Removal Failure Behavior
+
+### Invalid Removal Reason
+
+If the reason is missing, whitespace-only, or longer than 200 characters:
+
+- the Attachment remains active;
+- removal is rejected;
+- useful validation feedback is returned.
+
+### Ownership Failure
+
+If the Attachment does not belong to the current Requester's Ticket:
+
+- the Attachment is not changed;
+- neutral missing-resource behavior is returned.
+
+### Already Removed Attachment
+
+If the Attachment has already been removed, the system shall not repeat a
+new destructive lifecycle as though the Attachment were active.
+
+The exact API conflict or missing-resource behavior shall be finalized in
+`docs/lab-02/api-spec.md`.
+
+### Unexpected Failure
+
+If removal fails unexpectedly:
+
+- return a safe error;
+- do not expose internal storage/database details;
+- preserve a consistent Attachment state.
+
+---
+
+## 12.160 Data Design
+
+### Attachment Entity
+
+Feature-G requires an Attachment persistence model supporting at least:
+
+- id
+- ticketId
+- originalFilename
+- storage identity/key
+- MIME/media type
+- file size
+- created/uploaded timestamp
+- removal state
+- removedAt
+- removalReason
+- remover information required by the approved design
+
+### Relationships
+
+- one Ticket may have many Attachments;
+- each Attachment belongs to exactly one Ticket.
+
+### Constraints
+
+The data design shall support:
+
+- Ticket foreign key integrity;
+- active/removed distinction;
+- safe duplicate original filenames;
+- efficient lookup by Ticket;
+- retained removal metadata.
+
+---
+
+## 12.161 API Responsibilities
+
+Feature-G requires API capability for:
+
+1. upload an Attachment;
+2. retrieve Attachment metadata;
+3. retrieve/download an active Attachment;
+4. soft-remove an Attachment.
+
+The Lab 2 handout explicitly requires REST support for Attachment upload,
+metadata retrieval, active-file download, and soft removal. :contentReference[oaicite:1]{index=1}
+
+The detailed contracts will be defined in:
+
+`docs/lab-02/api-spec.md`
+
+The API contract must define:
+
+- requester-context transport;
+- Ticket identifier;
+- Attachment identifier;
+- multipart upload behavior;
+- permitted MIME/types;
+- maximum size;
+- active-count enforcement;
+- upload response;
+- metadata DTO;
+- file-download response;
+- removal request;
+- removal reason;
+- ownership behavior;
+- missing-resource behavior;
+- removed-resource behavior;
+- unsupported-type behavior;
+- oversized-file behavior;
+- active-limit behavior;
+- safe unexpected-error behavior.
+
+---
+
+## 12.162 UI Responsibilities
+
+The detailed Attachment UI will be defined in:
+
+`docs/lab-02/ui-spec.md`.
+
+Attachment presentation shall support:
+
+- file selection;
+- selected-file feedback;
+- per-file validation messages;
+- active Attachment list;
+- original filename;
+- useful metadata;
+- image Preview;
+- PDF Open/Download;
+- Download;
+- Add Attachment;
+- Remove action;
+- removal confirmation;
+- removal-reason entry;
+- Removed state;
+- upload loading/progress feedback where appropriate;
+- upload failure feedback.
+
+Attachment controls shall be visually distinct from read-only Ticket
+information.
+
+---
+
+## 12.163 Responsive Behavior
+
+Attachment functionality shall remain usable on:
+
+- desktop;
+- tablet;
+- mobile.
+
+At all supported sizes:
+
+- filenames remain understandable;
+- file actions remain reachable;
+- validation messages remain readable;
+- confirmation interactions remain usable;
+- long filenames do not break the overall page layout;
+- Attachment controls do not cause unintended horizontal page overflow.
+
+---
+
+## 12.164 Accessibility Behavior
+
+Attachment functionality shall provide:
+
+- programmatic labels for file-selection controls;
+- understandable accepted-file guidance;
+- keyboard-operable Preview/Open/Download/Remove actions;
+- visible focus indicators;
+- accessible labels and tooltips for icon-only controls where used;
+- textual validation reasons;
+- textual Removed state;
+- accessible confirmation behavior;
+- associated label and validation for the removal-reason field.
+
+Attachment state must not be communicated by color alone.
+
+---
+
+## 12.165 Non-Functional Requirements
+
+Feature-G shall:
+
+- validate Attachment rules on the backend;
+- enforce ownership on every protected Attachment operation;
+- use approved object storage;
+- avoid exposing internal storage identities;
+- preserve metadata/database integrity;
+- preserve removed Attachment traceability;
+- delete removed binaries according to the approved lifecycle;
+- return safe errors;
+- avoid committed storage/database secrets;
+- support responsive and accessible UI behavior;
+- remain testable at unit, API, UI, responsive, security, and E2E levels.
+
+---
+
+## 12.166 Testing Obligations
+
+Feature-G requires planned tests for at least:
+
+### Unit
+
+- allowed JPG/JPEG type;
+- allowed PNG type;
+- allowed WEBP type;
+- allowed PDF type;
+- unsupported type rejection;
+- 5 MB boundary acceptance;
+- over-5 MB rejection;
+- removal-reason minimum boundary;
+- removal-reason maximum boundary;
+- whitespace-only removal reason rejection.
+
+### API / Integration
+
+- valid Attachment uploads to an owned Ticket;
+- Attachment metadata is stored;
+- original filename is preserved;
+- unique internal storage identity is generated;
+- duplicate original filenames do not overwrite each other;
+- unsupported file type is rejected;
+- oversized file is rejected;
+- active Attachment count cannot exceed five;
+- removed Attachment does not count toward the active limit;
+- valid Attachment metadata can be retrieved;
+- active Attachment can be downloaded;
+- removed Attachment cannot be downloaded;
+- Requester A cannot retrieve Requester B's Attachment;
+- Requester A cannot remove Requester B's Attachment;
+- valid removal stores tombstone metadata;
+- valid removal stores the reason;
+- valid removal stores removal time;
+- binary deletion behavior follows the approved lifecycle;
+- unexpected errors return safe responses.
+
+### UI / Component
+
+- Attachment selector renders;
+- supported-type guidance is shown;
+- valid file is accepted;
+- invalid file displays a specific reason;
+- mixed valid/invalid file selection preserves valid files;
+- remaining-capacity behavior is shown correctly;
+- active Attachment is displayed;
+- image Preview action is available where appropriate;
+- PDF Open/Download is available;
+- Remove action opens confirmation;
+- removal reason is required;
+- removed Attachment displays Removed state;
+- removed Attachment has no preview/download action;
+- upload failure feedback is shown.
+
+### Ownership / Security
+
+- another Requester's Attachment metadata is not exposed;
+- another Requester's binary is not exposed;
+- another Requester's Attachment cannot be removed;
+- internal object-storage identity cannot be used to bypass the backend
+  ownership check.
+
+### Responsive / Accessibility
+
+- desktop Attachment section is usable;
+- tablet Attachment section is usable;
+- mobile Attachment section is usable;
+- long filenames do not break layout;
+- controls are keyboard operable;
+- visible focus is preserved;
+- validation and Removed state do not rely on color alone.
+
+### E2E
+
+The requester workflow shall verify:
+
+1. select Requester A;
+2. create a Ticket with a permitted Attachment;
+3. open Ticket Detail;
+4. inspect the active Attachment;
+5. add another valid Attachment;
+6. try an invalid Attachment and observe rejection;
+7. download or open a permitted active Attachment;
+8. remove an owned Attachment with confirmation and reason;
+9. verify the removed Attachment remains as metadata;
+10. verify the removed Attachment cannot be downloaded;
+11. verify another valid Attachment can be added when the removed file
+    frees an active slot;
+12. switch to Requester B;
+13. verify Requester A's Attachment operations are not available.
+
+Exact Test IDs and implementation test-file paths will be defined in
+`docs/lab-02/tests.md`.
+
+---
+
+## 12.167 Dependencies
+
+Feature-G depends on:
+
+- Feature-A Development Requester Context;
+- Feature-B Requester UI Foundation;
+- Feature-D Ticket creation;
+- Feature-F Requester Ticket Detail;
+- PostgreSQL;
+- Prisma;
+- approved object-storage architecture;
+- approved Lab 2 SRS;
+- approved System-Level SDS.
+
+Feature-G integrates with:
+
+- Feature-D during Create Ticket;
+- Feature-F on Ticket Detail.
+
+---
+
+## 12.168 Out of Scope for Feature-G
+
+Feature-G does not implement:
+
+- arbitrary unrestricted file uploads;
+- file types other than JPG/JPEG, PNG, WEBP, and PDF;
+- custom PDF viewer;
+- Ticket editing;
+- Ticket status workflow;
+- Public Comments;
+- Internal Notes;
+- Actions Taken;
+- IT Staff Attachment-management behavior beyond Lab 2 requester scope;
+- Administrator Attachment administration;
+- real authentication.
+
+---
+
+## 12.169 Feature-G Acceptance Criteria
+
+### FG-AC-01 - Allowed Image Types
+
+Given a valid JPG/JPEG, PNG, or WEBP file within the size limit,
+when it is uploaded to an owned Ticket with available capacity,
+then the Attachment may be accepted.
+
+### FG-AC-02 - Allowed PDF
+
+Given a valid PDF within the size limit,
+when it is uploaded to an owned Ticket with available capacity,
+then the Attachment may be accepted.
+
+### FG-AC-03 - Unsupported Type
+
+Given an unsupported file type,
+when upload is attempted,
+then that file is rejected with a useful validation reason.
+
+### FG-AC-04 - Maximum File Size
+
+Given a file no larger than 5 MB,
+when all other validation succeeds,
+then file size alone does not cause rejection.
+
+### FG-AC-05 - Oversized File
+
+Given a file larger than 5 MB,
+when upload is attempted,
+then the file is rejected.
+
+### FG-AC-06 - Five Active Attachments
+
+Given a Ticket already has five active Attachments,
+when another Attachment is uploaded,
+then the additional Attachment is rejected.
+
+### FG-AC-07 - Remaining Capacity
+
+Given a Ticket has four active Attachments and multiple valid files are
+selected,
+when upload processing occurs,
+then only files up to the remaining one active slot are accepted and the
+excess files are rejected with useful feedback.
+
+### FG-AC-08 - Mixed Selection
+
+Given valid and invalid files are selected together,
+when validation occurs,
+then valid files remain accepted while invalid files are rejected
+individually.
+
+### FG-AC-09 - Duplicate Filename
+
+Given two permitted files share the same original filename,
+when both are uploaded,
+then both may exist without overwriting one another.
+
+### FG-AC-10 - Stored Metadata
+
+Given an Attachment is successfully uploaded,
+when its record is inspected,
+then required metadata and its Ticket relationship are stored.
+
+### FG-AC-11 - Owned Attachment Metadata
+
+Given an active Attachment belongs to the selected Requester's Ticket,
+when metadata is requested,
+then permitted Attachment metadata is returned.
+
+### FG-AC-12 - Cross-Requester Metadata Protection
+
+Given an Attachment belongs to Requester A's Ticket,
+when Requester B requests its metadata,
+then the Attachment information is not returned.
+
+### FG-AC-13 - Active Download
+
+Given an active Attachment belongs to an owned Ticket,
+when Download is requested,
+then the permitted binary is returned through the protected backend
+operation.
+
+### FG-AC-14 - Cross-Requester Download Protection
+
+Given an Attachment belongs to Requester A's Ticket,
+when Requester B attempts to download it,
+then the binary is not returned.
+
+### FG-AC-15 - Image Preview
+
+Given an active permitted image belongs to an owned Ticket,
+when Preview is activated,
+then the image can be inspected.
+
+### FG-AC-16 - PDF Open/Download
+
+Given an active PDF belongs to an owned Ticket,
+when Open/Download is activated,
+then the PDF can be retrieved without requiring a custom in-app PDF
+viewer.
+
+### FG-AC-17 - Removal Confirmation
+
+Given an active owned Attachment,
+when Remove is activated,
+then confirmation is required before removal proceeds.
+
+### FG-AC-18 - Removal Reason Required
+
+Given no valid removal reason is provided,
+when removal is attempted,
+then the Attachment remains active and useful validation is shown.
+
+### FG-AC-19 - Removal Reason Maximum
+
+Given the trimmed removal reason exceeds 200 characters,
+when removal is attempted,
+then the removal is rejected.
+
+### FG-AC-20 - Successful Soft Removal
+
+Given an active Attachment belongs to the selected Requester's Ticket,
+when removal is confirmed with a valid reason,
+then the Attachment record is retained as removed metadata.
+
+### FG-AC-21 - Removed Attachment Metadata
+
+Given an Attachment has been removed,
+when Ticket Detail is displayed,
+then the Attachment may remain visible as historical metadata with a
+Removed state.
+
+### FG-AC-22 - Removed Attachment Access
+
+Given an Attachment has been removed,
+when Preview, Open, or Download is attempted,
+then the Attachment content is not available.
+
+### FG-AC-23 - Removed Attachment Capacity
+
+Given a Ticket previously had five active Attachments and one is removed,
+when another valid Attachment is uploaded,
+then the new Attachment may use the available active slot.
+
+### FG-AC-24 - Binary Removal Lifecycle
+
+Given an Attachment is successfully soft-removed,
+when the storage lifecycle executes,
+then the stored binary is deleted according to the approved System-Level
+SDS while the database tombstone remains.
+
+### FG-AC-25 - Binary Cleanup Failure
+
+Given the Attachment is marked removed but physical binary deletion fails,
+when cleanup handling occurs,
+then the Attachment remains unavailable to the user and cleanup is
+retried or recorded according to the approved design.
+
+### FG-AC-26 - Cross-Requester Removal Protection
+
+Given an Attachment belongs to Requester A's Ticket,
+when Requester B attempts to remove it,
+then the Attachment is not modified and its existence is not disclosed.
+
+### FG-AC-27 - Partial Create-Time Attachment Failure
+
+Given a Ticket is successfully created but one selected Attachment later
+fails to upload,
+when the workflow completes,
+then the Ticket remains created, successful Attachment uploads remain,
+and the failed file is reported.
+
+### FG-AC-28 - Safe Attachment Failure
+
+Given an unexpected Attachment operation fails,
+when the error is returned,
+then the user receives a safe error without storage/database
+implementation details.
+
+### FG-AC-29 - Responsive Attachment Management
+
+Given desktop, tablet, and mobile viewport sizes,
+when Attachment functions are used,
+then filenames, validation, preview/download, and removal actions remain
+readable and operable.
+
+### FG-AC-30 - Accessible Attachment Management
+
+Given a keyboard-only user,
+when Attachment functions are used,
+then required controls, confirmation, and removal-reason entry are
+keyboard operable with visible focus and understandable labels.
+
+---
+
+# 13. Sprint Acceptance Criteria
+
+Lab 2 is accepted when all approved Feature-Level Acceptance Criteria for
+Feature-A through Feature-G are satisfied and the following sprint-level
+outcomes are demonstrated:
+
+1. A user can select an active Development Requester and change the
+   selected Requester.
+
+2. Requester context is preserved for the browser tab and invalid or
+   inactive stored Requesters are handled safely.
+
+3. Active Category and Related System reference data is loaded from the
+   database for new Ticket workflows.
+
+4. A selected Requester can create a valid Ticket with:
+   - an official backend-generated Ticket Number;
+   - a system-generated Ticket Date;
+   - Current Status = New;
+   - Category;
+   - Related System;
+   - Requested Priority;
+   - Ticket Summary;
+   - Description; and
+   - permitted Attachments.
+
+5. Ticket creation enforces the approved validation rules and prevents
+   accidental duplicate Ticket creation.
+
+6. My Tickets returns only Tickets owned by the current Requester and
+   supports the approved search, filters, sorting, and pagination.
+
+7. A Requester can open an owned Ticket and view its submitted Ticket
+   information as read-only.
+
+8. A Requester cannot retrieve another Requester's Ticket or determine
+   its existence through protected Ticket access.
+
+9. Permitted Attachments can be uploaded, retrieved, previewed/opened,
+   downloaded, and soft-removed according to the approved Attachment
+   rules.
+
+10. Attachment type, size, active-count, ownership, removal reason, and
+    removed-file access rules are enforced by the backend.
+
+11. Removed Attachment metadata is retained while removed Attachment
+    content is no longer accessible.
+
+12. Requester-facing screens provide the required loading, validation,
+    empty, no-results, success, not-found, and failure states where
+    applicable.
+
+13. Requester-facing workflows remain usable on desktop, tablet, and
+    mobile layouts and meet the approved accessibility baseline.
+
+14. Automated and manual tests demonstrate the approved Acceptance
+    Criteria and ownership boundaries.
+
+15. Lab 1 functionality required as the Lab 2 baseline remains working.
+
+---
+
+# 14. Definition of Done
+
+Lab 2 is Done only when:
+
+- the approved SRS is implemented without unresolved requirement
+  ambiguity;
+- Feature-A through Feature-G satisfy their approved Acceptance Criteria;
+- `specification.md`, `api-spec.md`, `ui-spec.md`, and `tests.md` are
+  complete and mutually consistent;
+- required Prisma schema changes and reviewed migrations are included;
+- required Development Requester and reference-data seeds are included
+  and idempotent;
+- frontend and backend validation follow the approved rules;
+- requester ownership is enforced on the backend;
+- Ticket Number generation is safe and unique;
+- Attachment storage and removal follow the approved lifecycle;
+- automated tests required by the Test Design pass;
+- required manual, responsive, accessibility, and end-to-end checks pass;
+- no credentials, secrets, or internal implementation details are
+  exposed;
+- existing required Lab 1 behavior remains functional;
+- implementation contains no known unresolved blocker or Critical defect;
+- required Lab 2 evidence and documentation are prepared for submission;
+- the implementation is reviewed and ready for the required GitHub
+  integration workflow.
