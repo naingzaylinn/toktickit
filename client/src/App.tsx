@@ -10,6 +10,7 @@ import RequesterSelectScreen from "./components/RequesterSelectScreen.js";
 import AppShell from "./components/AppShell.js";
 import "./theme.css";
 import CreateTicketScreen from "./components/CreateTicketScreen.js";
+import MyTicketsScreen from "./components/MyTicketsScreen.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -141,19 +142,17 @@ export default function App() {
           activePath={currentPath}
         >
           {currentPath === "/tickets" && (
-            <div className="zen-card p-4">
-              <h1 className="h4 fw-bold text-primary-green mb-2">
-                My Tickets
-              </h1>
-
-              <p className="text-secondary mb-2">
-                Welcome, {currentRequester.name}!
-              </p>
-
-              <p className="text-secondary mb-0">
-                Your submitted IT support tickets will appear here.
-              </p>
-            </div>
+            <MyTicketsScreen
+              currentRequester={currentRequester}
+              onCreateTicket={() => {
+                window.history.pushState({}, "", "/tickets/new");
+                setCurrentPath("/tickets/new");
+              }}
+              onOpenTicket={(ticketId) => {
+                window.history.pushState({}, "", `/tickets/${ticketId}`);
+                setCurrentPath(`/tickets/${ticketId}`);
+              }}
+            />
           )}
 
           {currentPath === "/tickets/new" && (

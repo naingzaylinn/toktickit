@@ -237,3 +237,117 @@ export async function createTicket(
   const json: CreateTicketResponse = await res.json();
   return json.data;
 }
+
+// ---------------------------------------------------------------------------
+// Lab 2 Feature-E — My Tickets
+// ---------------------------------------------------------------------------
+
+export type TicketSort =
+  | "newest"
+  | "oldest"
+  | "recentlyUpdated"
+  | "ticketNumberAsc";
+
+export interface MyTicketsQuery {
+  q?: string;
+  categoryId?: number;
+  relatedSystemId?: string;
+  requestedPriority?: RequestedPriority;
+  currentStatus?: "New";
+  sortBy?: TicketSort;
+  page?: number;
+  pageSize?: 10 | 20 | 50;
+}
+
+export interface TicketListItem {
+  id: string;
+  ticketNumber: string;
+  ticketDate: string;
+  currentStatus: "New";
+  requestedPriority: RequestedPriority;
+  summary: string;
+  category: {
+    id: number;
+    name: string;
+  };
+  relatedSystem: {
+    id: string;
+    name: string;
+  };
+  activeAttachmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TicketPagination {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface MyTicketsResponse {
+  data: TicketListItem[];
+  pagination: TicketPagination;
+}
+
+export function buildMyTicketsQuery(
+  query: MyTicketsQuery = {}
+): string {
+  const params = new URLSearchParams();
+
+  params.set("page", String(query.page ?? 1));
+  params.set("pageSize", String(query.pageSize ?? 10));
+  params.set("sortBy", query.sortBy ?? "newest");
+
+  const trimmedSearch = query.q?.trim();
+  if (trimmedSearch) {
+    params.set("q", trimmedSearch);
+  }
+
+  if (query.categoryId !== undefined) {
+    params.set("categoryId", String(query.categoryId));
+  }
+
+  if (query.relatedSystemId) {
+    params.set("relatedSystemId", query.relatedSystemId);
+  }
+
+  if (query.requestedPriority) {
+    params.set("requestedPriority", query.requestedPriority);
+  }
+
+  if (query.currentStatus) {
+    params.set("currentStatus", query.currentStatus);
+  }
+
+  return params.toString();
+}
+
+export async function getMyTickets(
+  requesterId: string,
+  query: MyTicketsQuery = {}
+): Promise<MyTicketsResponse> {
+  const queryString = buildMyTicketsQuery(query);
+
+  const res = await fetch(
+    `${API_URL}/api/v1/tickets?${queryString}`,
+    {
+      headers: {
+        Accept: "application/json",
+        "X-Development-Requester-Id": requesterId,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Unable to load tickets."
+    );
+  }
+
+  return res.json();
+}

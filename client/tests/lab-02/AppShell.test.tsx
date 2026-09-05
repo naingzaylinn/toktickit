@@ -98,7 +98,12 @@ describe("Feature-A: Requester Context Restoration & Switching Tests", () => {
     expect(sessionStorage.getItem(api.REQUESTER_STORAGE_KEY)).toBe(BOB.id);
 
     // Context reloaded with Bob
-    expect(await screen.findByText("Requester: Bob Developer")).toBeInTheDocument();
-    expect(screen.getByText(/Welcome, Bob Developer!/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Requester: Bob Developer")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("heading", { name: "My Tickets" })
+    ).toBeInTheDocument();
   });
 });
