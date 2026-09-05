@@ -425,6 +425,24 @@ ticketsRouter.get(
                             isActive: true,
                         },
                     },
+
+                    attachments: {
+                        select: {
+                            id: true,
+                            ticketId: true,
+                            originalFilename: true,
+                            mimeType: true,
+                            sizeBytes: true,
+                            createdAt: true,
+                            isRemoved: true,
+                            removedAt: true,
+                            removalReason: true,
+                            removedByRequesterId: true,
+                        },
+                        orderBy: {
+                            createdAt: "asc",
+                        },
+                    },
                 },
             });
 
@@ -459,10 +477,13 @@ ticketsRouter.get(
                     category: ticket.category,
                     relatedSystem: ticket.relatedSystem,
 
-                    // Feature-G attachment management is not implemented yet.
-                    activeAttachments: [],
-                    removedAttachments: [],
+                    activeAttachments: ticket.attachments.filter(
+                        (attachment) => !attachment.isRemoved
+                    ),
 
+                    removedAttachments: ticket.attachments.filter(
+                        (attachment) => attachment.isRemoved
+                    ),
                     createdAt: ticket.createdAt,
                     updatedAt: ticket.updatedAt,
                 },

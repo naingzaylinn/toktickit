@@ -18,6 +18,8 @@ describe("Feature-E: My Tickets API", () => {
     beforeEach(async () => {
         vi.restoreAllMocks();
 
+        await prisma.ticketEvent.deleteMany();
+        await prisma.attachment.deleteMany();
         await prisma.ticket.deleteMany();
         await prisma.ticketSequence.deleteMany();
 

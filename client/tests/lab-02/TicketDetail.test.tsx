@@ -116,7 +116,9 @@ describe("Feature-F: Ticket Detail UI", () => {
         ).toBeInTheDocument();
 
         expect(
-            container.querySelector("input")
+            container.querySelector(
+                'input:not([type="file"])'
+            )
         ).toBeNull();
 
         expect(

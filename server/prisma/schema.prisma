@@ -11,12 +11,7 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
-// Issue 3 — Create and seed IT request categories
-// Define a Category model with:
-//   id        Int      @id @default(autoincrement())
-//   name      String   @unique
-//   createdAt DateTime @default(now())
-// Then run:  npx prisma migrate dev --name init
+// Lab 1 / Lab 2 reference data
 // ---------------------------------------------------------------------------
 
 model Category {
@@ -48,6 +43,10 @@ enum TicketStatus {
   New
 }
 
+enum TicketEventType {
+  ATTACHMENT_REMOVED
+}
+
 model Ticket {
   id                String            @id @default(uuid())
   ticketNumber      String            @unique
@@ -67,11 +66,57 @@ model Ticket {
   category      Category             @relation(fields: [categoryId], references: [id])
   relatedSystem RelatedSystem        @relation(fields: [relatedSystemId], references: [id])
 
+  attachments Attachment[]
+  events      TicketEvent[]
+
   @@unique([requesterId, clientRequestId])
   @@index([requesterId])
   @@index([categoryId])
   @@index([relatedSystemId])
   @@index([ticketDate])
+}
+
+model Attachment {
+  id                   String    @id @default(uuid())
+  ticketId             String
+  originalFilename     String
+  mimeType             String
+  sizeBytes            Int
+  storageKey           String    @unique
+  isRemoved            Boolean   @default(false)
+  removedAt            DateTime?
+  removedByRequesterId String?
+  removalReason        String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  ticket             Ticket                @relation(fields: [ticketId], references: [id])
+  removedByRequester DevelopmentRequester? @relation("AttachmentRemovedBy", fields: [removedByRequesterId], references: [id])
+  events             TicketEvent[]
+
+  @@index([ticketId])
+  @@index([ticketId, isRemoved])
+  @@index([removedByRequesterId])
+}
+
+model TicketEvent {
+  id               String          @id @default(uuid())
+  ticketId         String
+  attachmentId     String?
+  actorRequesterId String?
+  eventType        TicketEventType
+  details          Json?
+  createdAt        DateTime        @default(now())
+
+  ticket         Ticket                @relation(fields: [ticketId], references: [id])
+  attachment     Attachment?           @relation(fields: [attachmentId], references: [id])
+  actorRequester DevelopmentRequester? @relation("TicketEventActor", fields: [actorRequesterId], references: [id])
+
+  @@index([ticketId])
+  @@index([attachmentId])
+  @@index([actorRequesterId])
+  @@index([eventType])
+  @@index([createdAt])
 }
 
 model TicketSequence {
@@ -87,5 +132,9 @@ model DevelopmentRequester {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  tickets   Ticket[]
+
+  tickets Ticket[]
+
+  removedAttachments Attachment[]  @relation("AttachmentRemovedBy")
+  ticketEvents       TicketEvent[] @relation("TicketEventActor")
 }

@@ -16,18 +16,32 @@ describe("Feature-D: Create Ticket API", () => {
     beforeEach(async () => {
         vi.restoreAllMocks();
 
+        await prisma.ticketEvent.deleteMany();
+        await prisma.attachment.deleteMany();
         await prisma.ticket.deleteMany();
         await prisma.ticketSequence.deleteMany();
 
-        const category = await prisma.category.findFirstOrThrow({
+        const category = await prisma.category.upsert({
             where: {
+                name: "Hardware",
+            },
+            update: {
+                isActive: true,
+            },
+            create: {
                 name: "Hardware",
                 isActive: true,
             },
         });
 
-        const system = await prisma.relatedSystem.findFirstOrThrow({
+        const system = await prisma.relatedSystem.upsert({
             where: {
+                name: "VPN",
+            },
+            update: {
+                isActive: true,
+            },
+            create: {
                 name: "VPN",
                 isActive: true,
             },

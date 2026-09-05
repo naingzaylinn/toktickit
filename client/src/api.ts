@@ -352,6 +352,35 @@ export async function getMyTickets(
   return res.json();
 }
 
+
+// ---------------------------------------------------------------------------
+// Feature-G — Attachments
+// ---------------------------------------------------------------------------
+
+export interface TicketAttachment {
+  id: string;
+  ticketId: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+  isRemoved: boolean;
+  removedAt: string | null;
+  removalReason: string | null;
+  removedByRequesterId: string | null;
+}
+
+export interface AttachmentUploadRejected {
+  filename: string;
+  reason: string;
+}
+
+export interface AttachmentUploadResult {
+  accepted: TicketAttachment[];
+  rejected: AttachmentUploadRejected[];
+  activeAttachmentCount: number;
+}
+
 // ---------------------------------------------------------------------------
 // Feature-F — Requester Ticket Detail
 // ---------------------------------------------------------------------------
@@ -383,8 +412,8 @@ export interface TicketDetail {
     isActive: boolean;
   };
 
-  activeAttachments: unknown[];
-  removedAttachments: unknown[];
+  activeAttachments: TicketAttachment[];
+  removedAttachments: TicketAttachment[];
 
   createdAt: string;
   updatedAt: string;
@@ -413,4 +442,113 @@ export async function getTicketDetail(
 
   const body = await res.json();
   return body.data as TicketDetail;
+}
+
+export async function uploadTicketAttachments(
+  requesterId: string,
+  ticketId: string,
+  files: File[]
+): Promise<AttachmentUploadResult> {
+  const formData = new FormData();
+
+  for (const file of files) {
+    formData.append("files", file);
+  }
+
+  const res = await fetch(
+    `${API_URL}/api/v1/tickets/${encodeURIComponent(ticketId)}/attachments`,
+    {
+      method: "POST",
+      headers: {
+        "X-Development-Requester-Id": requesterId,
+      },
+      body: formData,
+    }
+  );
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Unable to upload attachments."
+    );
+  }
+
+  const body = await res.json();
+  return body.data as AttachmentUploadResult;
+}
+
+export function getAttachmentContentUrl(
+  ticketId: string,
+  attachmentId: string,
+  inline = false
+): string {
+  return (
+    `${API_URL}/api/v1/tickets/` +
+    `${encodeURIComponent(ticketId)}/attachments/` +
+    `${encodeURIComponent(attachmentId)}/download` +
+    `?inline=${inline ? "true" : "false"}`
+  );
+}
+
+export async function getAttachmentContent(
+  requesterId: string,
+  ticketId: string,
+  attachmentId: string,
+  inline = false
+): Promise<Blob> {
+  const res = await fetch(
+    getAttachmentContentUrl(
+      ticketId,
+      attachmentId,
+      inline
+    ),
+    {
+      headers: {
+        "X-Development-Requester-Id": requesterId,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Unable to load attachment."
+    );
+  }
+
+  return res.blob();
+}
+
+export async function removeTicketAttachment(
+  requesterId: string,
+  ticketId: string,
+  attachmentId: string,
+  reason: string
+): Promise<TicketAttachment> {
+  const res = await fetch(
+    `${API_URL}/api/v1/tickets/` +
+    `${encodeURIComponent(ticketId)}/attachments/` +
+    `${encodeURIComponent(attachmentId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Development-Requester-Id": requesterId,
+      },
+      body: JSON.stringify({
+        reason,
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Unable to remove attachment."
+    );
+  }
+
+  const body = await res.json();
+  return body.data as TicketAttachment;
 }
