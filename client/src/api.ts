@@ -351,3 +351,66 @@ export async function getMyTickets(
 
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Feature-F — Requester Ticket Detail
+// ---------------------------------------------------------------------------
+
+export interface TicketDetail {
+  id: string;
+  ticketNumber: string;
+  ticketDate: string;
+  currentStatus: "New";
+  requestedPriority: RequestedPriority;
+  summary: string;
+  description: string;
+
+  requester: {
+    id: string;
+    name: string;
+    email: string;
+  };
+
+  category: {
+    id: number;
+    name: string;
+    isActive: boolean;
+  };
+
+  relatedSystem: {
+    id: string;
+    name: string;
+    isActive: boolean;
+  };
+
+  activeAttachments: unknown[];
+  removedAttachments: unknown[];
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getTicketDetail(
+  requesterId: string,
+  ticketId: string
+): Promise<TicketDetail> {
+  const res = await fetch(
+    `${API_URL}/api/v1/tickets/${encodeURIComponent(ticketId)}`,
+    {
+      headers: {
+        Accept: "application/json",
+        "X-Development-Requester-Id": requesterId,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Failed to load ticket details."
+    );
+  }
+
+  const body = await res.json();
+  return body.data as TicketDetail;
+}

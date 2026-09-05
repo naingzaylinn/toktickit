@@ -21,7 +21,8 @@ export const AppShell: React.FC<AppShellProps> = ({
       {/* Top Navigation Bar */}
       <nav
         className="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm sticky-top"
-        style={{ borderColor: "#E0E6E2" }}
+        aria-label="Main navigation"
+        style={{ borderColor: "#e0e6e2" }}
       >
         <div className="container-fluid px-3 px-md-4">
           {/* Brand Logo */}

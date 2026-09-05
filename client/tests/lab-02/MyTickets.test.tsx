@@ -259,7 +259,7 @@ describe("Feature-E: My Tickets UI", () => {
 
         expect(ticketNumber).toBeDefined();
 
-        const row = ticketNumber.closest("tr");
+        const row = ticketNumber!.closest("tr");
 
         expect(row).not.toBeNull();
 
