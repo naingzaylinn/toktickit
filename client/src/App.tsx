@@ -48,7 +48,11 @@ export default function App() {
         if (found) {
           // Valid active requester restored
           setCurrentRequester(found);
-          if (window.location.pathname === "/requester-select") {
+
+          if (
+            window.location.pathname === "/" ||
+            window.location.pathname === "/requester-select"
+          ) {
             window.history.pushState({}, "", "/tickets");
             setCurrentPath("/tickets");
           }
@@ -135,16 +139,44 @@ export default function App() {
           onChangeRequester={handleChangeRequester}
           activePath={currentPath}
         >
-          {/* Landing / My Tickets view */}
-          <div className="zen-card p-4">
-            <h1 className="h4 fw-bold text-primary-green mb-2">My Tickets</h1>
-            <p className="text-secondary mb-4">
-              Welcome, {currentRequester.name}! You are currently viewing the TokTickIT Requester MVP.
-            </p>
-            <div className="alert alert-info" role="status">
-              No tickets have been created yet for this Development Requester.
+          {currentPath === "/tickets" && (
+            <div className="zen-card p-4">
+              <h1 className="h4 fw-bold text-primary-green mb-2">
+                My Tickets
+              </h1>
+
+              <p className="text-secondary mb-2">
+                Welcome, {currentRequester.name}!
+              </p>
+
+              <p className="text-secondary mb-0">
+                Your submitted IT support tickets will appear here.
+              </p>
             </div>
-          </div>
+          )}
+
+          {currentPath === "/tickets/new" && (
+            <div className="zen-card p-4">
+              <h1 className="h4 fw-bold text-primary-green mb-2">
+                Create Ticket
+              </h1>
+              <p className="text-secondary mb-0">
+                Ticket creation will be available in a later feature.
+              </p>
+            </div>
+          )}
+
+          {currentPath.startsWith("/tickets/") &&
+            currentPath !== "/tickets/new" && (
+              <div className="zen-card p-4">
+                <h1 className="h4 fw-bold text-primary-green mb-2">
+                  Ticket Detail
+                </h1>
+                <p className="text-secondary mb-0">
+                  Ticket details will be available in a later feature.
+                </p>
+              </div>
+            )}
         </AppShell>
       )}
 
