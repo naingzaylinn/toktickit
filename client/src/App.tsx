@@ -11,6 +11,7 @@ import AppShell from "./components/AppShell.js";
 import "./theme.css";
 import CreateTicketScreen from "./components/CreateTicketScreen.js";
 import MyTicketsScreen from "./components/MyTicketsScreen.js";
+import TicketDetailScreen from "./components/TicketDetailScreen.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -171,14 +172,14 @@ export default function App() {
 
           {currentPath.startsWith("/tickets/") &&
             currentPath !== "/tickets/new" && (
-              <div className="zen-card p-4">
-                <h1 className="h4 fw-bold text-primary-green mb-2">
-                  Ticket Detail
-                </h1>
-                <p className="text-secondary mb-0">
-                  Ticket details will be available in a later feature.
-                </p>
-              </div>
+              <TicketDetailScreen
+                currentRequester={currentRequester}
+                ticketId={currentPath.replace("/tickets/", "")}
+                onBack={() => {
+                  window.history.pushState({}, "", "/tickets");
+                  setCurrentPath("/tickets");
+                }}
+              />
             )}
         </AppShell>
       )}

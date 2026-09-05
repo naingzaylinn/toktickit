@@ -77,7 +77,9 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
 
         await screen.findByTestId("requester-badge");
 
-        const originalNav = screen.getByRole("navigation");
+        const originalNav = screen.getByRole("navigation", {
+            name: /main navigation/i,
+        });
 
         expect(
             screen.getByRole("heading", { name: "My Tickets" })
@@ -91,7 +93,11 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
             await screen.findByRole("heading", { name: "Create Ticket" })
         ).toBeInTheDocument();
 
-        expect(screen.getByRole("navigation")).toBe(originalNav);
+        expect(
+            screen.getByRole("navigation", {
+                name: /main navigation/i,
+            })
+        ).toBe(originalNav);
 
         await user.click(
             screen.getByRole("link", { name: "My Tickets" })
@@ -101,7 +107,9 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
             await screen.findByRole("heading", { name: "My Tickets" })
         ).toBeInTheDocument();
 
-        expect(screen.getByRole("navigation")).toBe(originalNav);
+        expect(
+            screen.getByRole("navigation", { name: /main navigation/i })
+        ).toBe(originalNav);
     });
 
     // UI-011

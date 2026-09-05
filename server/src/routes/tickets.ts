@@ -350,6 +350,137 @@ ticketsRouter.get(
 );
 
 // ---------------------------------------------------------------------------
+// Feature-F — GET /api/v1/tickets/:ticketId
+// ---------------------------------------------------------------------------
+ticketsRouter.get(
+    "/:ticketId",
+    requireDevelopmentRequester,
+    async (req: Request, res: Response) => {
+        const requester = req.requester;
+        const { ticketId } = req.params;
+
+        if (!requester) {
+            return res.status(400).json({
+                error: {
+                    code: "MISSING_REQUESTER_HEADER",
+                    message: "Development Requester context is required.",
+                    correlationId: randomUUID(),
+                },
+            });
+        }
+
+        // Ticket IDs are UUIDs.
+        const uuidPattern =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+        if (!uuidPattern.test(ticketId)) {
+            return res.status(400).json({
+                error: {
+                    code: "INVALID_TICKET_ID",
+                    message: "Ticket ID must be a valid UUID.",
+                    correlationId: randomUUID(),
+                },
+            });
+        }
+
+        const prisma = getPrisma();
+
+        try {
+            const ticket = await prisma.ticket.findFirst({
+                where: {
+                    id: ticketId,
+                    requesterId: requester.id,
+                },
+                select: {
+                    id: true,
+                    ticketNumber: true,
+                    ticketDate: true,
+                    currentStatus: true,
+                    requestedPriority: true,
+                    summary: true,
+                    description: true,
+                    createdAt: true,
+                    updatedAt: true,
+
+                    requester: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
+                    },
+
+                    category: {
+                        select: {
+                            id: true,
+                            name: true,
+                            isActive: true,
+                        },
+                    },
+
+                    relatedSystem: {
+                        select: {
+                            id: true,
+                            name: true,
+                            isActive: true,
+                        },
+                    },
+                },
+            });
+
+            // Deliberately use the same response for:
+            // 1. a ticket that does not exist
+            // 2. a ticket belonging to another requester
+            //
+            // This prevents disclosure of another requester's ticket.
+            if (!ticket) {
+                return res.status(404).json({
+                    error: {
+                        code: "TICKET_NOT_FOUND",
+                        message:
+                            "The requested ticket was not found.",
+                        correlationId: randomUUID(),
+                    },
+                });
+            }
+
+            return res.status(200).json({
+                data: {
+                    id: ticket.id,
+                    ticketNumber: ticket.ticketNumber,
+                    ticketDate: ticket.ticketDate,
+                    currentStatus: ticket.currentStatus,
+                    requestedPriority:
+                        ticket.requestedPriority,
+                    summary: ticket.summary,
+                    description: ticket.description,
+
+                    requester: ticket.requester,
+                    category: ticket.category,
+                    relatedSystem: ticket.relatedSystem,
+
+                    // Feature-G attachment management is not implemented yet.
+                    activeAttachments: [],
+                    removedAttachments: [],
+
+                    createdAt: ticket.createdAt,
+                    updatedAt: ticket.updatedAt,
+                },
+            });
+        } catch {
+            return res.status(500).json({
+                error: {
+                    code: "INTERNAL_SERVER_ERROR",
+                    message:
+                        "Failed to retrieve ticket.",
+                    correlationId: randomUUID(),
+                },
+            });
+        }
+    }
+);
+
+// ---------------------------------------------------------------------------
 // Feature-D — POST /api/v1/tickets
 // ---------------------------------------------------------------------------
 ticketsRouter.post(
