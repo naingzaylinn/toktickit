@@ -13,9 +13,17 @@ describe("Feature-C: Ticket Reference Data", () => {
 
     // API-005
     it("API-005: GET /api/v1/categories returns only active categories ordered by name", async () => {
-        const inactive = await prisma.category.create({
+        const software = await prisma.category.findUniqueOrThrow({
+            where: {
+                name: "Software",
+            },
+        });
+
+        await prisma.category.update({
+            where: {
+                id: software.id,
+            },
             data: {
-                name: "Inactive Test Category",
                 isActive: false,
             },
         });
@@ -35,10 +43,9 @@ describe("Feature-C: Ticket Reference Data", () => {
                 "Account and Access",
                 "Hardware",
                 "Network",
-                "Software",
             ]);
 
-            expect(names).not.toContain("Inactive Test Category");
+            expect(names).not.toContain("Software");
 
             for (const category of res.body.data) {
                 expect(category).toHaveProperty("id");
@@ -46,8 +53,13 @@ describe("Feature-C: Ticket Reference Data", () => {
                 expect(category).not.toHaveProperty("isActive");
             }
         } finally {
-            await prisma.category.delete({
-                where: { id: inactive.id },
+            await prisma.category.update({
+                where: {
+                    id: software.id,
+                },
+                data: {
+                    isActive: true,
+                },
             });
         }
     });

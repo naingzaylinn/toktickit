@@ -25,6 +25,7 @@ model Category {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  tickets   Ticket[]
 }
 
 model RelatedSystem {
@@ -32,6 +33,50 @@ model RelatedSystem {
   name      String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tickets   Ticket[]
+}
+
+enum RequestedPriority {
+  Low
+  Medium
+  High
+  Urgent
+}
+
+enum TicketStatus {
+  New
+}
+
+model Ticket {
+  id                String            @id @default(uuid())
+  ticketNumber      String            @unique
+  ticketDate        DateTime          @default(now())
+  currentStatus     TicketStatus      @default(New)
+  requestedPriority RequestedPriority @default(Medium)
+  summary           String
+  description       String
+  clientRequestId   String
+  requesterId       String
+  categoryId        Int
+  relatedSystemId   String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  requester     DevelopmentRequester @relation(fields: [requesterId], references: [id])
+  category      Category             @relation(fields: [categoryId], references: [id])
+  relatedSystem RelatedSystem        @relation(fields: [relatedSystemId], references: [id])
+
+  @@unique([requesterId, clientRequestId])
+  @@index([requesterId])
+  @@index([categoryId])
+  @@index([relatedSystemId])
+  @@index([ticketDate])
+}
+
+model TicketSequence {
+  year      Int      @id
+  lastValue Int      @default(0)
   updatedAt DateTime @updatedAt
 }
 
@@ -42,4 +87,5 @@ model DevelopmentRequester {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  tickets   Ticket[]
 }

@@ -100,3 +100,140 @@ export async function getDevelopmentRequesters(): Promise<DevelopmentRequester[]
   const json: DevelopmentRequestersResponse = await res.json();
   return json.data || [];
 }
+
+// ---------------------------------------------------------------------------
+// Lab 2 Feature-D — Create Ticket
+// ---------------------------------------------------------------------------
+
+export interface TicketReferenceCategory {
+  id: number;
+  name: string;
+}
+
+export interface RelatedSystem {
+  id: string;
+  name: string;
+}
+
+export type RequestedPriority = "Low" | "Medium" | "High" | "Urgent";
+
+export interface CreateTicketInput {
+  categoryId: number;
+  relatedSystemId: string;
+  requestedPriority?: RequestedPriority;
+  summary: string;
+  description: string;
+  clientRequestId: string;
+}
+
+export interface CreatedTicket {
+  id: string;
+  ticketNumber: string;
+  ticketDate: string;
+  currentStatus: "New";
+  requestedPriority: RequestedPriority;
+  summary: string;
+  description: string;
+  requesterId: string;
+  categoryId: number;
+  relatedSystemId: string;
+}
+
+interface CategoriesResponse {
+  data: TicketReferenceCategory[];
+}
+
+interface RelatedSystemsResponse {
+  data: RelatedSystem[];
+}
+
+interface CreateTicketResponse {
+  data: CreatedTicket;
+}
+
+async function readApiError(
+  res: Response,
+  fallbackMessage: string
+): Promise<ApiError> {
+  let errorData: ApiErrorEnvelope | null = null;
+
+  try {
+    errorData = await res.json();
+  } catch {
+    // Use safe fallback below.
+  }
+
+  return new ApiError(
+    errorData?.error?.code ?? "INTERNAL_SERVER_ERROR",
+    errorData?.error?.message ?? fallbackMessage,
+    res.status,
+    errorData?.error?.correlationId
+  );
+}
+
+export async function getTicketCategories(
+  requesterId: string
+): Promise<TicketReferenceCategory[]> {
+  const res = await fetch(`${API_URL}/api/v1/categories`, {
+    headers: {
+      Accept: "application/json",
+      "X-Development-Requester-Id": requesterId,
+    },
+  });
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Unable to load ticket categories."
+    );
+  }
+
+  const json: CategoriesResponse = await res.json();
+  return json.data ?? [];
+}
+
+export async function getRelatedSystems(
+  requesterId: string
+): Promise<RelatedSystem[]> {
+  const res = await fetch(`${API_URL}/api/v1/related-systems`, {
+    headers: {
+      Accept: "application/json",
+      "X-Development-Requester-Id": requesterId,
+    },
+  });
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Unable to load related systems."
+    );
+  }
+
+  const json: RelatedSystemsResponse = await res.json();
+  return json.data ?? [];
+}
+
+export async function createTicket(
+  requesterId: string,
+  input: CreateTicketInput
+): Promise<CreatedTicket> {
+  const res = await fetch(`${API_URL}/api/v1/tickets`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Development-Requester-Id": requesterId,
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Unable to create ticket."
+    );
+  }
+
+  const json: CreateTicketResponse = await res.json();
+  return json.data;
+}

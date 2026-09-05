@@ -9,6 +9,7 @@ import {
 import RequesterSelectScreen from "./components/RequesterSelectScreen.js";
 import AppShell from "./components/AppShell.js";
 import "./theme.css";
+import CreateTicketScreen from "./components/CreateTicketScreen.js";
 
 type UiState = "idle" | "loading" | "success" | "error";
 
@@ -156,14 +157,17 @@ export default function App() {
           )}
 
           {currentPath === "/tickets/new" && (
-            <div className="zen-card p-4">
-              <h1 className="h4 fw-bold text-primary-green mb-2">
-                Create Ticket
-              </h1>
-              <p className="text-secondary mb-0">
-                Ticket creation will be available in a later feature.
-              </p>
-            </div>
+            <CreateTicketScreen
+              currentRequester={currentRequester}
+              onCreated={(ticket) => {
+                window.history.pushState({}, "", `/tickets/${ticket.id}`);
+                setCurrentPath(`/tickets/${ticket.id}`);
+              }}
+              onCancel={() => {
+                window.history.pushState({}, "", "/tickets");
+                setCurrentPath("/tickets");
+              }}
+            />
           )}
 
           {currentPath.startsWith("/tickets/") &&
