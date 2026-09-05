@@ -4,6 +4,7 @@ import { getPrisma } from "./prisma.js";
 import { developmentRequestersRouter } from "./routes/developmentRequesters.js";
 import { referenceDataRouter } from "./routes/referenceData.js";
 import { ticketsRouter } from "./routes/tickets.js";
+import { attachmentsRouter } from "./routes/attachments.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -63,6 +64,11 @@ app.use(
 //   GET /api/v1/related-systems
 // ---------------------------------------------------------------------------
 app.use("/api/v1", referenceDataRouter);
+
+app.use(
+  "/api/v1/tickets/:ticketId/attachments",
+  attachmentsRouter
+);
 
 app.use("/api/v1/tickets", ticketsRouter);
 

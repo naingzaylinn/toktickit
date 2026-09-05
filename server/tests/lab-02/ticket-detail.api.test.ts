@@ -1,4 +1,10 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import {
+    afterEach,
+    beforeEach,
+    describe,
+    expect,
+    it,
+} from "vitest";
 import request from "supertest";
 import { randomUUID } from "node:crypto";
 import { app } from "../../src/app.js";
@@ -14,6 +20,8 @@ describe("Feature-F: Requester Ticket Detail API", () => {
     let relatedSystemId: string;
 
     beforeEach(async () => {
+        await prisma.ticketEvent.deleteMany();
+        await prisma.attachment.deleteMany();
         await prisma.ticket.deleteMany();
         await prisma.ticketSequence.deleteMany();
 
@@ -50,6 +58,30 @@ describe("Feature-F: Requester Ticket Detail API", () => {
                 isActive: true,
             },
         });
+    });
+
+    afterEach(async () => {
+        if (categoryId) {
+            await prisma.category.update({
+                where: {
+                    id: categoryId,
+                },
+                data: {
+                    isActive: true,
+                },
+            });
+        }
+
+        if (relatedSystemId) {
+            await prisma.relatedSystem.update({
+                where: {
+                    id: relatedSystemId,
+                },
+                data: {
+                    isActive: true,
+                },
+            });
+        }
     });
 
     async function createTicket(
