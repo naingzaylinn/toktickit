@@ -1,23 +1,104 @@
-import { useState } from "react";
-import { checkSystem, Category } from "./api.js";
+import { useEffect, useState } from "react";
+import {
+  DevelopmentRequester,
+  getDevelopmentRequesters,
+  REQUESTER_STORAGE_KEY,
+  checkSystem,
+  Category,
+} from "./api.js";
+import RequesterSelectScreen from "./components/RequesterSelectScreen.js";
+import AppShell from "./components/AppShell.js";
+import "./theme.css";
 
-// UI states: idle, loading, success, error.
 type UiState = "idle" | "loading" | "success" | "error";
 
 export default function App() {
-  const [state, setState] = useState<UiState>("idle");
+  const [currentRequester, setCurrentRequester] = useState<DevelopmentRequester | null>(null);
+  const [currentPath, setCurrentPath] = useState<string>(window.location.pathname || "/");
+  const [initializing, setInitializing] = useState<boolean>(true);
+  const [redirectAlert, setRedirectAlert] = useState<string | null>(null);
+
+  // Lab 1 state preservation for regression tests
+  const [checkState, setCheckState] = useState<UiState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [categories, setCategories] = useState<Category[]>([]);
 
+  // Listen to popstate (browser back/forward or history navigation)
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname || "/");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // Validate and restore requester context on initial boot / refresh
+  useEffect(() => {
+    const restoreRequesterContext = async () => {
+      const storedId = sessionStorage.getItem(REQUESTER_STORAGE_KEY);
+      if (!storedId) {
+        setInitializing(false);
+        return;
+      }
+
+      try {
+        const activeRequesters = await getDevelopmentRequesters();
+        const found = activeRequesters.find((r) => r.id === storedId);
+
+        if (found) {
+          // Valid active requester restored
+          setCurrentRequester(found);
+          if (window.location.pathname === "/requester-select") {
+            window.history.pushState({}, "", "/tickets");
+            setCurrentPath("/tickets");
+          }
+        } else {
+          // Inactive or nonexistent stored requester
+          sessionStorage.removeItem(REQUESTER_STORAGE_KEY);
+          setCurrentRequester(null);
+          setRedirectAlert("The previously selected Development Requester is no longer active or available.");
+          window.history.pushState({}, "", "/requester-select");
+          setCurrentPath("/requester-select");
+        }
+      } catch {
+        // Safe fallback on validation failure
+        sessionStorage.removeItem(REQUESTER_STORAGE_KEY);
+        setCurrentRequester(null);
+        setRedirectAlert("Unable to restore Development Requester context. Please re-select an active requester.");
+        window.history.pushState({}, "", "/requester-select");
+        setCurrentPath("/requester-select");
+      } finally {
+        setInitializing(false);
+      }
+    };
+
+    restoreRequesterContext();
+  }, []);
+
+  const handleSelectRequester = (requester: DevelopmentRequester) => {
+    sessionStorage.setItem(REQUESTER_STORAGE_KEY, requester.id);
+    setCurrentRequester(requester);
+    setRedirectAlert(null);
+    window.history.pushState({}, "", "/tickets");
+    setCurrentPath("/tickets");
+  };
+
+  const handleChangeRequester = () => {
+    // Navigate to /requester-select and clear draft state
+    window.history.pushState({}, "", "/requester-select");
+    setCurrentPath("/requester-select");
+  };
+
+  // Lab 1 handler
   async function handleCheck() {
-    setState("loading");
+    setCheckState("loading");
     setErrorMessage("");
     try {
       const result = await checkSystem();
       setCategories(result.categories);
-      setState("success");
+      setCheckState("success");
     } catch (err: unknown) {
-      setState("error");
+      setCheckState("error");
       if (err instanceof Error) {
         setErrorMessage(err.message);
       } else {
@@ -26,35 +107,81 @@ export default function App() {
     }
   }
 
+  if (initializing) {
+    return (
+      <div className="d-flex justify-content-center align-items-center min-vh-100" role="status">
+        <div className="spinner-border text-success" role="status">
+          <span className="visually-hidden">Loading TokTickIT...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // If no requester selected or explicitly at /requester-select, show selection screen
+  const showSelectScreen = !currentRequester || currentPath === "/requester-select";
+
   return (
-    <div className="container py-5" style={{ maxWidth: 640 }}>
-      <h1 className="h3 mb-4">
-        TokTickIT <span className="text-success">IT Service Desk</span>
-      </h1>
-
-      <button className="btn btn-success" onClick={handleCheck} disabled={state === "loading"}>
-        {state === "loading" ? "Loading…" : "Check System"}
-      </button>
-
-      {state === "success" && (
-        <div className="alert alert-success mt-4" role="alert">
-          <strong>Online</strong>
-          {categories.length > 0 && (
-            <ul className="mt-2 mb-0">
-              {categories.map((category) => (
-                <li key={category.id}>{category.name}</li>
-              ))}
-            </ul>
-          )}
+    <div>
+      {showSelectScreen ? (
+        <div>
+          <RequesterSelectScreen
+            onSelectRequester={handleSelectRequester}
+            initialAlert={redirectAlert}
+          />
         </div>
+      ) : (
+        <AppShell
+          currentRequester={currentRequester}
+          onChangeRequester={handleChangeRequester}
+          activePath={currentPath}
+        >
+          {/* Landing / My Tickets view */}
+          <div className="zen-card p-4">
+            <h1 className="h4 fw-bold text-primary-green mb-2">My Tickets</h1>
+            <p className="text-secondary mb-4">
+              Welcome, {currentRequester.name}! You are currently viewing the TokTickIT Requester MVP.
+            </p>
+            <div className="alert alert-info" role="status">
+              No tickets have been created yet for this Development Requester.
+            </div>
+          </div>
+        </AppShell>
       )}
 
-      {state === "error" && (
-        <div className="alert alert-danger mt-4" role="alert">
-          <strong>Offline</strong>
-          {errorMessage && <div className="small mt-1">{errorMessage}</div>}
+      {/* Lab 1 Regression / Diagnostic System Status Section */}
+      <div className="container py-3" style={{ maxWidth: 640 }}>
+        <hr className="my-4 text-muted" />
+        <div className="d-flex align-items-center justify-content-between">
+          <span className="small text-muted">System Diagnostic:</span>
+          <button
+            className="btn btn-sm btn-outline-success"
+            onClick={handleCheck}
+            disabled={checkState === "loading"}
+          >
+            {checkState === "loading" ? "Loading…" : "Check System"}
+          </button>
         </div>
-      )}
+
+        {checkState === "success" && (
+          <div className="alert alert-success mt-3" role="alert">
+            <strong>Online</strong>
+            {categories.length > 0 && (
+              <ul className="mt-2 mb-0">
+                {categories.map((category) => (
+                  <li key={category.id}>{category.name}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {checkState === "error" && (
+          <div className="alert alert-danger mt-3" role="alert">
+            <strong>Offline</strong>
+            {errorMessage && <div className="small mt-1">{errorMessage}</div>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

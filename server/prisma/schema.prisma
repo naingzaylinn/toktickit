@@ -25,3 +25,12 @@ model Category {
   createdAt DateTime @default(now())
 }
 
+model DevelopmentRequester {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

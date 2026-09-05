@@ -99,13 +99,13 @@ flowchart LR
 ## 5. Feature-B Test Plan: Requester UI Foundation
 
 ### 5.1 Scope & Approved Behavior
-- TokTickIT application identity and branding in KMUTT Orange (`#FA4616`).
+- TokTickIT identity and branding follows the approved Zen Green theme, using Primary Green (#006B3C) for primary branding and actions.
 - Navigation links for `"My Tickets"` and `"Create Ticket"` with active route highlights.
 - Persistent active requester badge (e.g., `Requester: Alice Developer`).
 - Change Requester action button in navigation bar.
 - Reusable UI state components: `LoadingSpinner`, `ErrorAlert`, `ConfirmModal`.
 - Responsive navigation collapsing into a mobile hamburger menu on viewports $< 768\text{px}$.
-- Full compliance with KMUTT Theme tokens (`#FA4616`, `#FFC72C`, `#7B8189`, `#8A2608`, `#1F2937`, `#5B6573`, `#FFFFFF`, `#2E7D32`, `#B3261E`).
+- Full compliance with the approved Zen Green UI tokens, including Primary Green (#006B3C), Secondary Green (#0B7A46), Pale Green (#EAF6EF), and Page Background (#F5F7F6).
 - Accessibility baseline (WCAG 2.2 AA target, semantic HTML, keyboard focus, color independence).
 
 ### 5.2 Planned Tests
@@ -118,7 +118,7 @@ flowchart LR
 | `UI-013` | UI | Status and validation indicators convey meaning independently of color alone. | Status badges include textual labels (e.g. `"New"`) alongside icons; error fields render textual error messages. | FR-48, NFR-02, FB-AC-12 |
 | `RESP-002`| RESP| `AppShell` top navigation collapses to hamburger menu on mobile viewports ($< 768\text{px}$). | Horizontal links hide; hamburger toggle button displays and opens responsive drawer. | FR-47, NFR-01, FB-AC-08, FB-AC-10 |
 | `RESP-003`| RESP| `AppShell` navigation retains full horizontal layout on desktop viewports ($\ge 992\text{px}$). | Brand, links, badge, and Change Requester button render side-by-side without wrapping. | FR-47, NFR-01, FB-AC-08 |
-| `A11Y-002`| A11Y| `AppShell` and navigation links support full keyboard navigation with visible focus rings. | `Tab` traverses all navigation items in logical DOM order; active focus outline uses `#8A2608`. | FR-48, NFR-02, FB-AC-11 |
+| `A11Y-002`| A11Y| `AppShell` and navigation links support full keyboard navigation with visible focus rings. | `Tab` traverses all navigation items in logical DOM order; active focus outline uses `#0B7A46`. | FR-48, NFR-02, FB-AC-11 |
 
 ---
 
@@ -482,7 +482,7 @@ Target compliance: **WCAG 2.2 Level AA** baseline in accordance with System-Leve
 | Test ID | Accessibility Area | Verification Method | Pass Criteria |
 |---|---|---|---|
 | `A11Y-001` | Requester Selection | Automated (Axe) + Keyboard | Form control has associated `<label>`; Continue button reachable and activatable via keyboard; 0 axe violations. |
-| `A11Y-002` | App Shell & Nav | Keyboard Navigation | Focus moves in logical sequence through Brand $\to$ Links $\to$ Badge $\to$ Change Requester; active focus ring uses `#8A2608` with $\ge 3:1$ contrast against adjacent elements. |
+| `A11Y-002` | App Shell & Nav | Keyboard Navigation | Focus moves in logical sequence through Brand $\to$ Links $\to$ Badge $\to$ Change Requester; active focus ring uses `#0B7A46` with $\ge 3:1$ contrast against adjacent elements. |
 | `A11Y-003` | Create Ticket Form | Screen Reader + Keyboard | All form inputs have programmatic labels (`<label htmlFor="...">`); invalid inputs set `aria-invalid="true"` and `aria-describedby`; keyboard navigation covers all controls. *(Dynamic character-counter `aria-live="polite"` announcement is an additional requirement contingent on Proposed UI-5 approval; it is not mandatory until that decision is resolved.)* |
 | `A11Y-004` | My Tickets Controls | Keyboard + Contrast | Filter dropdowns and search input have accessible labels; table headers use `<th scope="col">`; pagination buttons have clear text labels. |
 | `A11Y-005` | Ticket Detail View | Semantic Structure | Document structure uses single `<h1>`, logical `<h2>` section headers, semantic `<main>` and `<section>` tags; read-only text has high contrast ($\ge 4.5:1$). |
