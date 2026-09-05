@@ -9,20 +9,37 @@
 
 ## 1. UI Design Principles
 
-### 1.1 Visual Identity & Approved KMUTT Theme Tokens
-In accordance with the approved Lab 2 Specification (`specification.md`, Section 8 and Decision `D-L2-33`) and the TokTickIT System-Level SDS:
-- **Visual Theme:** The application strictly implements the **KMUTT Visual Identity**. The approved Lab 2 decision `D-L2-33` officially supersedes the initial Zen Green concept from the prompt brief.
-- **Approved System-Level SDS Color Tokens:**
-  - **KMUTT Orange (`#FA4616`):** Primary brand accent, main navigation elements, primary action buttons, and active tabs.
-  - **KMUTT Yellow (`#FFC72C`):** Secondary accent, warning callouts, and pending/notice highlights.
-  - **KMUTT Blue Grey (`#7B8189`):** Neutral borders, secondary icons, and structural dividers.
-  - **Interactive Dark Orange (`#8A2608`):** Hover and active states for primary buttons and interactive links.
-  - **Primary Text (`#1F2937`):** High-contrast dark charcoal text for headings, body copy, and form inputs.
-  - **Muted Text (`#5B6573`):** Secondary labels, helper text, character counters, and timestamps.
-  - **Surface Background (`#FFFFFF`):** Clean white surface for cards, modals, and main container backgrounds.
-  - **Success (`#2E7D32`):** Confirmation badges, success banners, and positive state feedback.
-  - **Danger (`#B3261E`):** Validation error messages, removal confirmations, and critical error banners.
-- **UI Framework:** Built on **React 18**, **TypeScript**, **Vite**, and **Bootstrap 5.3**, utilizing standard utility classes and clean semantic styling.
+### 1.1 Visual Identity & Approved Zen Green Theme Tokens
+
+In accordance with the Lab 2 handout and the approved Lab 2 UI direction:
+
+- **Visual Theme:** The application implements the **Zen Green Theme** for all requester-facing Lab 2 screens. This theme is the required Lab 2 visual foundation and must be applied consistently across the application shell, forms, lists, cards, states, and responsive layouts.
+
+- **Approved Zen Green Color Tokens:**
+
+  - **Primary Green (`#006B3C`):** App header, primary actions, strong emphasis, and main navigation elements.
+
+  - **Secondary Green (`#0B7A46`):** Active tabs, focus accents, links, and hover states.
+
+  - **Pale Green (`#EAF6EF`):** Selected states, success states, and subtle section emphasis.
+
+  - **Page Background (`#F5F7F6`):** Quiet near-white background for the main application page.
+
+  - **Surface / Cards (`#FFFFFF`):** White surfaces with subtle borders and restrained shadows for cards, forms, and main content areas.
+
+  - **Primary Text:** Dark charcoal-green text for headings, body content, and form values. Pure black should be avoided where the approved Zen Green style calls for a softer readable tone.
+
+  - **Editable Field:** White background with a clear neutral border.
+
+  - **Read-Only Field:** Soft gray-green or warm ivory shading that is visually distinct from editable fields while remaining readable.
+
+  - **Error:** Dark red text and border. Validation messages appear near the associated field and do not rely on color alone.
+
+  - **Warning:** Amber callout or badge used only for warning or notice states.
+
+  - **Success:** Green confirmation state with readable text and no reliance on color alone.
+
+- **UI Framework:** Built on **React 18**, **TypeScript**, **Vite**, and **Bootstrap 5.3**, using standard utility classes and semantic styling while preserving the approved Zen Green visual system.
 
 ### 1.2 Core UX & Interaction Principles
 1. **Clear Identity & Context:** The user is always aware of the active Development Requester context via a persistent header badge and can switch requesters at any time.
@@ -109,10 +126,12 @@ The application shell encloses all requester views with a consistent, accessible
 ```
 
 ### 5.2 Top Navigation Bar Components
-1. **Brand Identity:** `"TokTickIT"` text logo styled in KMUTT Orange (`#FA4616`), linking to `/tickets`.
+
+1. **Brand Identity:** `"TokTickIT"` text logo styled in Primary Green (`#006B3C`), linking to `/tickets`.
+
 2. **Navigation Links:**
-   - `"My Tickets"` (Active state highlighted with bold text and KMUTT Orange border accent).
-   - `"Create Ticket"` (Styled as a distinct action button/link).
+   - `"My Tickets"` (Active state highlighted with bold text and Primary Green accent).
+   - `"Create Ticket"` (Styled as a distinct action button/link using the approved Zen Green primary action styling).
 3. **Requester Status Badge:** Neutral pill badge displaying the user icon and active requester name (e.g., `Requester: Alice Developer`).
 4. **Change Requester Button:** Secondary button triggering requester switching.
 5. **Mobile Viewport Behavior ($< 768\text{px}$):** Collapses navigation links into a standard Bootstrap hamburger drawer while keeping the brand and requester badge accessible.
@@ -431,7 +450,7 @@ In accordance with the System-Level SDS:
 ### 13.1 Compliance Baseline & Guidelines
 In accordance with the System-Level SDS (WCAG 2.2 AA target) and NFR-02:
 - **Keyboard Operability:** All interactive controls (buttons, links, inputs, selects, radio buttons, modal dismissals) are operable via standard keyboard navigation (`Tab`, `Shift+Tab`, `Enter`, `Space`, `Esc`).
-- **Focus Visibility:** Interactive elements display clear, high-contrast keyboard focus indicators utilizing the approved KMUTT focus tokens (`#FA4616` / `#8A2608`). Unstyled outline suppression (`outline: none`) without replacement is strictly prohibited.
+- [x] Approved Zen Green theme visual tokens (`#006B3C`, `#0B7A46`, `#EAF6EF`, `#F5F7F6`, `#FFFFFF`) applied consistently across requester-facing Lab 2 screens.
 - **Form Association:** Every input and select control has an explicit `<label>` associated via `htmlFor`/`id`.
 - **Validation Accessibility:** Invalid fields set `aria-invalid="true"` and reference their respective error messages using `aria-describedby`.
 - **Color Independence:** Error, warning, priority, and status indicators pair color coding with textual labels and distinct icons (e.g., status pill displays text `"New"` alongside visual styling, not color alone).
@@ -509,7 +528,7 @@ The following features are explicitly excluded from Lab 2 and must not be implem
 ## 17. UI Contract Completion Checklist
 
 - [x] All 7 approved Features (Feature-A through Feature-G) have comprehensive UI specification.
-- [x] Approved KMUTT theme visual tokens (`#FA4616`, `#FFC72C`, `#7B8189`, `#8A2608`, `#1F2937`, `#5B6573`, `#FFFFFF`, `#2E7D32`, `#B3261E`) applied without Zen Green contradiction.
+- [x] Approved Zen Green theme visual tokens (`#006B3C`, `#0B7A46`, `#EAF6EF`, `#F5F7F6`, `#FFFFFF`) applied consistently without conflicting visual-theme definitions.
 - [x] UI field names, character boundaries, and validation rules match `specification.md` and `api-spec.md`.
 - [x] Tab-scoped `sessionStorage` requester ID persistence and switching workflows fully detailed.
 - [x] Create Ticket form, read-only system fields, busy submit button, and `clientRequestId` idempotency covered.

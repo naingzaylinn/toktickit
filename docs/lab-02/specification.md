@@ -95,7 +95,7 @@ Lab 2 includes:
 - safe failure states
 - responsive requester-facing UI
 - accessibility behavior
-- reusable KMUTT visual foundation
+- reusable Zen Green theme
 - automated tests and end-to-end verification
 
 ### 3.2 Explicitly Excluded from Lab 2
@@ -761,11 +761,10 @@ applicable:
 ## 8. UI Theme Decision
 
 The Lab 2 handout describes a Zen Green requester-facing design language.
-The approved TokTickIT System-Level SDS defines the system-wide KMUTT
-visual identity.
+The approved TokTickIT System-Level SDS defines the system-wide Zen Green theme.
 
 For this implementation, TokTickIT will follow the approved System-Level
-SDS and use the KMUTT theme as the shared visual foundation.
+SDS and use the Zen Green theme as the shared visual foundation.
 
 This decision keeps the Lab 2 requester screens consistent with the
 approved system-level design and with the design direction reviewed for
@@ -969,8 +968,7 @@ remains unchanged.
 
 ### D-L2-33 - UI Theme
 
-Lab 2 requester-facing screens use the KMUTT visual theme defined by the
-approved System-Level SDS.
+Lab 2 requester-facing screens use the Zen Green theme.
 
 The detailed theme implementation will be specified in ui-spec.md.
 
@@ -981,7 +979,7 @@ The detailed theme implementation will be specified in ui-spec.md.
 | ID | Feature | Feature Scope |
 |---|---|---|
 | Feature-A | Development Requester Context | Select an active Development Requester, store the selected requester in the browser tab, restore and validate requester context, change requester, and handle inactive or missing requesters. This is a Lab 2 testing mechanism only, not authentication. |
-| Feature-B | Requester UI Foundation | Provide the shared TokTickIT requester navigation and KMUTT visual foundation, including reusable responsive layouts, loading states, validation states, empty states, error states, accessibility behavior, and common UI conventions. |
+| Feature-B | Requester UI Foundation | Provide the shared TokTickIT requester navigation and Zen Green theme, including reusable responsive layouts, loading states, validation states, empty states, error states, accessibility behavior, and common UI conventions. |
 | Feature-C | Ticket Reference Data | Provide active Category and Related System data for new Ticket forms while preserving inactive reference values for historical Tickets. |
 | Feature-D | Create Ticket | Allow the selected Requester to create a Ticket with Category, Related System, Summary, Requested Priority, and Description. Generate Ticket Number and Ticket Date on the backend, set initial status to New, validate input, prevent duplicate submission, and handle creation success/failure. |
 | Feature-E | My Tickets | Allow the selected Requester to view only their own Tickets and support search, combined filtering, sorting, pagination, loading, true-empty, no-results, and failure states. |
@@ -1497,7 +1495,7 @@ mobile layouts.
 
 ### Visual Theme
 
-Feature-A follows the approved KMUTT visual theme decision recorded for
+Feature-A follows the approved Zen Green theme decision recorded for
 Lab 2.
 
 ---
@@ -1921,7 +1919,7 @@ Detailed screen-specific accessibility behavior will be defined in
 
 ## 12.23 Visual Foundation
 
-Lab 2 requester-facing screens use the KMUTT visual theme decision
+Lab 2 requester-facing screens use the Zen Green theme decision
 recorded in the approved Lab 2 specification.
 
 The shared visual foundation shall provide consistent treatment for:
