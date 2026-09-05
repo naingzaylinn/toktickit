@@ -103,3 +103,53 @@ input:focus-visible {
   outline: 2px solid #0B7A46 !important;
   outline-offset: 2px !important;
 }
+
+/* Shared error card */
+.zen-card-error {
+  border: 1px solid #B3261E;
+  border-radius: 8px;
+  background-color: #FFFFFF;
+}
+
+/* Shared status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+}
+
+.status-badge-success {
+  color: #006B3C;
+  background-color: #EAF6EF;
+  border-color: #006B3C;
+}
+
+.status-badge-warning {
+  color: #6B4F00;
+  background-color: #FFF4D6;
+  border-color: #B7791F;
+}
+
+.status-badge-danger {
+  color: #8B1E18;
+  background-color: #FDECEC;
+  border-color: #B3261E;
+}
+
+.status-badge-info {
+  color: #0B5E3B;
+  background-color: #EAF6EF;
+  border-color: #0B7A46;
+}
+
+.status-badge-neutral {
+  color: #1E2D24;
+  background-color: #F5F7F6;
+  border-color: #C9D3CD;
+}

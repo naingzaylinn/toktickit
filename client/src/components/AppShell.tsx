@@ -20,7 +20,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     <div className="d-flex flex-column min-vh-100" style={{ backgroundColor: "#F5F7F6" }}>
       {/* Top Navigation Bar */}
       <nav
-        className="navbar navbar-expand-md navbar-light bg-white border-bottom shadow-sm sticky-top"
+        className="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm sticky-top"
         style={{ borderColor: "#E0E6E2" }}
       >
         <div className="container-fluid px-3 px-md-4">
@@ -55,15 +55,14 @@ export const AppShell: React.FC<AppShellProps> = ({
             id="toktickit-navbar-nav"
           >
             {/* Links */}
-            <ul className="navbar-nav me-auto mb-2 mb-md-0">
+            <ul className="navbar-nav me-auto mb-2 mb-lg-0">
               <li className="nav-item">
                 <a
                   href="/tickets"
-                  className={`nav-link px-3 ${
-                    activePath === "/tickets"
-                      ? "fw-bold text-primary-green active"
-                      : "text-secondary"
-                  }`}
+                  className={`nav-link px-3 ${activePath === "/tickets"
+                    ? "fw-bold text-primary-green active"
+                    : "text-secondary"
+                    }`}
                   onClick={(e) => {
                     e.preventDefault();
                     window.history.pushState({}, "", "/tickets");
@@ -77,11 +76,10 @@ export const AppShell: React.FC<AppShellProps> = ({
               <li className="nav-item">
                 <a
                   href="/tickets/new"
-                  className={`nav-link px-3 ${
-                    activePath === "/tickets/new"
-                      ? "fw-bold text-primary-green active"
-                      : "text-secondary"
-                  }`}
+                  className={`nav-link px-3 ${activePath === "/tickets/new"
+                    ? "fw-bold text-primary-green active"
+                    : "text-secondary"
+                    }`}
                   onClick={(e) => {
                     e.preventDefault();
                     window.history.pushState({}, "", "/tickets/new");
@@ -95,7 +93,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             </ul>
 
             {/* Right-aligned Requester Badge & Change Requester button */}
-            <div className="d-flex align-items-center flex-wrap gap-2 pt-2 pt-md-0">
+            <div className="d-flex align-items-center flex-wrap gap-2 pt-2 pt-lg-0">
               <span
                 className="badge rounded-pill bg-pale-green text-primary-green px-3 py-2 border border-primary-green"
                 data-testid="requester-badge"
