@@ -9,6 +9,7 @@ import {
     RelatedSystem,
     RequestedPriority,
     TicketReferenceCategory,
+    uploadTicketAttachments,
 } from "../api.js";
 import FormField from "./common/FormField.js";
 import LoadingSpinner from "./common/LoadingSpinner.js";
@@ -42,6 +43,11 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
         useState<RequestedPriority>("Medium");
     const [summary, setSummary] = useState("");
     const [description, setDescription] = useState("");
+
+    const [stagedAttachments, setStagedAttachments] =
+        useState<File[]>([]);
+    const [attachmentError, setAttachmentError] =
+        useState<string | null>(null);
 
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const [loadingReferenceData, setLoadingReferenceData] = useState(true);
@@ -111,6 +117,63 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
         return errors;
     };
 
+    const handleAttachmentSelection = (
+        event: React.ChangeEvent<HTMLInputElement>
+    ) => {
+        const selectedFiles = Array.from(
+            event.target.files ?? []
+        );
+
+        setAttachmentError(null);
+
+        if (selectedFiles.length === 0) {
+            return;
+        }
+
+        const combinedFiles = [
+            ...stagedAttachments,
+            ...selectedFiles,
+        ];
+
+        if (combinedFiles.length > 5) {
+            setAttachmentError(
+                "You can select a maximum of 5 attachments."
+            );
+            event.target.value = "";
+            return;
+        }
+
+        setStagedAttachments(combinedFiles);
+        event.target.value = "";
+    };
+
+    const removeStagedAttachment = (
+        indexToRemove: number
+    ) => {
+        setStagedAttachments((files) =>
+            files.filter(
+                (_, index) => index !== indexToRemove
+            )
+        );
+
+        setAttachmentError(null);
+    };
+
+    const formatFileSize = (bytes: number) => {
+        if (bytes < 1024) {
+            return `${bytes} B`;
+        }
+
+        if (bytes < 1024 * 1024) {
+            return `${(bytes / 1024).toFixed(1)} KB`;
+        }
+
+        return `${(
+            bytes /
+            (1024 * 1024)
+        ).toFixed(1)} MB`;
+    };
+
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
 
@@ -133,6 +196,19 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
                 description: description.trim(),
                 clientRequestId: crypto.randomUUID(),
             });
+
+            if (stagedAttachments.length > 0) {
+                try {
+                    await uploadTicketAttachments(
+                        currentRequester.id,
+                        ticket.id,
+                        stagedAttachments
+                    );
+                } catch {
+                    // The ticket has already been created successfully.
+                    // Attachment failure must not roll back ticket creation.
+                }
+            }
 
             onCreated(ticket);
         } catch (err) {
@@ -394,11 +470,80 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
                                             (Optional)
                                         </span>
                                     </div>
-                                    <div className="small text-secondary">
-                                        Attachment upload will be available in
-                                        Feature-G. You can create the ticket now
-                                        without attachments.
+
+                                    <div className="small text-secondary mb-3">
+                                        JPG, PNG, WEBP, or PDF. Maximum
+                                        5 MB per file and 5 attachments.
                                     </div>
+
+                                    <label
+                                        htmlFor="ticket-attachments"
+                                        className="form-label"
+                                    >
+                                        Select files
+                                    </label>
+
+                                    <input
+                                        id="ticket-attachments"
+                                        type="file"
+                                        className="form-control"
+                                        multiple
+                                        accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
+                                        disabled={submitting}
+                                        onChange={handleAttachmentSelection}
+                                    />
+
+                                    <div className="small text-secondary mt-2">
+                                        {stagedAttachments.length} / 5 selected
+                                    </div>
+
+                                    {attachmentError && (
+                                        <div
+                                            className="text-danger small mt-2"
+                                            role="alert"
+                                        >
+                                            {attachmentError}
+                                        </div>
+                                    )}
+
+                                    {stagedAttachments.length > 0 && (
+                                        <div className="mt-3">
+                                            {stagedAttachments.map(
+                                                (file, index) => (
+                                                    <div
+                                                        key={`${file.name}-${file.size}-${index}`}
+                                                        className="d-flex justify-content-between align-items-center gap-3 border rounded p-2 mb-2 bg-white"
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <div className="fw-semibold text-break">
+                                                                {file.name}
+                                                            </div>
+
+                                                            <div className="small text-secondary">
+                                                                {formatFileSize(
+                                                                    file.size
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-danger"
+                                                            disabled={submitting}
+                                                            aria-label={`Remove ${file.name}`}
+                                                            onClick={() =>
+                                                                removeStagedAttachment(
+                                                                    index
+                                                                )
+                                                            }
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

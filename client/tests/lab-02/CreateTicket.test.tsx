@@ -1,3 +1,6 @@
+import {
+    uploadTicketAttachments,
+} from "../../src/api.js";
 import React from "react";
 import {
     fireEvent,
@@ -7,6 +10,18 @@ import {
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CreateTicketScreen from "../../src/components/CreateTicketScreen.js";
+
+vi.mock("../../src/api.js", async () => {
+    const actual =
+        await vi.importActual<
+            typeof import("../../src/api.js")
+        >("../../src/api.js");
+
+    return {
+        ...actual,
+        uploadTicketAttachments: vi.fn(),
+    };
+});
 
 const requester = {
     id: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
@@ -62,6 +77,13 @@ describe("Feature-D: Create Ticket UI", () => {
     beforeEach(() => {
         vi.restoreAllMocks();
         vi.stubGlobal("fetch", vi.fn());
+        vi.mocked(
+            uploadTicketAttachments
+        ).mockResolvedValue({
+            accepted: [],
+            rejected: [],
+            activeAttachmentCount: 0,
+        });
     });
 
     it("renders requester and system-generated fields", async () => {
@@ -329,6 +351,252 @@ describe("Feature-D: Create Ticket UI", () => {
                 id: "ticket-1",
                 ticketNumber: "TKT-2026-00001",
                 currentStatus: "New",
+            })
+        );
+    });
+
+    it("uploads staged attachments after ticket creation", async () => {
+        mockReferenceData();
+
+        const createdTicket = {
+            id: "ticket-attachments-1",
+            ticketNumber: "TKT-2026-00002",
+            ticketDate: "2026-09-05T12:00:00.000Z",
+            currentStatus: "New",
+            requestedPriority: "Medium",
+            summary: "VPN attachment problem",
+            description:
+                "The VPN issue includes a screenshot.",
+            requesterId: requester.id,
+            categoryId: 2,
+            relatedSystemId:
+                "9f0a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        };
+
+        vi.mocked(fetch).mockImplementationOnce(() =>
+            jsonResponse(
+                {
+                    data: createdTicket,
+                },
+                201
+            )
+        );
+
+        const onCreated = vi.fn();
+
+        render(
+            <CreateTicketScreen
+                currentRequester={requester}
+                onCreated={onCreated}
+                onCancel={vi.fn()}
+            />
+        );
+
+        await screen.findByRole("option", {
+            name: "Hardware",
+        });
+
+        fireEvent.change(
+            screen.getByLabelText(/Category/i),
+            {
+                target: {
+                    value: "2",
+                },
+            }
+        );
+
+        fireEvent.change(
+            screen.getByLabelText(/Related System/i),
+            {
+                target: {
+                    value:
+                        "9f0a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                },
+            }
+        );
+
+        fireEvent.change(
+            screen.getByLabelText(/Ticket Summary/i),
+            {
+                target: {
+                    value:
+                        "VPN attachment problem",
+                },
+            }
+        );
+
+        fireEvent.change(
+            screen.getByLabelText(/^Description/i),
+            {
+                target: {
+                    value:
+                        "The VPN issue includes a screenshot.",
+                },
+            }
+        );
+
+        const file = new File(
+            ["image"],
+            "vpn.png",
+            {
+                type: "image/png",
+            }
+        );
+
+        fireEvent.change(
+            screen.getByLabelText("Select files"),
+            {
+                target: {
+                    files: [file],
+                },
+            }
+        );
+
+        expect(
+            screen.getByText("1 / 5 selected")
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole("button", {
+                name: "Submit Ticket",
+            })
+        );
+
+        await waitFor(() => {
+            expect(
+                uploadTicketAttachments
+            ).toHaveBeenCalledWith(
+                requester.id,
+                createdTicket.id,
+                [file]
+            );
+        });
+
+        expect(onCreated).toHaveBeenCalledWith(
+            expect.objectContaining({
+                id: createdTicket.id,
+            })
+        );
+    });
+
+    it("still completes ticket creation when attachment upload fails", async () => {
+        mockReferenceData();
+
+        const createdTicket = {
+            id: "ticket-attachments-2",
+            ticketNumber: "TKT-2026-00003",
+            ticketDate: "2026-09-05T12:00:00.000Z",
+            currentStatus: "New",
+            requestedPriority: "Medium",
+            summary: "VPN upload failure",
+            description:
+                "Ticket creation should still succeed.",
+            requesterId: requester.id,
+            categoryId: 2,
+            relatedSystemId:
+                "9f0a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        };
+
+        vi.mocked(fetch).mockImplementationOnce(() =>
+            jsonResponse(
+                {
+                    data: createdTicket,
+                },
+                201
+            )
+        );
+
+        vi.mocked(
+            uploadTicketAttachments
+        ).mockRejectedValue(
+            new Error("upload failed")
+        );
+
+        const onCreated = vi.fn();
+
+        render(
+            <CreateTicketScreen
+                currentRequester={requester}
+                onCreated={onCreated}
+                onCancel={vi.fn()}
+            />
+        );
+
+        await screen.findByRole("option", {
+            name: "Hardware",
+        });
+
+        fireEvent.change(
+            screen.getByLabelText(/Category/i),
+            {
+                target: {
+                    value: "2",
+                },
+            }
+        );
+
+        fireEvent.change(
+            screen.getByLabelText(/Related System/i),
+            {
+                target: {
+                    value:
+                        "9f0a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                },
+            }
+        );
+
+        fireEvent.change(
+            screen.getByLabelText(/Ticket Summary/i),
+            {
+                target: {
+                    value:
+                        "VPN upload failure",
+                },
+            }
+        );
+
+        fireEvent.change(
+            screen.getByLabelText(/^Description/i),
+            {
+                target: {
+                    value:
+                        "Ticket creation should still succeed.",
+                },
+            }
+        );
+
+        const file = new File(
+            ["image"],
+            "failed.png",
+            {
+                type: "image/png",
+            }
+        );
+
+        fireEvent.change(
+            screen.getByLabelText("Select files"),
+            {
+                target: {
+                    files: [file],
+                },
+            }
+        );
+
+        fireEvent.click(
+            screen.getByRole("button", {
+                name: "Submit Ticket",
+            })
+        );
+
+        await waitFor(() => {
+            expect(
+                uploadTicketAttachments
+            ).toHaveBeenCalledTimes(1);
+        });
+
+        expect(onCreated).toHaveBeenCalledWith(
+            expect.objectContaining({
+                id: createdTicket.id,
             })
         );
     });
