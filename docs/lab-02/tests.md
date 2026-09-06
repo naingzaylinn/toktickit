@@ -856,3 +856,113 @@ The following test design decisions have been finalized based on the approved AP
    - *Unresolved Item:* The Lab 2 handout (`Lab_02_labsheet.pdf`) defines the required test file structure. Files beyond those explicitly required must be confirmed as permitted.
    - *Current Test Stance:* Test coverage for Development Requesters (API-001–004B) and Reference Data (API-005–014) is maintained. The mapping to `development-requesters.api.test.ts` and `reference-data.api.test.ts` (separate from the professor-required core files) is listed as additional proposed organization.
    - *Impact:* Coverage is not lost; only the exact additional file names require approval or adjustment to fit the handout structure.
+
+---
+---
+
+## 24. Final Execution Evidence
+
+This section records the final executed test evidence for Lab 2 after implementation and integration.
+
+### 24.1 Automated Test Results
+
+#### Backend
+
+- Command: `npm run build`
+- Result: PASS
+- Command: `npm test`
+- Result: PASS
+- Test files: 10 passed
+- Tests: 70 passed
+- Failed tests: 0
+
+Covered areas include:
+- Development Requester context
+- Reference data
+- Create Ticket
+- My Tickets
+- Ticket Detail
+- Attachment upload
+- Attachment metadata and download
+- Attachment soft removal
+- Ownership protection
+- Lab 1 regression tests
+
+#### Frontend
+
+- Command: `npm run build`
+- Result: PASS
+- Command: `npm test`
+- Result: PASS
+- Test files: 8 passed
+- Tests: 50 passed
+- Failed tests: 0
+
+Covered areas include:
+- Requester selection
+- App shell and navigation
+- Create Ticket
+- Create Ticket attachment staging
+- My Tickets
+- Ticket Detail
+- Attachment preview/download
+- Attachment removal and history
+- Existing UI regression tests
+
+### 24.2 Manual Integration Verification
+
+The complete requester-facing Lab 2 workflow was manually verified in the running application.
+
+Manual checks completed:
+
+- PASS — Select Development Requester
+- PASS — Create Ticket with valid data
+- PASS — Create Ticket without attachments
+- PASS — Stage attachment before ticket submission
+- PASS — Ticket created before attachment upload
+- PASS — Created ticket appears in My Tickets
+- PASS — Search and filter My Tickets
+- PASS — Open Ticket Detail
+- PASS — Ticket Detail displays requester, Category, Related System, priority, status, summary, and description
+- PASS — Active attachment appears in Ticket Detail
+- PASS — Image preview / PDF open-download works
+- PASS — Attachment download works
+- PASS — Attachment soft removal requires a reason
+- PASS — Removed attachment moves to Removed Attachments (History)
+- PASS — Removed attachment is no longer downloadable
+- PASS — Removal frees an active attachment slot
+- PASS — Switching to another Development Requester hides the first requester's tickets
+- PASS — Cross-requester Ticket Detail access is prevented
+- PASS — Existing Lab 1 health and category functionality remains working
+
+### 24.3 Integration Result
+
+Final integration result: **PASS**
+
+At the integration checkpoint:
+
+- Backend build: PASS
+- Backend tests: 70 / 70 PASS
+- Frontend build: PASS
+- Frontend tests: 50 / 50 PASS
+- Manual requester workflow: PASS
+- Manual attachment lifecycle: PASS
+- Requester ownership isolation: PASS
+
+No required automated test is currently failing.
+
+### 24.4 Final Main-Branch Verification
+
+Final release verification must be repeated after the reviewed `lab2-staging -> main` Pull Request is merged.
+
+Required final-main checks:
+
+- `server/npm run build`
+- `server/npm test`
+- `client/npm run build`
+- `client/npm test`
+- confirm all required migrations are present
+- confirm application starts successfully
+- capture final passing test evidence from `main`
+
+Final main-branch status: **PENDING RELEASE MERGE**
