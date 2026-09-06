@@ -1,10 +1,32 @@
 # TokTickIT — IT Service Desk
 
-TokTickIT is a full-stack IT service desk management application built with a modern web architecture:
-- **Frontend**: React 18, TypeScript, Vite, and Bootstrap 5.
-- **Backend**: Node.js, Express, TypeScript, and Prisma ORM.
-- **Database**: PostgreSQL.
-- **Testing**: Vitest, React Testing Library, and Supertest.
+TokTickIT is a full-stack IT service desk application developed for CPE334 Software Engineering.
+
+## Technology Stack
+
+- **Frontend:** React 18, TypeScript, Vite, Bootstrap 5
+- **Backend:** Node.js, Express, TypeScript
+- **Database:** PostgreSQL with Prisma ORM
+- **Testing:** Vitest, React Testing Library, Supertest
+
+---
+
+## Lab 2 Features
+
+The Lab 2 requester workflow includes:
+
+- Development Requester selection and switching
+- Create Ticket
+- Ticket reference data for Category and Related System
+- My Tickets with search, filtering, sorting, and pagination
+- Ticket Detail
+- Requester ownership protection
+- Attachment upload
+- JPG, PNG, WEBP, and PDF attachment support
+- Attachment preview/download
+- Attachment soft removal with removal reason
+- Removed attachment history
+- Lab 1 regression compatibility
 
 ---
 
@@ -12,137 +34,271 @@ TokTickIT is a full-stack IT service desk management application built with a mo
 
 ```text
 toktickit/
-├── client/                 # Frontend React + TypeScript + Vite application
+├── client/                     # React + TypeScript frontend
 │   ├── src/
-│   │   ├── App.tsx         # Main UI component with Bootstrap styling
-│   │   ├── api.ts          # API client for backend communication
-│   │   └── main.tsx        # React root entry point
-│   ├── tests/              # Frontend unit tests with Vitest & Testing Library
-│   ├── .env.example        # Frontend environment template
-│   └── package.json        # Frontend scripts and dependencies
+│   │   ├── components/         # Application screens and shared components
+│   │   ├── App.tsx
+│   │   ├── api.ts              # Backend API client
+│   │   └── main.tsx
+│   ├── tests/
+│   │   ├── lab-01/             # Lab 1 regression tests
+│   │   └── lab-02/             # Lab 2 frontend tests
+│   ├── .env.example
+│   └── package.json
 │
-├── server/                 # Backend Express + TypeScript application
-│   ├── prisma/             # Prisma schema and database seeds
-│   │   ├── schema.prisma   # Data models and PostgreSQL datasource
-│   │   └── seed.ts         # Database seed script
+├── server/                     # Express + TypeScript backend
+│   ├── prisma/
+│   │   ├── migrations/         # Database migrations
+│   │   ├── schema.prisma       # Prisma data model
+│   │   └── seed.ts             # Reference/development seed data
 │   ├── src/
-│   │   ├── app.ts          # Express app configuration and routes
-│   │   ├── index.ts        # Server entry point listening on PORT
-│   │   └── prisma.ts       # Lazy Prisma client instance
-│   ├── tests/              # Backend integration tests with Supertest & Vitest
-│   ├── .env.example        # Backend environment template
-│   └── package.json        # Backend scripts and dependencies
+│   │   ├── middleware/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── app.ts
+│   │   ├── index.ts
+│   │   └── prisma.ts
+│   ├── tests/
+│   │   ├── lab-01/
+│   │   └── lab-02/
+│   ├── .env.example
+│   └── package.json
 │
-├── docs/                   # Course documentation and lab reports
-│   └── lab-01/
-│       ├── ai_use.md       # AI use and prompt reflections
-│       ├── reviewer.md     # Peer review records
-│       └── tests.md        # Test execution evidence and plan
+├── docs/
+│   ├── lab-01/
+│   └── lab-02/
+│       ├── specification.md
+│       ├── api-spec.md
+│       ├── ui-spec.md
+│       ├── tests.md
+│       ├── reviewer.md
+│       └── ai-use.md
 │
-├── .gitignore              # Ignores node_modules, .env files, build artifacts
-└── README.md               # Project setup and documentation
+├── .gitignore
+└── README.md
 ```
 
 ---
 
 ## Prerequisites
 
-Ensure you have the following installed on your machine:
-- **Node.js**: `v20.x` or higher (includes `npm`)
-- **PostgreSQL**: `v14` or higher running on `localhost:5432` (or via Docker)
+Install:
+
+- Node.js 20 or higher
+- npm
+- PostgreSQL 14 or higher
+
+PostgreSQL must be running before starting the backend.
 
 ---
 
-## Getting Started
+## Backend Setup
 
-### 1. Backend Setup
+Open a terminal from the project root:
 
-1. Open a terminal and navigate to the `server` directory:
-   ```bash
-   cd server
-   ```
+```bash
+cd server
+```
 
-2. Copy the environment variables template to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
+Install dependencies:
 
-3. Configure your PostgreSQL connection string in `.env` if different from default:
-   ```env
-   DATABASE_URL="postgresql://toktickit:toktickit@localhost:5432/toktickit?schema=public"
-   PORT=3000
-   ```
+```bash
+npm install
+```
 
-4. Install dependencies:
-   ```bash
-   npm install
-   ```
+Copy the environment template:
 
-5. (When models are configured in Issue 3) Run migrations and seed data:
-   ```bash
-   npm run prisma:migrate
-   npm run prisma:seed
-   ```
+### Windows PowerShell
 
-6. Start the development server:
-   ```bash
-   npm run dev
-   ```
-   The backend API will start on [http://localhost:3000](http://localhost:3000).
+```powershell
+Copy-Item .env.example .env
+```
 
-7. Run backend tests:
-   ```bash
-   npm test
-   ```
+### macOS / Linux
 
----
+```bash
+cp .env.example .env
+```
 
-### 2. Frontend Setup
+Check the PostgreSQL connection in `server/.env`.
 
-1. Open another terminal and navigate to the `client` directory:
-   ```bash
-   cd client
-   ```
+Example:
 
-2. Copy the environment variables template to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
+```env
+DATABASE_URL="postgresql://toktickit:toktickit@localhost:5432/toktickit?schema=public"
+PORT=3000
+```
 
-3. Ensure `VITE_API_URL` points to your backend:
-   ```env
-   VITE_API_URL="http://localhost:3000"
-   ```
+Generate the Prisma client:
 
-4. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npx prisma generate
+```
 
-5. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-   The frontend will be accessible at [http://localhost:5173](http://localhost:5173).
+Apply the database migrations.
 
-6. Run frontend tests:
-   ```bash
-   npm test
-   ```
+For a normal development database with the required PostgreSQL permissions:
 
-7. Build for production:
-   ```bash
-   npm run build
-   ```
+```bash
+npx prisma migrate dev
+```
+
+If the database user cannot create the Prisma shadow database but the committed migrations only need to be applied:
+
+```bash
+npx prisma migrate deploy
+```
+
+Seed the database:
+
+```bash
+npm run prisma:seed
+```
+
+Start the backend:
+
+```bash
+npm run dev
+```
+
+The API runs at:
+
+```text
+http://localhost:3000
+```
 
 ---
 
-## Verification & Acceptance Criteria (Issue 1)
+## Frontend Setup
 
-- [x] **React + TypeScript + Vite**: Configured in `client/`, builds cleanly and dev server starts.
-- [x] **Bootstrap**: Included in `client/package.json` (`bootstrap@^5.3.3`) and imported in `client/src/main.tsx`.
-- [x] **Node.js + Express + TypeScript**: Configured in `server/`, compiles with `tsc` and starts with `tsx watch`.
-- [x] **PostgreSQL & Prisma**: Datasource configured in `server/prisma/schema.prisma` and client wrapper in `server/src/prisma.ts`.
-- [x] **Vitest & Supertest**: Scripts configured in `package.json` for both client (`vitest run`) and server (`vitest run` with Supertest).
-- [x] **Secrets & Dependencies Ignored**: `.gitignore` configured to ignore `node_modules`, `.env`, and build outputs; `.env.example` templates provided.
-- [x] **Documentation**: Initial setup instructions provided in `README.md`.
+Open another terminal from the project root:
+
+```bash
+cd client
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Copy the environment template:
+
+### Windows PowerShell
+
+```powershell
+Copy-Item .env.example .env
+```
+
+### macOS / Linux
+
+```bash
+cp .env.example .env
+```
+
+Ensure the frontend points to the backend:
+
+```env
+VITE_API_URL="http://localhost:3000"
+```
+
+Start the frontend:
+
+```bash
+npm run dev
+```
+
+The Vite development server normally runs at:
+
+```text
+http://localhost:5173
+```
+
+---
+
+## Running Tests
+
+### Backend
+
+```bash
+cd server
+npm run build
+npm test
+```
+
+At the Lab 2 integration checkpoint:
+
+```text
+Test Files  10 passed (10)
+Tests       70 passed (70)
+```
+
+### Frontend
+
+```bash
+cd client
+npm run build
+npm test
+```
+
+At the Lab 2 integration checkpoint:
+
+```text
+Test Files  8 passed (8)
+Tests       50 passed (50)
+```
+
+Final test evidence is recorded in:
+
+```text
+docs/lab-02/tests.md
+```
+
+The complete test suites must be run again from the final `main` branch after the Lab 2 release merge.
+
+---
+
+## Lab 2 Documentation
+
+Lab 2 engineering and delivery evidence is stored under `docs/lab-02/`:
+
+- `specification.md` — Software requirements and engineering contract
+- `api-spec.md` — REST API specification
+- `ui-spec.md` — UI specification
+- `tests.md` — Test design and execution evidence
+- `reviewer.md` — Peer-review evidence
+- `ai-use.md` — AI-use evidence and reflection
+
+---
+
+## Development Requester Context
+
+Lab 2 uses a **Development Requester** context for demonstrating requester-specific behavior.
+
+It is not production authentication.
+
+The selected requester is used to test:
+
+- requester-owned ticket creation
+- My Tickets visibility
+- Ticket Detail ownership
+- attachment ownership
+- requester switching
+
+The backend remains responsible for enforcing requester ownership boundaries.
+
+---
+
+## Final Release Verification
+
+Before considering Lab 2 complete:
+
+1. Merge reviewed feature work into `lab2-staging`.
+2. Run the complete backend and frontend build/test suites.
+3. Perform the manual integrated requester workflow.
+4. Complete peer-review and AI-use evidence.
+5. Open and review the `lab2-staging -> main` release Pull Request.
+6. Merge the release into `main`.
+7. Run the complete build/test suites again from `main`.
+8. Record the final passing evidence in `docs/lab-02/tests.md`.

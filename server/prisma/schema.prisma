@@ -11,17 +11,130 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
-// Issue 3 — Create and seed IT request categories
-// Define a Category model with:
-//   id        Int      @id @default(autoincrement())
-//   name      String   @unique
-//   createdAt DateTime @default(now())
-// Then run:  npx prisma migrate dev --name init
+// Lab 1 / Lab 2 reference data
 // ---------------------------------------------------------------------------
 
 model Category {
   id        Int      @id @default(autoincrement())
   name      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tickets   Ticket[]
 }
 
+model RelatedSystem {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tickets   Ticket[]
+}
+
+enum RequestedPriority {
+  Low
+  Medium
+  High
+  Urgent
+}
+
+enum TicketStatus {
+  New
+}
+
+enum TicketEventType {
+  ATTACHMENT_REMOVED
+}
+
+model Ticket {
+  id                String            @id @default(uuid())
+  ticketNumber      String            @unique
+  ticketDate        DateTime          @default(now())
+  currentStatus     TicketStatus      @default(New)
+  requestedPriority RequestedPriority @default(Medium)
+  summary           String
+  description       String
+  clientRequestId   String
+  requesterId       String
+  categoryId        Int
+  relatedSystemId   String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  requester     DevelopmentRequester @relation(fields: [requesterId], references: [id])
+  category      Category             @relation(fields: [categoryId], references: [id])
+  relatedSystem RelatedSystem        @relation(fields: [relatedSystemId], references: [id])
+
+  attachments Attachment[]
+  events      TicketEvent[]
+
+  @@unique([requesterId, clientRequestId])
+  @@index([requesterId])
+  @@index([categoryId])
+  @@index([relatedSystemId])
+  @@index([ticketDate])
+}
+
+model Attachment {
+  id                   String    @id @default(uuid())
+  ticketId             String
+  originalFilename     String
+  mimeType             String
+  sizeBytes            Int
+  storageKey           String    @unique
+  isRemoved            Boolean   @default(false)
+  removedAt            DateTime?
+  removedByRequesterId String?
+  removalReason        String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  ticket             Ticket                @relation(fields: [ticketId], references: [id])
+  removedByRequester DevelopmentRequester? @relation("AttachmentRemovedBy", fields: [removedByRequesterId], references: [id])
+  events             TicketEvent[]
+
+  @@index([ticketId])
+  @@index([ticketId, isRemoved])
+  @@index([removedByRequesterId])
+}
+
+model TicketEvent {
+  id               String          @id @default(uuid())
+  ticketId         String
+  attachmentId     String?
+  actorRequesterId String?
+  eventType        TicketEventType
+  details          Json?
+  createdAt        DateTime        @default(now())
+
+  ticket         Ticket                @relation(fields: [ticketId], references: [id])
+  attachment     Attachment?           @relation(fields: [attachmentId], references: [id])
+  actorRequester DevelopmentRequester? @relation("TicketEventActor", fields: [actorRequesterId], references: [id])
+
+  @@index([ticketId])
+  @@index([attachmentId])
+  @@index([actorRequesterId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model TicketSequence {
+  year      Int      @id
+  lastValue Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model DevelopmentRequester {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets Ticket[]
+
+  removedAttachments Attachment[]  @relation("AttachmentRemovedBy")
+  ticketEvents       TicketEvent[] @relation("TicketEventActor")
+}
