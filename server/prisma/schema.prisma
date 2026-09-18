@@ -161,6 +161,7 @@ model User {
 
 model Session {
   id        String   @id @default(uuid())
+  // SHA-256 digest of the opaque browser token; never the bearer token itself.
   token     String   @unique
   userId    String
   expiresAt DateTime
@@ -170,4 +171,9 @@ model Session {
 
   @@index([token])
   @@index([userId])
+}
+
+model LoginAttempt {
+  key      String     @id
+  failures DateTime[]
 }

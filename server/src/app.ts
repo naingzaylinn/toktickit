@@ -1,5 +1,8 @@
-import express, { Request, Response } from "express";
-import cors from "cors";
+import express, { Request, Response, ErrorRequestHandler } from "express";
+import cookieParser from "cookie-parser";
+import { authRouter } from "./routes/auth.js";
+import { guardLegacySession } from "./middleware/authentication.js";
+import { authError, authServerError } from "./services/authErrors.js";
 import { getPrisma } from "./prisma.js";
 import { developmentRequestersRouter } from "./routes/developmentRequesters.js";
 import { referenceDataRouter } from "./routes/referenceData.js";
@@ -10,8 +13,12 @@ import { attachmentsRouter } from "./routes/attachments.js";
 // Supertest can import `app` without opening a port. Do not merge these files.
 export const app = express();
 
-app.use(cors()); // lets the Vite dev server call this API
+// Same-origin cookies only. Vite proxies /api in local development.
+app.set("trust proxy", false);
 app.use(express.json());
+app.use(cookieParser());
+app.use("/api/auth", authRouter);
+app.use("/api", guardLegacySession);
 
 // ---------------------------------------------------------------------------
 // Issue 2 — API health check (Lab 1)
@@ -71,5 +78,14 @@ app.use(
 );
 
 app.use("/api/v1/tickets", ticketsRouter);
+
+const safeErrorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+  if (error?.type === "entity.parse.failed" || error?.type === "entity.too.large") {
+    authError(res, 400, "VALIDATION_ERROR", "A valid JSON request body is required.");
+  } else {
+    authServerError(res);
+  }
+};
+app.use(safeErrorHandler);
 
 export default app;

@@ -197,11 +197,8 @@ Copy-Item .env.example .env
 cp .env.example .env
 ```
 
-Ensure the frontend points to the backend:
-
-```env
-VITE_API_URL="http://localhost:3000"
-```
+The frontend uses same-origin `/api` requests. No API URL environment variable
+is required; legacy `VITE_API_URL` settings are no longer used.
 
 Start the frontend:
 
@@ -215,6 +212,12 @@ The Vite development server normally runs at:
 http://localhost:5173
 ```
 
+Vite forwards `/api` to `http://localhost:3000`. Cross-origin credentialed API access
+is not enabled. Production must serve the frontend and `/api` at one HTTPS origin.
+
+For Lab 3 authentication endpoints, local seed credentials, and the migration
+handoff, see [Authentication implementation notes](docs/lab-03/authentication.md).
+
 ---
 
 ## Running Tests
@@ -224,8 +227,14 @@ http://localhost:5173
 ```bash
 cd server
 npm run build
-npm test
+npm run test:isolated
 ```
+
+`test:isolated` applies migrations and seeds a temporary PostgreSQL schema, runs
+the existing Vitest suite, and removes only that schema afterward. The database
+user needs permission to create schemas. To run just Issue 2 tests, use
+`npm run test:isolated -- tests/lab-03`. The original `npm test` command remains
+available but its Lab 2 tests delete fixtures in the configured database.
 
 At the Lab 2 integration checkpoint:
 
