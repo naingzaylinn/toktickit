@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+// Lab 3 sessions require one application origin, including existing local .env setups.
+const API_URL = "";
 
 export const REQUESTER_STORAGE_KEY = "toktickit_requester_id";
 

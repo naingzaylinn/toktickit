@@ -35,6 +35,63 @@ Each planned test uses one of the following final statuses:
 
 During implementation, this document will be updated with the actual automated test file path and final status.
 
+## Issue 2 verification scope
+
+Issue 2 implements backend authentication and user migration. API-01 through
+API-17, UNIT-01 through UNIT-04, MIG-01/02/03/05, and SEED-01 through SEED-06 have
+automated coverage in `server/tests/lab-03`. The current suite has 53 tests across
+five test files. Additional cases cover exact session expiration, cookie flags,
+logout replay, inactive-session rejection, safe DTOs/errors, normalized-email/IP
+limits, concurrent failures, the fifteen-minute boundary, and Unicode password
+hashing without bcrypt truncation. Review regressions also check exact session
+preservation after password change, logout isolation between sessions, rejection
+of conflicting legacy requester headers/current roles, and bcrypt work for
+overlong input against legacy/unknown accounts.
+
+API-16 covers the reusable middleware and the transitional session guard on the
+existing reference-data route. It does not certify the Issue 3 requester identity
+conversion: cookie-less Lab 2 requester behavior remains unchanged. AUTH-01 through
+AUTH-09 and authenticated requester regression cases remain Planned for their
+feature work. Login/password-change UI, role navigation and E2E remain Planned.
+SEED-07 is partially covered for requester distribution and Requested Priority;
+expanded statuses/staff ownership and SEED-08 await their feature migrations.
+
+The temporary guard rejects a supplied requester header when it conflicts with
+the session identity or the current role is not REQUESTER. This does not mark
+AUTH-07 complete: the final Issue 3 contract will ignore client-selected identity
+and use authenticated ownership throughout the requester APIs.
+
+Run `npm.cmd run test:isolated -- tests/lab-03` from `server` for Issue 2 coverage,
+or `npm.cmd run test:isolated` for the full server suite. The runner applies
+migrations and seeds in a separate schema, checks Prisma drift, and cleans up only
+its own schema. It never resets the development database. See
+[authentication implementation notes](authentication.md) for credentials and
+migration decisions. These are branch verification results, not final-main release
+or visual/E2E evidence.
+
+Verification on `feature/32-authentication-user-migration-completion`:
+
+| Command / check | Result |
+|---|---|
+| `npx.cmd prisma validate` | Pass |
+| `npx.cmd prisma generate` | Pass |
+| Server `npm.cmd run build` | Pass |
+| `npm.cmd run test:isolated -- tests/lab-03` | 5 files, 53 tests passed |
+| `npm.cmd run test:isolated` | 15 files, 123 tests passed, including all 70 Lab 1/Lab 2 tests |
+| Isolated migration deploy and Prisma migrate diff | Pass; no schema drift |
+| Client `npm.cmd run build` | Pass |
+| Client `npm.cmd test` | 8 files, 50 tests passed |
+
+Windows sandbox restrictions initially blocked tsx/esbuild startup. Those checks
+passed when rerun outside the sandbox. The final client run emitted a non-failing
+React `act(...)` warning from the existing Lab 1 App test. No existing tests were
+weakened or removed. The working development schema was not migrated or reset.
+
+The pre-commit review first reproduced three failures: conflicting requester
+identity, a changed non-Requester role using legacy requester context, and skipped
+bcrypt work for overlong legacy input. The corrected suite passes all three.
+The isolated runner also now requires successful schema creation before cleanup.
+
 ---
 
 # 3. Traceability Rules
@@ -55,16 +112,16 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| API-01 | API | AC-01 | Valid login with active account and correct credentials | Authenticated response returns safe user identity and role | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-02 | API | FR-02 | Login with incorrect password | Login rejected with safe authentication failure | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-03 | API | FR-02 | Login with unknown email | Login rejected without exposing unnecessary account information | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-04 | API | AC-05 | Login using inactive account | Authenticated application access denied | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-05 | API | FR-01 | Login with missing email | Validation failure returned | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-06 | API | FR-01 | Login with missing password | Validation failure returned | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-07 | API | FR-06 | Retrieve current authenticated user | Safe current-user identity and role returned | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-08 | API | FR-06 | Retrieve current user without session | `401 Unauthorized` | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-09 | API | FR-05 | Logout authenticated user | Session invalidated successfully | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-10 | API | FR-05 | Access protected API after logout | Request rejected as unauthenticated | `server/tests/lab-03/auth.api.test.ts` | Planned |
+| API-01 | API | AC-01 | Valid login with active account and correct credentials | Authenticated response returns safe user identity and role | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-02 | API | FR-02 | Login with incorrect password | Login rejected with safe authentication failure | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-03 | API | FR-02 | Login with unknown email | Login rejected without exposing unnecessary account information | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-04 | API | AC-05 | Login using inactive account | Authenticated application access denied | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-05 | API | FR-01 | Login with missing email | Validation failure returned | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-06 | API | FR-01 | Login with missing password | Validation failure returned | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-07 | API | FR-06 | Retrieve current authenticated user | Safe current-user identity and role returned | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-08 | API | FR-06 | Retrieve current user without session | `401 Unauthorized` | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-09 | API | FR-05 | Logout authenticated user | Session invalidated successfully | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-10 | API | FR-05 | Access protected API after logout | Request rejected as unauthenticated | `server/tests/lab-03/auth.api.test.ts` | Pass |
 
 ---
 
@@ -72,13 +129,13 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| API-11 | API | AC-02 | Login with user marked `mustChangePassword` | Login succeeds but normal application access remains restricted | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-12 | API | AC-02 | Valid initial-password replacement | Password updated and `mustChangePassword` cleared | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-13 | API | FR-04 | New password and confirmation mismatch | Validation failure | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-14 | API | FR-04 | Invalid new password boundary | Validation failure | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-15 | API | FR-04 | Incorrect current password | Password change rejected safely | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-16 | API | AC-02 | Access normal protected endpoint before required password change | 403 Forbidden with PASSWORD_CHANGE_REQUIRED; normal protected application access remains blocked | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| API-17 | API | BR-24 | More than 5 failed login attempts within 15 minutes | Additional attempt is rejected with `429 Too Many Requests` | `server/tests/lab-03/auth.api.test.ts` | Planned |
+| API-11 | API | AC-02 | Login with user marked `mustChangePassword` | Login succeeds but normal application access remains restricted | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-12 | API | AC-02 | Valid initial-password replacement | Password updated and `mustChangePassword` cleared | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-13 | API | FR-04 | New password and confirmation mismatch | Validation failure | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-14 | API | FR-04 | Invalid new password boundary | Validation failure | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-15 | API | FR-04 | Incorrect current password | Password change rejected safely | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-16 | API | AC-02 | Access normal protected endpoint before required password change | 403 Forbidden with PASSWORD_CHANGE_REQUIRED; normal protected application access remains blocked | `server/tests/lab-03/authorization.api.test.ts` | Pass |
+| API-17 | API | BR-24 | More than 5 failed login attempts within 15 minutes | Additional attempt is rejected with `429 Too Many Requests` | `server/tests/lab-03/auth.api.test.ts` | Pass |
 
 ---
 
@@ -86,10 +143,10 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| UNIT-01 | Unit | BR-07 | Password hashing helper | Plaintext password produces secure hash | `server/tests/lab-03/auth.unit.test.ts` | Planned |
-| UNIT-02 | Unit | BR-07 | Password verification helper with correct password | Verification succeeds | `server/tests/lab-03/auth.unit.test.ts` | Planned |
-| UNIT-03 | Unit | BR-07 | Password verification helper with incorrect password | Verification fails | `server/tests/lab-03/auth.unit.test.ts` | Planned |
-| UNIT-04 | Unit | BR-07 | Stored password value | Plaintext password is not stored | `server/tests/lab-03/auth.unit.test.ts` | Planned |
+| UNIT-01 | Unit | BR-07 | Password hashing helper | Plaintext password produces secure hash | `server/tests/lab-03/auth.unit.test.ts` | Pass |
+| UNIT-02 | Unit | BR-07 | Password verification helper with correct password | Verification succeeds | `server/tests/lab-03/auth.unit.test.ts` | Pass |
+| UNIT-03 | Unit | BR-07 | Password verification helper with incorrect password | Verification fails | `server/tests/lab-03/auth.unit.test.ts` | Pass |
+| UNIT-04 | Unit | BR-07 | Stored password value | Plaintext password is not stored | `server/tests/lab-03/auth.unit.test.ts` | Pass |
 
 ---
 
@@ -227,11 +284,11 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| MIG-01 | Migration | AC-18 | Existing Development Requesters migrate/evolve into Users | User records remain associated with correct existing Tickets | Migration verification script/test | Planned |
-| MIG-02 | Migration | AC-18 | Existing Ticket records after migration | Existing Tickets remain present | Migration verification script/test | Planned |
-| MIG-03 | Migration | AC-18 | Existing Attachment records after migration | Existing Attachments remain valid | Migration verification script/test | Planned |
+| MIG-01 | Migration | AC-18 | Existing Development Requesters migrate/evolve into Users | User records remain associated with correct existing Tickets | `server/tests/lab-03/migration.test.ts` | Pass |
+| MIG-02 | Migration | AC-18 | Existing Ticket records after migration | Existing Tickets remain present | `server/tests/lab-03/migration.test.ts` | Pass |
+| MIG-03 | Migration | AC-18 | Existing Attachment records after migration | Existing Attachments remain valid | `server/tests/lab-03/migration.test.ts` | Pass |
 | MIG-04 | Migration | BR-13 | Existing/new Tickets receive valid IT Priority initialization | IT Priority correctly initialized from Requested Priority where required | Migration verification script/test | Planned |
-| MIG-05 | Migration | FR-04 | Migrated Requester initial credentials | Migrated test users can authenticate with documented local credentials and are required to change initial password where specified | Migration verification script/test | Planned |
+| MIG-05 | Migration | FR-04 | Migrated Requester initial credentials | Migrated test users can authenticate with documented local credentials and are required to change initial password where specified | `server/tests/lab-03/migration.test.ts` | Pass |
 | MIG-06 | Migration | FR-09 | Development Requester selector dependency removed | Authenticated User identity replaces temporary selector identity | Regression/E2E verification | Planned |
 
 ---
@@ -240,12 +297,12 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| SEED-01 | Integration | Seed requirement | Seed is safe to run repeatedly | Re-running seed does not create invalid duplicate data | Seed/integration test | Planned |
-| SEED-02 | Integration | Seed requirement | Active Requester count | At least four active Requesters exist | Seed/integration test | Planned |
-| SEED-03 | Integration | Seed requirement | Inactive Requester | At least one inactive Requester exists | Seed/integration test | Planned |
-| SEED-04 | Integration | Seed requirement | Active IT Staff count | At least three active IT Staff exist | Seed/integration test | Planned |
-| SEED-05 | Integration | Seed requirement | Inactive IT Staff | At least one inactive IT Staff exists | Seed/integration test | Planned |
-| SEED-06 | Integration | Seed requirement | Administrator availability | At least one active Administrator exists | Seed/integration test | Planned |
+| SEED-01 | Integration | Seed requirement | Seed is safe to run repeatedly | Re-running seed does not create invalid duplicate data | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-02 | Integration | Seed requirement | Active Requester count | At least four active Requesters exist | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-03 | Integration | Seed requirement | Inactive Requester | At least one inactive Requester exists | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-04 | Integration | Seed requirement | Active IT Staff count | At least three active IT Staff exist | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-05 | Integration | Seed requirement | Inactive IT Staff | At least one inactive IT Staff exists | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-06 | Integration | Seed requirement | Administrator availability | At least one active Administrator exists | `server/tests/lab-03/seed.test.ts` | Pass |
 | SEED-07 | Integration | Seed requirement | Realistic Tickets | Tickets cover multiple statuses, priorities, and ownership states | Seed/integration test | Planned |
 | SEED-08 | Integration | Seed requirement | Comments and Notes | Example Public Comments and Internal Notes exist without sensitive content | Seed/integration test | Planned |
 
