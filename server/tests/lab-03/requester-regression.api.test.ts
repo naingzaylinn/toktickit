@@ -49,7 +49,7 @@ describe("Issue #34 authorization and requester regression", () => {
     });
     it.each(["/api/staff/tickets", "/api/admin/users"])("AUTH-02/05: Requester cannot access %s", async (path) => { expect((await request(app).get(path).set("Cookie", cookie).set("X-Role", "ADMINISTRATOR")).status).toBe(403); });
     it("AUTH-04: Staff cannot access Administrator APIs", async () => { expect((await request(app).get("/api/admin/users").set("Cookie", staffCookie)).status).toBe(403); });
-    it("role foundations admit permitted roles while later Administrator operations remain unavailable", async () => {
+    it("role foundations admit permitted Staff and Administrator operations", async () => {
     expect(
         (await request(app).get("/api/staff/tickets").set("Cookie", staffCookie)).status
     ).toBe(200);
@@ -60,7 +60,7 @@ describe("Issue #34 authorization and requester regression", () => {
 
     expect(
         (await request(app).get("/api/admin/users").set("Cookie", adminCookie)).status
-    ).toBe(404);
+    ).toBe(200);
 });
     it("Staff and Administrator cannot inherit requester operations via forged identity", async () => { for (const session of [staffCookie, adminCookie]) {
         for (const path of ["/api/tickets", "/api/v1/tickets"]) {

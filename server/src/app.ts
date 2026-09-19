@@ -10,6 +10,7 @@ import { referenceDataRouter } from "./routes/referenceData.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { attachmentsRouter } from "./routes/attachments.js";
 import { staffTicketsRouter } from "./routes/staffTickets.js";
+import { adminUsersRouter } from "./routes/adminUsers.js";
 
 // The Express app is exported separately from app.listen() (see index.ts) so
 // Supertest can import `app` without opening a port. Do not merge these files.
@@ -64,6 +65,7 @@ app.use("/api", requireAuthentication, requirePasswordChanged);
 app.use(["/api/staff", "/api/v1/staff"], requireRoles("IT_STAFF", "ADMINISTRATOR"));
 app.use(["/api/admin", "/api/v1/admin"], requireRoles("ADMINISTRATOR"));
 app.use("/api/staff/tickets", staffTicketsRouter);
+app.use("/api/admin/users", adminUsersRouter);
 app.use("/api/v1", referenceDataRouter);
 for (const base of ["/api/tickets", "/api/v1/tickets"]) {
   app.use(base + "/:ticketId/attachments", attachmentsRouter);

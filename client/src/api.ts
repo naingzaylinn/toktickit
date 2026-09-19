@@ -526,6 +526,18 @@ export const getCurrentUser = () => sessionRequest<AuthUser>("/api/auth/me");
 export const login = (email: string, password: string) => sessionRequest<{user: AuthUser}>("/api/auth/login", {email,password});
 export const logout = () => sessionRequest("/api/auth/logout", {});
 export const changePassword = (currentPassword: string, newPassword: string, confirmPassword: string) => sessionRequest("/api/auth/change-password", {currentPassword,newPassword,confirmPassword});
+export type UserRole = AuthUser["role"];
+export type ManagedUser = AuthUser;
+export type UserDraft = Pick<ManagedUser, "name" | "email" | "role" | "isActive">;
+async function adminRequest<T>(path: string, method: "GET" | "POST" | "PATCH" = "GET", body?: unknown): Promise<T> {
+  const res = await fetch(path, { method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  if (!res.ok) throw await readApiError(res, "Unable to manage users.");
+  return (await res.json()).data;
+}
+export const getManagedUsers = (search = "", role = "") => adminRequest<ManagedUser[]>("/api/admin/users?" + new URLSearchParams({ search, ...(role ? { role } : {}) }));
+export const createManagedUser = (input: UserDraft & { initialPassword: string }) => adminRequest<ManagedUser>("/api/admin/users", "POST", input);
+export const updateManagedUser = (id: string, input: UserDraft) => adminRequest<ManagedUser>("/api/admin/users/" + encodeURIComponent(id), "PATCH", input);
+export const setManagedInitialPassword = (id: string, initialPassword: string) => adminRequest<ManagedUser>("/api/admin/users/" + encodeURIComponent(id) + "/initial-password", "POST", { initialPassword });
 export interface PublicComment { id: string; ticketId: string; content: string; author: {id: string; name: string; role: string}; createdAt: string; }
 export const getComments = (id: string) => sessionRequest<PublicComment[]>("/api/tickets/"+encodeURIComponent(id)+"/comments");
 export const postComment = (id: string, content: string) => sessionRequest<PublicComment>("/api/tickets/"+encodeURIComponent(id)+"/comments", {content});
