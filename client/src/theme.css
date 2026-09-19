@@ -160,6 +160,14 @@ input:focus-visible {
 .staff-ticket-queue-screen .zen-card,
 .user-management-screen .zen-card { min-width: 0; overflow-wrap: anywhere; }
 .staff-ticket-queue-screen .table-responsive { max-width: 100%; }
+.staff-ticket-queue-screen .table-responsive .table { min-width: 1180px; }
+.staff-ticket-queue-screen .table-responsive th,
+.staff-ticket-queue-screen .table-responsive td { overflow-wrap: normal; word-break: normal; }
+.staff-ticket-queue-screen .table-responsive th,
+.staff-ticket-queue-screen .table-responsive td:not(:nth-child(3)),
+.staff-ticket-queue-screen .table-responsive .btn { white-space: nowrap; }
+.staff-ticket-queue-screen .table-responsive td:nth-child(3) { width: 24%; overflow-wrap: anywhere; }
+.staff-ticket-queue-screen .table-responsive .status-badge { white-space: normal; overflow-wrap: normal; word-break: normal; }
 .nav-link[aria-current="page"] { border-bottom: 2px solid var(--color-primary-green); }
 textarea:focus-visible, .form-control:focus-visible, .form-select:focus-visible, .form-check-input:focus-visible { outline: 2px solid var(--color-secondary-green); outline-offset: 2px; }
 @media (max-width: 575.98px) {

@@ -32,6 +32,13 @@ for (const width of widths) {
     await signIn(page, "staff1@example.com");
     await expect(page.getByRole("heading", { name: "Ticket Queue" })).toBeVisible();
     await expect(page.getByRole("searchbox", { name: "Search" })).toBeVisible();
+    if (width === 1280) {
+      const queueTable = page.getByRole("table");
+      await expect(queueTable).toBeVisible();
+      await expect(queueTable.getByRole("columnheader", { name: "Created" })).toHaveCSS("white-space", "nowrap");
+      await expect(queueTable.getByRole("button", { name: "Open" }).first()).toHaveCSS("white-space", "nowrap");
+      await expect(page.locator(".staff-ticket-queue-screen .table-responsive")).toHaveCSS("overflow-x", "auto");
+    }
     if (width < 992) await page.getByRole("button", { name: "Toggle navigation" }).click();
     await expect(page.getByRole("link", { name: "Ticket Queue" })).toHaveAttribute("aria-current", "page");
     await noPageOverflow(page);
