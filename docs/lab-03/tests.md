@@ -1,5 +1,9 @@
 # Lab 3 Test Plan and Traceability
 
+## Final integration traceability note (2026-09-20)
+
+See [release-evidence.md](release-evidence.md) for the integrated requirement-to-evidence matrix and current command results. The tables below originated as a test plan: `Planned` cells and placeholder paths in the API/UI sections record the original plan, not the current implementation state. In particular, `staff-ticket-queue.api.test.ts`, `staff-ticket-operations.api.test.ts`, `AuthScreen.test.tsx`, `StaffTicketQueue.test.tsx`, `StaffTicketDetail.test.tsx`, and `UserManagement.test.tsx` implement many of those planned rows. The automated suite counts actual executable tests, not one test per plan ID. Manual VIS-01–10 remain pending; the three `responsive.spec.ts` cases assert viewport behavior but are not visual screenshots. The historical issue-specific counts below apply only to their named branches.
+
 ## Automated coverage audit for the Automated / E2E Testing issue
 
 The existing API suites already cover API-01–17, UNIT-01–04, AUTH-01–09,

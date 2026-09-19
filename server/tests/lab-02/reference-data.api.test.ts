@@ -133,6 +133,8 @@ describe("Feature-C: Ticket Reference Data", () => {
 
     // API-008
     it("API-008: seed execution is idempotent", async () => {
+        const existingCommentIds = new Set((await prisma.publicComment.findMany({ select: { id: true } })).map(({ id }) => id));
+        const existingNoteIds = new Set((await prisma.internalNote.findMany({ select: { id: true } })).map(({ id }) => id));
         const beforeCategories = await prisma.category.count();
         const beforeSystems = await prisma.relatedSystem.count();
         const beforeRequesters = await prisma.developmentRequester.count();
@@ -156,6 +158,13 @@ describe("Feature-C: Ticket Reference Data", () => {
         expect(afterSecondCategories).toBe(afterFirstCategories);
         expect(afterSecondSystems).toBe(afterFirstSystems);
         expect(afterSecondRequesters).toBe(afterFirstRequesters);
+
+        // Lab 3 seed adds communication examples; remove only this test's
+        // new rows so Lab 2 fixture suites can replace their tickets.
+        const newNotes = (await prisma.internalNote.findMany({ select: { id: true } })).filter(({ id }) => !existingNoteIds.has(id));
+        const newComments = (await prisma.publicComment.findMany({ select: { id: true } })).filter(({ id }) => !existingCommentIds.has(id));
+        await prisma.internalNote.deleteMany({ where: { id: { in: newNotes.map(({ id }) => id) } } });
+        await prisma.publicComment.deleteMany({ where: { id: { in: newComments.map(({ id }) => id) } } });
     });
 
     // API-013
