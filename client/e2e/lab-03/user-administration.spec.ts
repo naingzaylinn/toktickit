@@ -1,0 +1,62 @@
+import { expect, test } from "@playwright/test";
+import { signIn, signOut } from "./helpers.js";
+
+test("E2E-13–17: Administrator provisions, edits and resets a user while safety rules hold", async ({ page }) => {
+  const email = "browser-new-user@example.test";
+  await signIn(page, "admin@example.com");
+  await page.getByRole("link", { name: "User Management" }).click();
+  await expect(page.getByRole("heading", { name: "User Management" })).toBeVisible();
+  await page.getByLabel("Search by name or email").fill("staff1@example.com");
+  await page.getByLabel("Role", { exact: true }).selectOption("IT_STAFF");
+  await expect(page.getByRole("article").filter({ hasText: "staff1@example.com" })).toBeVisible();
+  await page.getByLabel("Search by name or email").clear();
+  await page.getByLabel("Role", { exact: true }).selectOption("");
+  await page.getByRole("button", { name: "Create User" }).click();
+  const form = page.getByRole("heading", { name: "Create User" }).locator("xpath=..");
+  await form.getByLabel("Name").fill("Browser User");
+  await form.getByLabel("Email").fill(email);
+  await form.getByLabel("Role").selectOption("REQUESTER");
+  await form.getByLabel("Initial Password").fill("Initial123");
+  await form.getByRole("button", { name: "Save User" }).click();
+  const card = page.getByRole("article").filter({ hasText: email });
+  await expect(card).toContainText("Requester");
+  await card.getByRole("button", { name: "Edit" }).click();
+  const edit = page.getByRole("heading", { name: "Edit Browser User" }).locator("xpath=..");
+  await edit.getByLabel("Name").fill("Updated Browser User");
+  await edit.getByRole("button", { name: "Save User" }).click();
+  await expect(card).toContainText("Updated Browser User");
+
+  const self = page.getByRole("article").filter({ hasText: "admin@example.com" });
+  await expect(self.getByRole("button", { name: "Deactivate" })).toBeDisabled();
+  await self.getByRole("button", { name: "Edit" }).click();
+  const selfEdit = page.getByRole("heading", { name: "Edit Lab Administrator" }).locator("xpath=..");
+  await selfEdit.getByLabel("Role").selectOption("IT_STAFF");
+  await selfEdit.getByRole("button", { name: "Save User" }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(self).toContainText("Administrator");
+  await selfEdit.getByRole("button", { name: "Cancel" }).click();
+
+  await signOut(page);
+  await signIn(page, email);
+  await expect(page.getByRole("heading", { name: "Change Password" })).toBeVisible();
+  await page.getByLabel("Current Password").fill("Initial123");
+  await page.getByLabel("New Password", { exact: true }).fill("Changed123");
+  await page.getByLabel("Confirm New Password").fill("Changed123");
+  await page.getByRole("button", { name: "Change Password" }).click();
+  await expect(page.getByRole("link", { name: "My Tickets" })).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, "admin@example.com");
+  await page.getByRole("link", { name: "User Management" }).click();
+  const target = page.getByRole("article").filter({ hasText: email });
+  await target.getByRole("button", { name: "Set initial password" }).click();
+  const passwordForm = page.getByRole("heading", { name: /Set initial password for Updated Browser User/ }).locator("xpath=..");
+  await passwordForm.getByLabel("New initial password").fill("ResetPass123");
+  await passwordForm.getByLabel("Confirm initial password").fill("ResetPass123");
+  await passwordForm.getByRole("button", { name: "Set Password" }).click();
+  await expect(page.getByText(/must change it before normal access/).last()).toBeVisible();
+  await signOut(page);
+  await signIn(page, email, "ResetPass123");
+  await expect(page.getByRole("heading", { name: "Change Password" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "My Tickets" })).toHaveCount(0);
+});

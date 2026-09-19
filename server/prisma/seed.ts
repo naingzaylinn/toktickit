@@ -166,9 +166,7 @@ export async function seed(prisma = getPrisma()) {
     });
   }
 
-  // Preserve every existing ticket. Add repeatable examples for the four active
-  // lab identities using the current Lab 2 schema. Staff ownership/status,
-  // Comments and Notes will be seeded with their later feature migrations.
+  // Preserve every existing ticket. New examples span the Lab 3 workflow.
   const examples: { summary: string; description: string; priority: RequestedPriority; system: string }[] = [
     { summary: "Wi-Fi disconnects during lectures", description: "The campus wireless connection drops every few minutes in the lecture room.", priority: "High", system: "Campus Wi-Fi" },
     { summary: "Printer produces faded pages", description: "Pages from the shared printer are too faint to read even after replacing paper.", priority: "Medium", system: "Printing Service" },
@@ -180,13 +178,20 @@ export async function seed(prisma = getPrisma()) {
     const category = await prisma.category.findUniqueOrThrow({ where: { name: index === 0 ? "Network" : index === 1 ? "Hardware" : "Software" } });
     const system = await prisma.relatedSystem.findUniqueOrThrow({ where: { name: example.system } });
     const clientRequestId = `lab3-seed-${requester.id}`;
+    const staff = await prisma.user.findUniqueOrThrow({ where: { email: "staff1@example.com" } });
     await prisma.$transaction(async (tx) => {
       if (await tx.ticket.findUnique({ where: { requesterId_clientRequestId: { requesterId: requester.id, clientRequestId } } })) return;
-      await tx.ticket.create({ data: {
+      const ticket = await tx.ticket.create({ data: {
         ticketNumber: await generateTicketNumber(tx, new Date().getFullYear()),
         requesterId: requester.id, clientRequestId, categoryId: category.id, relatedSystemId: system.id,
         summary: example.summary, description: example.description, requestedPriority: example.priority, itPriority: example.priority,
+        currentStatus: (["New", "Open", "InProgress", "WaitingForRequester"] as const)[index],
+        ownerId: index < 2 ? null : staff.id,
       } });
+      if (index === 0) {
+        await tx.publicComment.create({ data: { ticketId: ticket.id, authorId: requester.id, content: "The wireless connection still drops during lectures." } });
+        await tx.internalNote.create({ data: { ticketId: ticket.id, authorId: staff.id, content: "Check the lecture room access point logs." } });
+      }
     });
   }
 

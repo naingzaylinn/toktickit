@@ -25,6 +25,22 @@ describe("Issue 2 local development seed", () => {
       expect(tickets).toHaveLength(4);
       expect(new Set(tickets.map(ticket => ticket.requesterId)).size).toBe(4);
       expect(new Set(tickets.map(ticket => ticket.requestedPriority)).size).toBe(4);
+      expect(new Set(tickets.map(ticket => ticket.currentStatus)).size).toBe(4);
+      expect(tickets.some(ticket => ticket.ownerId === null)).toBe(true);
+      expect(tickets.some(ticket => ticket.ownerId !== null)).toBe(true);
+      for (const ticket of tickets.filter(ticket => ticket.ownerId)) {
+        const owner = users.find(user => user.id === ticket.ownerId);
+        expect(owner).toMatchObject({ role: "IT_STAFF", isActive: true });
+      }
+      const comments = await prisma.publicComment.findMany();
+      const notes = await prisma.internalNote.findMany();
+      expect(comments).toHaveLength(1);
+      expect(notes).toHaveLength(1);
+      expect(comments[0].content).toBe("The wireless connection still drops during lectures.");
+      expect(notes[0].content).toBe("Check the lecture room access point logs.");
+      expect(comments[0].ticketId).toBe(notes[0].ticketId);
+      expect(comments[0].authorId).toBe(tickets.find(ticket => ticket.id === comments[0].ticketId)?.requesterId);
+      expect(users.find(user => user.id === notes[0].authorId)?.role).toBe("IT_STAFF");
       expect(tickets.some(ticket => ticket.requesterId === existing.id)).toBe(true);
       const changedHash = await hashPassword("Changed123");
       await prisma.user.update({ where: { id: existing.id }, data: { passwordHash: changedHash, mustChangePassword: false } });
@@ -32,6 +48,8 @@ describe("Issue 2 local development seed", () => {
       await seed(prisma);
       expect(await prisma.user.findMany({ orderBy: { id: "asc" } })).toEqual(before);
       expect(await prisma.ticket.findMany({ orderBy: { id: "asc" } })).toEqual(tickets);
+      expect(await prisma.publicComment.findMany()).toEqual(comments);
+      expect(await prisma.internalNote.findMany()).toEqual(notes);
       expect(await prisma.category.count()).toBe(4);
       expect(await prisma.relatedSystem.count()).toBe(7);
     });
