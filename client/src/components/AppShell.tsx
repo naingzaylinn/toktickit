@@ -1,16 +1,16 @@
 import React, { useState } from "react";
-import { DevelopmentRequester } from "../api.js";
+import { AuthUser } from "../api.js";
 
 interface AppShellProps {
-  currentRequester: DevelopmentRequester;
-  onChangeRequester: () => void;
+  currentUser: AuthUser;
+  onLogout: () => void;
   activePath?: string;
   children?: React.ReactNode;
 }
 
 export const AppShell: React.FC<AppShellProps> = ({
-  currentRequester,
-  onChangeRequester,
+  currentUser,
+  onLogout,
   activePath = "/tickets",
   children,
 }) => {
@@ -27,11 +27,11 @@ export const AppShell: React.FC<AppShellProps> = ({
         <div className="container-fluid px-3 px-md-4">
           {/* Brand Logo */}
           <a
-            href="/tickets"
+            href={currentUser.role === "REQUESTER" ? "/tickets" : "/staff/tickets"}
             className="navbar-brand fw-bold fs-4 text-primary-green d-flex align-items-center me-4"
             onClick={(e) => {
               e.preventDefault();
-              window.history.pushState({}, "", "/tickets");
+              window.history.pushState({}, "", currentUser.role === "REQUESTER" ? "/tickets" : "/staff/tickets");
               window.dispatchEvent(new PopStateEvent("popstate"));
             }}
           >
@@ -57,51 +57,18 @@ export const AppShell: React.FC<AppShellProps> = ({
           >
             {/* Links */}
             <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-              <li className="nav-item">
-                <a
-                  href="/tickets"
-                  className={`nav-link px-3 ${activePath === "/tickets"
-                    ? "fw-bold text-primary-green active"
-                    : "text-secondary"
-                    }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.history.pushState({}, "", "/tickets");
-                    window.dispatchEvent(new PopStateEvent("popstate"));
-                    setNavOpen(false);
-                  }}
-                >
-                  My Tickets
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  href="/tickets/new"
-                  className={`nav-link px-3 ${activePath === "/tickets/new"
-                    ? "fw-bold text-primary-green active"
-                    : "text-secondary"
-                    }`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.history.pushState({}, "", "/tickets/new");
-                    window.dispatchEvent(new PopStateEvent("popstate"));
-                    setNavOpen(false);
-                  }}
-                >
-                  Create Ticket
-                </a>
-              </li>
+              {(currentUser.role === "REQUESTER" ? [["/tickets", "My Tickets"], ["/tickets/new", "Create Ticket"]] : currentUser.role === "ADMINISTRATOR" ? [["/staff/tickets", "Ticket Queue"], ["/admin/users", "User Management"]] : [["/staff/tickets", "Ticket Queue"]]).map(([path,label]) => <li className="nav-item" key={path}><a className={"nav-link px-3 " + (activePath===path?"active fw-bold text-primary-green":"text-secondary")} href={path} onClick={e=>{e.preventDefault();window.history.pushState({},"",path);window.dispatchEvent(new PopStateEvent("popstate"));setNavOpen(false);}}>{label}</a></li>)}
             </ul>
 
-            {/* Right-aligned Requester Badge & Change Requester button */}
+            {/* Authenticated identity and logout */}
             <div className="d-flex align-items-center flex-wrap gap-2 pt-2 pt-lg-0">
               <span
                 className="badge rounded-pill bg-pale-green text-primary-green px-3 py-2 border border-primary-green"
                 data-testid="requester-badge"
                 role="status"
-                aria-label={`Current requester: ${currentRequester.name}`}
+                aria-label={`Current user: ${currentUser.name}`}
               >
-                Requester: {currentRequester.name}
+                {({REQUESTER: "Requester", IT_STAFF: "IT Staff", ADMINISTRATOR: "Administrator"})[currentUser.role]}: {currentUser.name}
               </span>
 
               <button
@@ -109,10 +76,10 @@ export const AppShell: React.FC<AppShellProps> = ({
                 className="btn btn-sm btn-outline-primary-green"
                 onClick={() => {
                   setNavOpen(false);
-                  onChangeRequester();
+                  onLogout();
                 }}
               >
-                Change Requester
+                Logout
               </button>
             </div>
           </div>

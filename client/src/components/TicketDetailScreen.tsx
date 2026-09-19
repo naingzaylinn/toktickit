@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
     ApiError,
-    DevelopmentRequester,
+    RequesterIdentity,
     getAttachmentContent,
     getTicketDetail,
     removeTicketAttachment,
@@ -9,12 +9,13 @@ import {
     TicketDetail,
     uploadTicketAttachments,
 } from "../api.js";
+import RequesterDiscussion from "./RequesterDiscussion.js";
 import ErrorAlert from "./common/ErrorAlert.js";
 import LoadingSpinner from "./common/LoadingSpinner.js";
 import StatusBadge from "./common/StatusBadge.js";
 
 interface TicketDetailScreenProps {
-    currentRequester: DevelopmentRequester;
+    currentRequester: RequesterIdentity;
     ticketId: string;
     onBack: () => void;
 }
@@ -52,7 +53,6 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
 
         try {
             const data = await getTicketDetail(
-                currentRequester.id,
                 ticketId
             );
 
@@ -135,7 +135,6 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
 
     const refreshTicket = async () => {
         const data = await getTicketDetail(
-            currentRequester.id,
             ticketId
         );
 
@@ -157,7 +156,6 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
 
         try {
             const result = await uploadTicketAttachments(
-                currentRequester.id,
                 ticketId,
                 files
             );
@@ -206,7 +204,6 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
 
         try {
             const blob = await getAttachmentContent(
-                currentRequester.id,
                 ticketId,
                 attachment.id,
                 inline
@@ -280,7 +277,6 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
 
         try {
             await removeTicketAttachment(
-                currentRequester.id,
                 ticketId,
                 removingAttachment.id,
                 trimmedReason
@@ -338,6 +334,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
     if (error) {
         return (
             <div>
+
                 <button
                     type="button"
                     className="btn btn-link px-0 mb-3 text-primary-green"
@@ -712,7 +709,9 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                     )}
                 </div>
 
-                {previewAttachment && previewUrl && (
+                <RequesterDiscussion key={ticket.id} ticketId={ticket.id} resolvedAt={ticket.problemAppearsResolvedAt}/>
+
+            {previewAttachment && previewUrl && (
                     <div
                         className="modal d-block"
                         tabIndex={-1}

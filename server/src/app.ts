@@ -1,10 +1,11 @@
 import express, { Request, Response, ErrorRequestHandler } from "express";
 import cookieParser from "cookie-parser";
 import { authRouter } from "./routes/auth.js";
-import { guardLegacySession } from "./middleware/authentication.js";
+import { requireAuthentication, requirePasswordChanged } from "./middleware/authentication.js";
 import { authError, authServerError } from "./services/authErrors.js";
 import { getPrisma } from "./prisma.js";
-import { developmentRequestersRouter } from "./routes/developmentRequesters.js";
+import { requireRoles } from "./middleware/requesterContext.js";
+import { requesterActionsRouter } from "./routes/requesterActions.js";
 import { referenceDataRouter } from "./routes/referenceData.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { attachmentsRouter } from "./routes/attachments.js";
@@ -18,7 +19,7 @@ app.set("trust proxy", false);
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRouter);
-app.use("/api", guardLegacySession);
+
 
 // ---------------------------------------------------------------------------
 // Issue 2 — API health check (Lab 1)
@@ -57,27 +58,17 @@ app.get("/api/categories", async (_req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
-// Lab 2 Feature-A — Development Requester Context
-// ---------------------------------------------------------------------------
-app.use(
-  "/api/v1/development-requesters",
-  developmentRequestersRouter
-);
-
-// ---------------------------------------------------------------------------
-// Lab 2 Feature-C — Ticket Reference Data
-// Provides:
-//   GET /api/v1/categories
-//   GET /api/v1/related-systems
-// ---------------------------------------------------------------------------
+// Every normal API, including legacy aliases, crosses the same session boundary.
+app.use("/api", requireAuthentication, requirePasswordChanged);
+app.use(["/api/staff", "/api/v1/staff"], requireRoles("IT_STAFF", "ADMINISTRATOR"));
+app.use(["/api/admin", "/api/v1/admin"], requireRoles("ADMINISTRATOR"));
 app.use("/api/v1", referenceDataRouter);
-
-app.use(
-  "/api/v1/tickets/:ticketId/attachments",
-  attachmentsRouter
-);
-
-app.use("/api/v1/tickets", ticketsRouter);
+for (const base of ["/api/tickets", "/api/v1/tickets"]) {
+  app.use(base + "/:ticketId/attachments", attachmentsRouter);
+  app.use(base, requesterActionsRouter);
+  app.use(base, ticketsRouter);
+}
+app.use("/api", (_req, res) => authError(res, 404, "NOT_FOUND", "The requested resource was not found."));
 
 const safeErrorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error?.type === "entity.parse.failed" || error?.type === "entity.too.large") {

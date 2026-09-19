@@ -12,10 +12,10 @@ describe("Issue 2 non-destructive migration", () => {
       const inactive = await prisma.developmentRequester.create({ data: { name: "Inactive Requester", email: "inactive@example.com", isActive: false } });
       const category = await prisma.category.create({ data: { name: "Existing Category", isActive: false } });
       const system = await prisma.relatedSystem.create({ data: { name: "Existing System", isActive: false } });
-      const ticket = await prisma.ticket.create({ data: {
-        ticketNumber: "TKT-2026-00041", requesterId: requester.id, categoryId: category.id, relatedSystemId: system.id,
-        summary: "Existing ticket", description: "Preserve all fields", clientRequestId: randomUUID(), requestedPriority: "High",
-      } });
+      // Populate the historical schema with SQL, independent of the current Prisma fields.
+      const ticketId = randomUUID();
+      await prisma.$executeRaw`INSERT INTO "Ticket" ("id", "ticketNumber", "requesterId", "categoryId", "relatedSystemId", "summary", "description", "clientRequestId", "requestedPriority", "updatedAt") VALUES (${ticketId}, 'TKT-2026-00041', ${requester.id}, ${category.id}, ${system.id}, 'Existing ticket', 'Preserve all fields', ${randomUUID()}, 'High', CURRENT_TIMESTAMP)`;
+      const [ticket] = await prisma.$queryRaw<Array<{id:string;requesterId:string;[key:string]:unknown}>>`SELECT * FROM "Ticket" WHERE "id" = ${ticketId}`;
       const attachment = await prisma.attachment.create({ data: {
         ticketId: ticket.id, originalFilename: "existing.pdf", mimeType: "application/pdf", sizeBytes: 1024,
         storageKey: "existing-storage-key.pdf", isRemoved: true, removedAt: new Date(),
@@ -33,7 +33,8 @@ describe("Issue 2 non-destructive migration", () => {
       const changedHash = await hashPassword("AlreadyChanged123");
       await prisma.user.update({ where: { id: inactive.id }, data: { passwordHash: changedHash, mustChangePassword: false } });
       await applyMigration(prisma, "20260919000000_complete_authentication");
-      expect(await prisma.ticket.findUnique({ where: { id: ticket.id } })).toEqual(ticket);
+      await applyMigration(prisma, "20260920000000_requester_authorization");
+      expect(await prisma.ticket.findUnique({ where: { id: ticket.id } })).toEqual({...ticket, itPriority: "High", problemAppearsResolvedAt: null});
       expect(await prisma.attachment.findUnique({ where: { id: attachment.id } })).toEqual(attachment);
       expect(await prisma.ticketEvent.findUnique({ where: { id: event.id } })).toEqual(event);
       expect(await prisma.category.findUnique({ where: { id: category.id } })).toEqual(category);

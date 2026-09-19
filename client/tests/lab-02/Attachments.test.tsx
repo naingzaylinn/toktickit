@@ -33,6 +33,7 @@ vi.mock("../../src/api.js", async () => {
     return {
         ...actual,
         getTicketDetail: vi.fn(),
+        getComments: vi.fn().mockResolvedValue([]),
         uploadTicketAttachments: vi.fn(),
         getAttachmentContent: vi.fn(),
         removeTicketAttachment: vi.fn(),
@@ -272,7 +273,6 @@ describe("Feature-G: Attachment Management UI", () => {
             expect(
                 uploadTicketAttachments
             ).toHaveBeenCalledWith(
-                requester.id,
                 baseTicket.id,
                 [validFile, invalidFile]
             );
@@ -325,7 +325,6 @@ describe("Feature-G: Attachment Management UI", () => {
             expect(
                 getAttachmentContent
             ).toHaveBeenCalledWith(
-                requester.id,
                 baseTicket.id,
                 imageAttachment.id,
                 true
@@ -409,7 +408,6 @@ describe("Feature-G: Attachment Management UI", () => {
             expect(
                 getAttachmentContent
             ).toHaveBeenCalledWith(
-                requester.id,
                 baseTicket.id,
                 pdfAttachment.id,
                 true
@@ -577,7 +575,6 @@ describe("Feature-G: Attachment Management UI", () => {
             expect(
                 removeTicketAttachment
             ).toHaveBeenCalledWith(
-                requester.id,
                 baseTicket.id,
                 imageAttachment.id,
                 "Uploaded the wrong screenshot"

@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { getPrisma } from "../prisma.js";
-import { requireDevelopmentRequester } from "../middleware/requesterContext.js";
+import { requireRequester } from "../middleware/requesterContext.js";
 import {
     normalizePriority,
     validateCategoryId,
@@ -57,15 +57,15 @@ function sendQueryError(
 // ---------------------------------------------------------------------------
 ticketsRouter.get(
     "/",
-    requireDevelopmentRequester,
+    requireRequester,
     async (req: Request, res: Response) => {
-        const requester = req.requester;
+        const requester = req.auth?.user;
 
         if (!requester) {
-            return res.status(400).json({
+            return res.status(401).json({
                 error: {
-                    code: "MISSING_REQUESTER_HEADER",
-                    message: "Development Requester context is required.",
+                    code: "AUTHENTICATION_REQUIRED",
+                    message: "Authentication is required.",
                     correlationId: randomUUID(),
                 },
             });
@@ -277,6 +277,8 @@ ticketsRouter.get(
                             ticketNumber: true,
                             ticketDate: true,
                             currentStatus: true,
+                            problemAppearsResolvedAt: true,
+                            itPriority: true,
                             requestedPriority: true,
                             summary: true,
                             createdAt: true,
@@ -315,6 +317,8 @@ ticketsRouter.get(
                     ticketNumber: ticket.ticketNumber,
                     ticketDate: ticket.ticketDate,
                     currentStatus: ticket.currentStatus,
+                    problemAppearsResolvedAt: ticket.problemAppearsResolvedAt,
+                    itPriority: ticket.itPriority,
                     requestedPriority:
                         ticket.requestedPriority,
                     summary: ticket.summary,
@@ -354,16 +358,16 @@ ticketsRouter.get(
 // ---------------------------------------------------------------------------
 ticketsRouter.get(
     "/:ticketId",
-    requireDevelopmentRequester,
+    requireRequester,
     async (req: Request, res: Response) => {
-        const requester = req.requester;
+        const requester = req.auth?.user;
         const { ticketId } = req.params;
 
         if (!requester) {
-            return res.status(400).json({
+            return res.status(401).json({
                 error: {
-                    code: "MISSING_REQUESTER_HEADER",
-                    message: "Development Requester context is required.",
+                    code: "AUTHENTICATION_REQUIRED",
+                    message: "Authentication is required.",
                     correlationId: randomUUID(),
                 },
             });
@@ -396,6 +400,8 @@ ticketsRouter.get(
                     ticketNumber: true,
                     ticketDate: true,
                     currentStatus: true,
+                    problemAppearsResolvedAt: true,
+                    itPriority: true,
                     requestedPriority: true,
                     summary: true,
                     description: true,
@@ -468,12 +474,14 @@ ticketsRouter.get(
                     ticketNumber: ticket.ticketNumber,
                     ticketDate: ticket.ticketDate,
                     currentStatus: ticket.currentStatus,
+                    problemAppearsResolvedAt: ticket.problemAppearsResolvedAt,
+                    itPriority: ticket.itPriority,
                     requestedPriority:
                         ticket.requestedPriority,
                     summary: ticket.summary,
                     description: ticket.description,
 
-                    requester: ticket.requester,
+                    requester: { id: ticket.requester.id, name: ticket.requester.name, email: ticket.requester.email },
                     category: ticket.category,
                     relatedSystem: ticket.relatedSystem,
 
@@ -506,15 +514,15 @@ ticketsRouter.get(
 // ---------------------------------------------------------------------------
 ticketsRouter.post(
     "/",
-    requireDevelopmentRequester,
+    requireRequester,
     async (req: Request, res: Response) => {
-        const requester = req.requester;
+        const requester = req.auth?.user;
 
         if (!requester) {
-            return res.status(400).json({
+            return res.status(401).json({
                 error: {
-                    code: "MISSING_REQUESTER_HEADER",
-                    message: "Development Requester context is required.",
+                    code: "AUTHENTICATION_REQUIRED",
+                    message: "Authentication is required.",
                     correlationId: randomUUID(),
                 },
             });
@@ -753,6 +761,7 @@ ticketsRouter.post(
                                 ticketNumber,
                                 ticketDate: now,
                                 currentStatus: "New",
+                                itPriority: validPriority,
                                 requestedPriority:
                                     validPriority,
                                 summary:

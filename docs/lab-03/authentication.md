@@ -75,25 +75,33 @@ introduced here.
   local access; production requires one HTTPS origin. No credentialed CORS is
   enabled. Proxy trust must not be broadly enabled without a deployment decision.
 
-## Issue 3 integration boundary
+## Issue #34 authenticated requester boundary
 
-`requireAuthentication` establishes `req.auth` from the session;
-`requirePasswordChanged` blocks normal access until a password is changed. Apply
-both to future protected routes, then enforce role and ownership there.
+Issue #34 replaces the transitional guardLegacySession and requester-header path.
+requireAuthentication and requirePasswordChanged protect normal APIs; requireRoles
+uses only req.auth.user.role. Both /api/tickets and retained /api/v1/tickets aliases
+use the current authenticated User for ownership, including attachment actions.
+Client headers, query parameters and body requesterId/role values cannot select an
+identity. The Development Requester list route and client selector are removed.
+Public Lab 1 health/category diagnostics remain public.
 
-The existing `/api/v1` routes still use requesterContext when no session cookie
-is supplied. When a session is supplied it must be valid, active, and past the
-required password change. A supplied Development Requester header is rejected
-unless it matches that authenticated user and the user's current role is
-REQUESTER. This rejects conflicting identity rather than converting legacy
-handlers to session-based ownership. Invalid/restricted sessions never fall
-through to the cookie-less branch in the same request.
+The forward 20260920000000_requester_authorization migration retargets Ticket,
+Attachment removal actor and TicketEvent actor foreign keys to User while retaining
+IDs and data. It copies any legacy identities added after Issue #32, without
+updating existing credentials or roles. Normalized-email collisions fail rather
+than merging identities. DevelopmentRequester remains historical/seed data only.
+The migration also adds PublicComment, problemAppearsResolvedAt and initial
+itPriority copied from requestedPriority. No working database reset is needed.
 
-This is a transitional compatibility guard, not the
-completed Lab 3 requester authorization layer. Issue 3 must remove the cookie-less
-identity path, replace header-selected ownership, and integrate the authenticated
-requester UI/navigation. No production protection claim is made for the legacy
-cookie-less endpoints in this intermediate branch.
+Requester Public Comments are separate from private staff communication and use
+explicit safe selects. Internal Notes and all staff/admin feature handlers remain
+outside this issue; their namespaces enforce role gates before the safe not-found
+fallback. Repeated/concurrent Problem Appears Resolved requests return 409 using
+a conditional update, without granting formal status authority.
+
+The client now uses /api/auth/me, login, change-password and logout, with role
+navigation and no locally selected requester identity. See tests.md for the
+Issue #34 authorization/regression verification results.
 
 ## Verification
 

@@ -28,6 +28,7 @@ vi.mock("../../src/api.js", async () => {
     return {
         ...actual,
         getTicketDetail: vi.fn(),
+        getComments: vi.fn().mockResolvedValue([]),
     };
 });
 
@@ -121,9 +122,9 @@ describe("Feature-F: Ticket Detail UI", () => {
             )
         ).toBeNull();
 
-        expect(
-            container.querySelector("textarea")
-        ).toBeNull();
+        // The only editable text is the Lab 3 Public Comment; ticket fields stay read-only.
+        expect(container.querySelectorAll("textarea")).toHaveLength(1);
+        expect(container.querySelector("textarea")).toBe(screen.getByLabelText("Comment"));
 
         expect(
             container.querySelector("select")
@@ -244,8 +245,8 @@ describe("Feature-F: Ticket Detail UI", () => {
         });
 
         expect(
-            screen.queryByText(/Public Comments/i)
-        ).not.toBeInTheDocument();
+            screen.getByRole("heading", {name: "Public Comments"})
+        ).toBeInTheDocument();
 
         expect(
             screen.queryByText(/Internal Notes/i)
