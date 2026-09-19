@@ -8,6 +8,7 @@ import MyTicketsScreen from "./components/MyTicketsScreen.js";
 import TicketDetailScreen from "./components/TicketDetailScreen.js";
 import StaffTicketQueueScreen from "./components/StaffTicketQueueScreen.js";
 import StaffTicketDetailScreen from "./components/StaffTicketDetailScreen.js";
+import UserManagementScreen from "./components/UserManagementScreen.js";
 import "./theme.css";
 
 export default function App() {
@@ -96,7 +97,7 @@ export default function App() {
 
     {path === "/admin/users" &&
         user.role === "ADMINISTRATOR" && (
-            <p>User Management is not available yet.</p>
+            <UserManagementScreen currentUser={user} />
         )}
 
     {(path.startsWith("/tickets") ||
