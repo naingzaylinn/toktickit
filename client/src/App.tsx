@@ -6,7 +6,9 @@ import SystemDiagnostic from "./components/SystemDiagnostic.js";
 import CreateTicketScreen from "./components/CreateTicketScreen.js";
 import MyTicketsScreen from "./components/MyTicketsScreen.js";
 import TicketDetailScreen from "./components/TicketDetailScreen.js";
+import StaffTicketQueueScreen from "./components/StaffTicketQueueScreen.js";
 import "./theme.css";
+
 export default function App() {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
@@ -76,7 +78,59 @@ export default function App() {
  {path === "/tickets/new" && <CreateTicketScreen currentRequester={user} onCreated={ticket => navigate("/tickets/" + ticket.id)} onCancel={() => navigate("/tickets")}/>}
  {path.startsWith("/tickets/") && path !== "/tickets/new" && <TicketDetailScreen key={user.id + path} currentRequester={user} ticketId={path.slice(9)} onBack={() => navigate("/tickets")}/>}
  {!path.startsWith("/tickets") && path !== "/" && path !== "/login" && <p role="alert">This page is not available for your role.</p>}
- </> : <p>{path.startsWith("/tickets") || (path.startsWith("/admin") && user.role !== "ADMINISTRATOR") ? "This page is not available for your role." : "This page is not available yet."}</p>}
+ </> : <>
+    {(path === "/staff/tickets" ||
+        path === "/" ||
+        path === "/login") && (
+        <StaffTicketQueueScreen
+            onOpenTicket={(id) =>
+                navigate("/staff/tickets/" + id)
+            }
+        />
+    )}
+
+    {path.startsWith("/staff/tickets/") && (
+        <div className="zen-card p-4">
+            <h1 className="h4 fw-bold text-primary-green mb-2">
+                Ticket Detail
+            </h1>
+
+            <p className="text-secondary mb-3">
+                Staff Ticket Detail will be available in the next
+                implementation step.
+            </p>
+
+            <button
+                type="button"
+                className="btn btn-outline-primary-green"
+                onClick={() => navigate("/staff/tickets")}
+            >
+                Back to Ticket Queue
+            </button>
+        </div>
+    )}
+
+    {path === "/admin/users" &&
+        user.role === "ADMINISTRATOR" && (
+            <p>User Management is not available yet.</p>
+        )}
+
+    {(path.startsWith("/tickets") ||
+        (path.startsWith("/admin") &&
+            user.role !== "ADMINISTRATOR")) && (
+        <p role="alert">
+            This page is not available for your role.
+        </p>
+    )}
+
+    {!path.startsWith("/staff/tickets") &&
+        !path.startsWith("/tickets") &&
+        path !== "/" &&
+        path !== "/login" &&
+        path !== "/admin/users" && (
+            <p>This page is not available yet.</p>
+        )}
+</>}
  </AppShell>}
  <SystemDiagnostic />
  </>;
