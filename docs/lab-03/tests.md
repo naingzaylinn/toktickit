@@ -525,6 +525,15 @@ Primary traceability is based on:
 
 # 24. Responsive and Visual Tests
 
+The focused browser checks in `client/e2e/lab-03/responsive.spec.ts` exercise
+375px, 768px, and 1280px viewports. They assert visible authentication,
+Requester, IT Staff, and Administrator controls, usable role navigation,
+active navigation semantics, and no document-level horizontal overflow.
+These are automated responsive and accessibility-oriented assertions. Visual
+judgment of spacing, typography, contrast, focus appearance, zoom behavior,
+and all detail/form states still requires manual inspection; the VIS checklist
+below remains a manual checklist rather than a claim of automated coverage.
+
 These checks apply to:
 
 - Login
