@@ -530,3 +530,150 @@ export interface PublicComment { id: string; ticketId: string; content: string; 
 export const getComments = (id: string) => sessionRequest<PublicComment[]>("/api/tickets/"+encodeURIComponent(id)+"/comments");
 export const postComment = (id: string, content: string) => sessionRequest<PublicComment>("/api/tickets/"+encodeURIComponent(id)+"/comments", {content});
 export const indicateResolved = (id: string) => sessionRequest<{ticketId:string; problemAppearsResolvedAt:string}>("/api/tickets/"+encodeURIComponent(id)+"/problem-appears-resolved", {});
+
+
+// ---------------------------------------------------------------------------
+// Lab 3 — Staff Ticket Queue
+// ---------------------------------------------------------------------------
+
+export type StaffTicketStatus =
+  | "NEW"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_REQUESTER"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED"
+  | "CANCELLED";
+
+export type StaffTicketPriority =
+  | "LOW"
+  | "MEDIUM"
+  | "HIGH"
+  | "URGENT";
+
+export type StaffTicketSort =
+  | "ticketNumber"
+  | "createdAt"
+  | "updatedAt"
+  | "status"
+  | "requestedPriority"
+  | "itPriority";
+
+export type StaffTicketOrder = "asc" | "desc";
+
+export interface StaffTicketQueueItem {
+  id: string;
+  ticketNumber: string;
+  summary: string;
+
+  category: {
+    id: number;
+    name: string;
+  };
+
+  requester: {
+    id: string;
+    name: string;
+    email: string;
+  };
+
+  requestedPriority: StaffTicketPriority;
+  itPriority: StaffTicketPriority;
+  status: StaffTicketStatus;
+
+  owner: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffTicketQueueMeta {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface StaffTicketQueueResponse {
+  data: StaffTicketQueueItem[];
+  meta: StaffTicketQueueMeta;
+}
+
+export interface StaffTicketQueueQuery {
+  search?: string;
+  status?: StaffTicketStatus;
+  requestedPriority?: StaffTicketPriority;
+  itPriority?: StaffTicketPriority;
+  owner?: "assigned" | "unassigned" | string;
+  sort?: StaffTicketSort;
+  order?: StaffTicketOrder;
+  page?: number;
+  pageSize?: 10 | 20 | 50;
+}
+
+export async function getStaffTickets(
+  query: StaffTicketQueueQuery = {}
+): Promise<StaffTicketQueueResponse> {
+  const params = new URLSearchParams();
+
+  if (query.search) {
+    params.set("search", query.search);
+  }
+
+  if (query.status) {
+    params.set("status", query.status);
+  }
+
+  if (query.requestedPriority) {
+    params.set("requestedPriority", query.requestedPriority);
+  }
+
+  if (query.itPriority) {
+    params.set("itPriority", query.itPriority);
+  }
+
+  if (query.owner) {
+    params.set("owner", query.owner);
+  }
+
+  if (query.sort) {
+    params.set("sort", query.sort);
+  }
+
+  if (query.order) {
+    params.set("order", query.order);
+  }
+
+  if (query.page !== undefined) {
+    params.set("page", String(query.page));
+  }
+
+  if (query.pageSize !== undefined) {
+    params.set("pageSize", String(query.pageSize));
+  }
+
+  const queryString = params.toString();
+
+  const res = await fetch(
+    `/api/staff/tickets${queryString ? `?${queryString}` : ""}`,
+    {
+      headers: {
+        Accept: "application/json",
+      },
+    }
+  );
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Unable to load the staff ticket queue."
+    );
+  }
+
+  return res.json();
+}
