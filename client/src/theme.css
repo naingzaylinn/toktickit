@@ -153,3 +153,17 @@ input:focus-visible {
   background-color: #F5F7F6;
   border-color: #C9D3CD;
 }
+
+.auth-layout { min-height: 100vh; display: grid; place-items: center; }
+.auth-card { max-width: 520px; }
+.auth-card .btn { min-height: 44px; }
+.staff-ticket-queue-screen .zen-card,
+.user-management-screen .zen-card { min-width: 0; overflow-wrap: anywhere; }
+.staff-ticket-queue-screen .table-responsive { max-width: 100%; }
+.nav-link[aria-current="page"] { border-bottom: 2px solid var(--color-primary-green); }
+textarea:focus-visible, .form-control:focus-visible, .form-select:focus-visible, .form-check-input:focus-visible { outline: 2px solid var(--color-secondary-green); outline-offset: 2px; }
+@media (max-width: 575.98px) {
+  .staff-ticket-queue-screen .btn-group { display: flex; flex-wrap: wrap; }
+  .staff-ticket-queue-screen .btn-group > .btn { min-height: 44px; }
+  .navbar-collapse.show .nav-link, .navbar-collapse.show .btn { min-height: 44px; display: flex; align-items: center; }
+}

@@ -15,6 +15,9 @@ export const AppShell: React.FC<AppShellProps> = ({
   children,
 }) => {
   const [navOpen, setNavOpen] = useState(false);
+  const isCurrent = (path: string) => activePath === path ||
+    (path === "/tickets" && activePath.startsWith("/tickets/") && activePath !== "/tickets/new") ||
+    (path === "/staff/tickets" && activePath.startsWith("/staff/tickets/"));
 
   return (
     <div className="d-flex flex-column min-vh-100" style={{ backgroundColor: "#F5F7F6" }}>
@@ -57,7 +60,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           >
             {/* Links */}
             <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-              {(currentUser.role === "REQUESTER" ? [["/tickets", "My Tickets"], ["/tickets/new", "Create Ticket"]] : currentUser.role === "ADMINISTRATOR" ? [["/staff/tickets", "Ticket Queue"], ["/admin/users", "User Management"]] : [["/staff/tickets", "Ticket Queue"]]).map(([path,label]) => <li className="nav-item" key={path}><a className={"nav-link px-3 " + (activePath===path?"active fw-bold text-primary-green":"text-secondary")} href={path} onClick={e=>{e.preventDefault();window.history.pushState({},"",path);window.dispatchEvent(new PopStateEvent("popstate"));setNavOpen(false);}}>{label}</a></li>)}
+              {(currentUser.role === "REQUESTER" ? [["/tickets", "My Tickets"], ["/tickets/new", "Create Ticket"]] : currentUser.role === "ADMINISTRATOR" ? [["/staff/tickets", "Ticket Queue"], ["/admin/users", "User Management"]] : [["/staff/tickets", "Ticket Queue"]]).map(([path,label]) => <li className="nav-item" key={path}><a aria-current={isCurrent(path) ? "page" : undefined} className={"nav-link px-3 " + (isCurrent(path) ? "active fw-bold text-primary-green" : "text-secondary")} href={path} onClick={e=>{e.preventDefault();window.history.pushState({},"",path);window.dispatchEvent(new PopStateEvent("popstate"));setNavOpen(false);}}>{label}</a></li>)}
             </ul>
 
             {/* Authenticated identity and logout */}

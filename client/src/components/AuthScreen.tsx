@@ -40,11 +40,11 @@ export default function AuthScreen({ user, onAuthenticated, onLogout }: {
             setBusy(false);
         }
     }
-    return <main className="container py-5" style={{ maxWidth: 520 }}><h1>TokTickIT</h1><h2>{user ? "Change Password" : "Login"}</h2><form onSubmit={submit}>
+    return <main className="auth-layout px-3 py-4"><div className="zen-card auth-card p-4 p-sm-5 w-100"><p className="fw-bold text-primary-green mb-2">TokTickIT</p><h1 className="h3 mb-2">{user ? "Change Password" : "Login"}</h1><p className="text-secondary mb-4">{user ? "Choose a new password to continue to TokTickIT." : "Sign in to access your tickets."}</p><form onSubmit={submit} aria-busy={busy}>
  {!user && <label className="d-block mb-3">Email<input className="form-control" type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)}/></label>}
  <label className="d-block mb-3">{user ? "Current Password" : "Password"}<input className="form-control" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)}/></label>
  {user && <><label className="d-block mb-3">New Password<input className="form-control" type="password" autoComplete="new-password" required value={next} onChange={e => setNext(e.target.value)}/></label><label className="d-block mb-3">Confirm New Password<input className="form-control" type="password" autoComplete="new-password" required value={confirm} onChange={e => setConfirm(e.target.value)}/></label></>}
- {error && <p role="alert">{error}</p>}<button className="btn btn-primary-green" disabled={busy}>{busy ? "Saving..." : user ? "Change Password" : "Login"}</button>
+ {error && <p role="alert" className="alert alert-danger">{error}</p>}<button className="btn btn-primary-green" disabled={busy}>{busy ? (user ? "Saving..." : "Signing in...") : user ? "Change Password" : "Login"}</button>
  {user && <button type="button" className="btn btn-link" onClick={onLogout}>Logout</button>}
- </form></main>;
+ </form></div></main>;
 }
