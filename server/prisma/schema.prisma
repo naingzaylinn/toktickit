@@ -78,6 +78,7 @@ model Ticket {
   itPriority               RequestedPriority @default(Medium)
   problemAppearsResolvedAt DateTime?
   publicComments           PublicComment[]
+  internalNotes            InternalNote[]
 
   attachments Attachment[]
   events      TicketEvent[]
@@ -172,6 +173,7 @@ model User {
   removedAttachments Attachment[]    @relation("AttachmentRemovedBy")
   ticketEvents       TicketEvent[]   @relation("TicketEventActor")
   publicComments     PublicComment[]
+  internalNotes      InternalNote[]
 }
 
 model Session {
@@ -194,6 +196,18 @@ model LoginAttempt {
 }
 
 model PublicComment {
+  id        String   @id @default(uuid())
+  ticketId  String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+}
+
+model InternalNote {
   id        String   @id @default(uuid())
   ticketId  String
   authorId  String

@@ -7,6 +7,7 @@ import CreateTicketScreen from "./components/CreateTicketScreen.js";
 import MyTicketsScreen from "./components/MyTicketsScreen.js";
 import TicketDetailScreen from "./components/TicketDetailScreen.js";
 import StaffTicketQueueScreen from "./components/StaffTicketQueueScreen.js";
+import StaffTicketDetailScreen from "./components/StaffTicketDetailScreen.js";
 import "./theme.css";
 
 export default function App() {
@@ -90,24 +91,7 @@ export default function App() {
     )}
 
     {path.startsWith("/staff/tickets/") && (
-        <div className="zen-card p-4">
-            <h1 className="h4 fw-bold text-primary-green mb-2">
-                Ticket Detail
-            </h1>
-
-            <p className="text-secondary mb-3">
-                Staff Ticket Detail will be available in the next
-                implementation step.
-            </p>
-
-            <button
-                type="button"
-                className="btn btn-outline-primary-green"
-                onClick={() => navigate("/staff/tickets")}
-            >
-                Back to Ticket Queue
-            </button>
-        </div>
+        <StaffTicketDetailScreen key={path} ticketId={path.slice("/staff/tickets/".length)} currentUser={user} onBack={() => navigate("/staff/tickets")} />
     )}
 
     {path === "/admin/users" &&
