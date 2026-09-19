@@ -531,6 +531,28 @@ export const getComments = (id: string) => sessionRequest<PublicComment[]>("/api
 export const postComment = (id: string, content: string) => sessionRequest<PublicComment>("/api/tickets/"+encodeURIComponent(id)+"/comments", {content});
 export const indicateResolved = (id: string) => sessionRequest<{ticketId:string; problemAppearsResolvedAt:string}>("/api/tickets/"+encodeURIComponent(id)+"/problem-appears-resolved", {});
 
+export interface StaffTicketDetail extends StaffTicketQueueItem {
+  description: string;
+  ticketDate: string;
+  relatedSystem: { id: string; name: string };
+  problemAppearsResolvedAt: string | null;
+  attachments: { id: string; originalFilename: string; mimeType: string; sizeBytes: number; createdAt: string }[];
+  publicComments: PublicComment[];
+  internalNotes: PublicComment[];
+}
+export interface EligibleOwner { id: string; name: string; role: "IT_STAFF" | "ADMINISTRATOR" }
+async function staffRequest<T>(path: string, method: "GET" | "PATCH" | "POST" = "GET", body?: unknown): Promise<T> {
+  const res = await fetch(path, { method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  if (!res.ok) throw await readApiError(res, "Unable to complete the request.");
+  return (await res.json()).data;
+}
+export const getStaffTicket = (id: string) => staffRequest<StaffTicketDetail>("/api/staff/tickets/" + encodeURIComponent(id));
+export const getEligibleOwners = () => staffRequest<EligibleOwner[]>("/api/staff/tickets/owners");
+export const updateStaffOwner = (id: string, ownerId: string | null) => staffRequest<{ owner: StaffTicketDetail["owner"] }>("/api/staff/tickets/" + encodeURIComponent(id) + "/owner", "PATCH", { ownerId });
+export const updateStaffPriority = (id: string, itPriority: StaffTicketPriority) => staffRequest<{ itPriority: StaffTicketPriority }>("/api/staff/tickets/" + encodeURIComponent(id) + "/priority", "PATCH", { itPriority });
+export const updateStaffStatus = (id: string, status: StaffTicketStatus) => staffRequest<{ status: StaffTicketStatus }>("/api/staff/tickets/" + encodeURIComponent(id) + "/status", "PATCH", { status });
+export const postInternalNote = (id: string, content: string) => staffRequest<PublicComment>("/api/staff/tickets/" + encodeURIComponent(id) + "/notes", "POST", { content });
+
 
 // ---------------------------------------------------------------------------
 // Lab 3 — Staff Ticket Queue

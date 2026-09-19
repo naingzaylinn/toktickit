@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { getPrisma } from "../prisma.js";
-import { requireRequester } from "../middleware/requesterContext.js";
 import { authError, authServerError } from "../services/authErrors.js";
 export const requesterActionsRouter = Router();
 const commentSelect = {
@@ -8,12 +7,14 @@ const commentSelect = {
     author: { select: { id: true, name: true, role: true } },
 } as const;
 // Explicit public DTO: private staff communication is never queried or serialized.
-requesterActionsRouter.use(requireRequester);
+const commentTicketWhere = (req: import("express").Request) => req.auth!.user.role === "REQUESTER"
+    ? { id: req.params.ticketId, requesterId: req.auth!.user.id }
+    : { id: req.params.ticketId };
 requesterActionsRouter.route("/:ticketId/comments")
     .get(async (req, res) => {
     try {
         const prisma = getPrisma();
-        const ticket = await prisma.ticket.findFirst({ where: { id: req.params.ticketId, requesterId: req.auth!.user.id }, select: { id: true } });
+        const ticket = await prisma.ticket.findFirst({ where: commentTicketWhere(req), select: { id: true } });
         if (!ticket)
             return authError(res, 404, "TICKET_NOT_FOUND", "The requested ticket was not found.");
         const comments = await prisma.publicComment.findMany({ where: { ticketId: ticket.id }, select: commentSelect, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
@@ -26,7 +27,7 @@ requesterActionsRouter.route("/:ticketId/comments")
     .post(async (req, res) => {
     try {
         const prisma = getPrisma();
-        const ticket = await prisma.ticket.findFirst({ where: { id: req.params.ticketId, requesterId: req.auth!.user.id }, select: { id: true } });
+        const ticket = await prisma.ticket.findFirst({ where: commentTicketWhere(req), select: { id: true } });
         if (!ticket)
             return authError(res, 404, "TICKET_NOT_FOUND", "The requested ticket was not found.");
         const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
@@ -39,7 +40,10 @@ requesterActionsRouter.route("/:ticketId/comments")
         authServerError(res);
     }
 });
-requesterActionsRouter.post("/:ticketId/problem-appears-resolved", async (req, res) => {
+requesterActionsRouter.post("/:ticketId/problem-appears-resolved", (req, res, next) => {
+    if (req.auth!.user.role !== "REQUESTER") return authError(res, 403, "FORBIDDEN", "You are not permitted to perform this operation.");
+    next();
+}, async (req, res) => {
     try {
         const prisma = getPrisma();
         const where = { id: req.params.ticketId, requesterId: req.auth!.user.id };
