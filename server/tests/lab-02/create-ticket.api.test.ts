@@ -1,3 +1,4 @@
+import {requesterCookie} from "../lab-03/sessionFixture.js";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import request from "supertest";
 import { randomUUID } from "node:crypto";
@@ -74,7 +75,7 @@ describe("Feature-D: Create Ticket API", () => {
 
         const res = await request(app)
             .post("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID)
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send(payload);
 
         expect(res.status).toBe(201);
@@ -104,14 +105,14 @@ describe("Feature-D: Create Ticket API", () => {
     });
 
     // API-016
-    it("API-016: requester identity comes from header, not request body", async () => {
+    it("API-016: requester identity comes from session, not request body", async () => {
         const payload = validPayload({
             requesterId: BOB_ID,
         });
 
         const res = await request(app)
             .post("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID)
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send(payload);
 
         expect(res.status).toBe(201);
@@ -136,14 +137,14 @@ describe("Feature-D: Create Ticket API", () => {
 
         const first = await request(app)
             .post("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID)
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send(payload);
 
         expect(first.status).toBe(201);
 
         const second = await request(app)
             .post("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID)
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send(payload);
 
         expect(second.status).toBe(200);
@@ -174,7 +175,7 @@ describe("Feature-D: Create Ticket API", () => {
 
         const first = await request(app)
             .post("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID)
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send(firstPayload);
 
         expect(first.status).toBe(201);
@@ -186,7 +187,7 @@ describe("Feature-D: Create Ticket API", () => {
 
         const second = await request(app)
             .post("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID)
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send(conflictingPayload);
 
         expect(second.status).toBe(409);
@@ -206,10 +207,10 @@ describe("Feature-D: Create Ticket API", () => {
 
     // API-019
     it("API-019: concurrent ticket creation generates unique ticket numbers", async () => {
-        const requests = Array.from({ length: 5 }, () =>
+        const requests = Array.from({ length: 5 }, async () =>
             request(app)
                 .post("/api/v1/tickets")
-                .set("X-Development-Requester-Id", ALICE_ID)
+                .set("Cookie", await requesterCookie(ALICE_ID))
                 .send(validPayload())
         );
 
@@ -235,7 +236,7 @@ describe("Feature-D: Create Ticket API", () => {
     it("API-020: rejects Summary shorter than 5 characters", async () => {
         const res = await request(app)
             .post("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID)
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send(
                 validPayload({
                     summary: "abc",
@@ -258,7 +259,7 @@ describe("Feature-D: Create Ticket API", () => {
     it("API-021: rejects Description shorter than 10 characters", async () => {
         const res = await request(app)
             .post("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID)
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send(
                 validPayload({
                     description: "short",
@@ -281,7 +282,7 @@ describe("Feature-D: Create Ticket API", () => {
     it("API-022: trims Summary and Description before storing", async () => {
         const res = await request(app)
             .post("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID)
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send(
                 validPayload({
                     summary: "   VPN connection problem   ",
@@ -319,7 +320,7 @@ describe("Feature-D: Create Ticket API", () => {
         try {
             const res = await request(app)
                 .post("/api/v1/tickets")
-                .set("X-Development-Requester-Id", ALICE_ID)
+                .set("Cookie", await requesterCookie(ALICE_ID))
                 .send(
                     validPayload({
                         categoryId: software.id,
@@ -352,7 +353,7 @@ describe("Feature-D: Create Ticket API", () => {
         try {
             const res = await request(app)
                 .post("/api/v1/tickets")
-                .set("X-Development-Requester-Id", ALICE_ID)
+                .set("Cookie", await requesterCookie(ALICE_ID))
                 .send(
                     validPayload({
                         relatedSystemId: inactiveSystem.id,
@@ -372,14 +373,14 @@ describe("Feature-D: Create Ticket API", () => {
         }
     });
 
-    it("rejects missing requester header", async () => {
+    it("rejects missing authenticated session", async () => {
         const res = await request(app)
             .post("/api/v1/tickets")
             .send(validPayload());
 
-        expect(res.status).toBe(400);
+        expect(res.status).toBe(401);
         expect(res.body.error.code).toBe(
-            "MISSING_REQUESTER_HEADER"
+            "AUTHENTICATION_REQUIRED"
         );
     });
 });

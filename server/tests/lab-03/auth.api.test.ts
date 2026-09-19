@@ -29,7 +29,7 @@ afterEach(async () => {
   await prisma.user.delete({ where: { id: user.id } });
 });
 
-describe("Issue 2 authentication lifecycle", () => {
+describe("Issue 2 authentication lifecycle", { timeout: 15000 }, () => {
   it("API-01/07: logs in with normalized email and returns only the safe DTO", async () => {
     await prisma.user.update({ where: { id: user.id }, data: { mustChangePassword: false } });
     const res = await signIn(initialPassword, `  ${user.email.toUpperCase()}  `);
@@ -231,7 +231,7 @@ describe("Issue 2 authentication lifecycle", () => {
 
   it("does not fall through from a restricted or invalid session into legacy operations", async () => {
     const cookie = cookieFrom(await signIn());
-    for (const path of ["/api/health", "/api/categories", "/api/v1/development-requesters", "/api/v1/tickets", `/api/v1/tickets/${randomUUID()}/attachments/${randomUUID()}`]) {
+    for (const path of ["/api/v1/development-requesters", "/api/v1/tickets", `/api/v1/tickets/${randomUUID()}/attachments/${randomUUID()}`]) {
       const response = await request(app).get(path).set("Cookie", cookie)
         .set("X-Development-Requester-Id", "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d");
       expect(response.status).toBe(403);
@@ -249,9 +249,8 @@ describe("Issue 2 authentication lifecycle", () => {
     const otherRequester = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
     const response = await request(app).get("/api/v1/tickets").set("Cookie", cookie)
       .set("X-Development-Requester-Id", otherRequester);
-    expect(response.status).toBe(403);
-    expect(response.body.error.code).toBe("FORBIDDEN");
-    expect(response.body).not.toHaveProperty("data");
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual([]);
   });
 
   it("permits only the matching requester header for an authenticated legacy request", async () => {

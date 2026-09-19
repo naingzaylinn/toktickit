@@ -1,3 +1,4 @@
+import {requesterCookie} from "../lab-03/sessionFixture.js";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import request from "supertest";
 import { randomUUID } from "node:crypto";
@@ -99,7 +100,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const res = await request(app)
             .get("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(1);
@@ -127,7 +128,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const res = await request(app)
             .get("/api/v1/tickets?q=tkt-2026-00001")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(1);
@@ -150,7 +151,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const bySummary = await request(app)
             .get("/api/v1/tickets?q=vpn")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(bySummary.status).toBe(200);
         expect(bySummary.body.data).toHaveLength(1);
@@ -158,7 +159,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const byDescription = await request(app)
             .get("/api/v1/tickets?q=globalprotect")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(byDescription.status).toBe(200);
         expect(byDescription.body.data).toHaveLength(1);
@@ -183,7 +184,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const res = await request(app)
             .get(`/api/v1/tickets?categoryId=${hardwareId}`)
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(1);
@@ -206,7 +207,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const res = await request(app)
             .get(`/api/v1/tickets?relatedSystemId=${vpnId}`)
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(1);
@@ -229,7 +230,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const res = await request(app)
             .get("/api/v1/tickets?requestedPriority=High")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(1);
@@ -245,7 +246,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const res = await request(app)
             .get("/api/v1/tickets?currentStatus=New")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(1);
@@ -279,7 +280,7 @@ describe("Feature-E: My Tickets API", () => {
             .get(
                 `/api/v1/tickets?categoryId=${hardwareId}&requestedPriority=High`
             )
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(1);
@@ -302,7 +303,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const res = await request(app)
             .get(`/api/v1/tickets?q=vpn&categoryId=${hardwareId}`)
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(1);
@@ -334,7 +335,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const res = await request(app)
             .get("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
 
@@ -374,7 +375,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const oldest = await request(app)
             .get("/api/v1/tickets?sortBy=oldest")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(
             oldest.body.data.map(
@@ -388,7 +389,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const recentlyUpdated = await request(app)
             .get("/api/v1/tickets?sortBy=recentlyUpdated")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(
             recentlyUpdated.body.data.map(
@@ -402,7 +403,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const ticketNumberAsc = await request(app)
             .get("/api/v1/tickets?sortBy=ticketNumberAsc")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(
             ticketNumberAsc.body.data.map(
@@ -429,7 +430,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const res = await request(app)
             .get("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(10);
@@ -455,7 +456,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const size20 = await request(app)
             .get("/api/v1/tickets?pageSize=20")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(size20.status).toBe(200);
         expect(size20.body.data).toHaveLength(20);
@@ -463,7 +464,7 @@ describe("Feature-E: My Tickets API", () => {
 
         const size50 = await request(app)
             .get("/api/v1/tickets?pageSize=50")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(size50.status).toBe(200);
         expect(size50.body.data).toHaveLength(25);
@@ -484,7 +485,7 @@ describe("Feature-E: My Tickets API", () => {
         for (const query of invalidQueries) {
             const res = await request(app)
                 .get(`/api/v1/tickets?${query}`)
-                .set("X-Development-Requester-Id", ALICE_ID);
+                .set("Cookie", await requesterCookie(ALICE_ID));
 
             expect(res.status).toBe(400);
             expect(res.body.error.code).toBe("INVALID_QUERY_PARAMS");
@@ -495,7 +496,7 @@ describe("Feature-E: My Tickets API", () => {
     it("returns empty result pagination when requester has no tickets", async () => {
         const res = await request(app)
             .get("/api/v1/tickets")
-            .set("X-Development-Requester-Id", ALICE_ID);
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
 

@@ -292,7 +292,6 @@ describe("Feature-E: My Tickets UI", () => {
 
         await waitFor(() => {
             expect(getMyTickets).toHaveBeenCalledWith(
-                requester.id,
                 expect.objectContaining({
                     categoryId: 2,
                     page: 1,
@@ -342,7 +341,6 @@ describe("Feature-E: My Tickets UI", () => {
         });
 
         expect(getMyTickets).toHaveBeenCalledWith(
-            requester.id,
             expect.objectContaining({
                 q: "vpn",
                 page: 1,

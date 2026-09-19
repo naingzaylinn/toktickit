@@ -1,3 +1,4 @@
+import {requesterCookie} from "../lab-03/sessionFixture.js";
 import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { randomUUID } from "node:crypto";
@@ -79,10 +80,7 @@ describe("Feature-G: Attachment Upload API", () => {
             .post(
                 `/api/v1/tickets/${ticketId}/attachments`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .attach(
                 "files",
                 pngBuffer,
@@ -126,10 +124,7 @@ describe("Feature-G: Attachment Upload API", () => {
             .post(
                 `/api/v1/tickets/${ticketId}/attachments`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .attach(
                 "files",
                 Buffer.from("hello"),
@@ -162,10 +157,7 @@ describe("Feature-G: Attachment Upload API", () => {
             .post(
                 `/api/v1/tickets/${ticketId}/attachments`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .attach(
                 "files",
                 oversized,
@@ -190,10 +182,7 @@ describe("Feature-G: Attachment Upload API", () => {
             .post(
                 `/api/v1/tickets/${ticketId}/attachments`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .attach(
                 "files",
                 pdfBuffer,
@@ -232,10 +221,7 @@ describe("Feature-G: Attachment Upload API", () => {
             .post(
                 `/api/v1/tickets/${ticketId}/attachments`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .attach(
                 "files",
                 pngBuffer,
@@ -285,10 +271,7 @@ describe("Feature-G: Attachment Upload API", () => {
             .post(
                 `/api/v1/tickets/${ticketId}/attachments`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .attach(
                 "files",
                 pngBuffer,
@@ -356,10 +339,7 @@ describe("Feature-G: Attachment Upload API", () => {
             .post(
                 `/api/v1/tickets/${ticketId}/attachments`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .attach(
                 "files",
                 pngBuffer,

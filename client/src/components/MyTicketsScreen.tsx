@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-    DevelopmentRequester,
+    RequesterIdentity,
     getMyTickets,
     getRelatedSystems,
     getTicketCategories,
@@ -18,7 +18,7 @@ import LoadingSpinner from "./common/LoadingSpinner.js";
 import StatusBadge from "./common/StatusBadge.js";
 
 interface MyTicketsScreenProps {
-    currentRequester: DevelopmentRequester;
+    currentRequester: RequesterIdentity;
     onCreateTicket: () => void;
     onOpenTicket: (ticketId: string) => void;
 }
@@ -115,8 +115,8 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
 
             try {
                 const [categoryData, systemData] = await Promise.all([
-                    getTicketCategories(currentRequester.id),
-                    getRelatedSystems(currentRequester.id),
+                    getTicketCategories(),
+                    getRelatedSystems(),
                 ]);
 
                 setCategories(categoryData);
@@ -139,7 +139,6 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
 
         try {
             const response = await getMyTickets(
-                currentRequester.id,
                 query
             );
 

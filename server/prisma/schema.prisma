@@ -62,9 +62,13 @@ model Ticket {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  requester     DevelopmentRequester @relation(fields: [requesterId], references: [id])
+  requester     User @relation(fields: [requesterId], references: [id])
   category      Category             @relation(fields: [categoryId], references: [id])
   relatedSystem RelatedSystem        @relation(fields: [relatedSystemId], references: [id])
+
+  itPriority RequestedPriority @default(Medium)
+  problemAppearsResolvedAt DateTime?
+  publicComments PublicComment[]
 
   attachments Attachment[]
   events      TicketEvent[]
@@ -91,7 +95,7 @@ model Attachment {
   updatedAt            DateTime  @updatedAt
 
   ticket             Ticket                @relation(fields: [ticketId], references: [id])
-  removedByRequester DevelopmentRequester? @relation("AttachmentRemovedBy", fields: [removedByRequesterId], references: [id])
+  removedByRequester User? @relation("AttachmentRemovedBy", fields: [removedByRequesterId], references: [id])
   events             TicketEvent[]
 
   @@index([ticketId])
@@ -110,7 +114,7 @@ model TicketEvent {
 
   ticket         Ticket                @relation(fields: [ticketId], references: [id])
   attachment     Attachment?           @relation(fields: [attachmentId], references: [id])
-  actorRequester DevelopmentRequester? @relation("TicketEventActor", fields: [actorRequesterId], references: [id])
+  actorRequester User? @relation("TicketEventActor", fields: [actorRequesterId], references: [id])
 
   @@index([ticketId])
   @@index([attachmentId])
@@ -133,10 +137,7 @@ model DevelopmentRequester {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tickets Ticket[]
 
-  removedAttachments Attachment[]  @relation("AttachmentRemovedBy")
-  ticketEvents       TicketEvent[] @relation("TicketEventActor")
 }
 
 enum Role {
@@ -157,6 +158,11 @@ model User {
   updatedAt          DateTime  @updatedAt
 
   sessions Session[]
+  tickets Ticket[]
+
+  removedAttachments Attachment[]  @relation("AttachmentRemovedBy")
+  ticketEvents       TicketEvent[] @relation("TicketEventActor")
+  publicComments PublicComment[]
 }
 
 model Session {
@@ -176,4 +182,15 @@ model Session {
 model LoginAttempt {
   key      String     @id
   failures DateTime[]
+}
+
+model PublicComment {
+  id String @id @default(uuid())
+  ticketId String
+  authorId String
+  content String
+  createdAt DateTime @default(now())
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User @relation(fields: [authorId], references: [id])
+  @@index([ticketId, createdAt])
 }

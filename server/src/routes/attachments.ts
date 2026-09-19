@@ -3,7 +3,7 @@ import multer from "multer";
 import { randomUUID } from "node:crypto";
 
 import { getPrisma } from "../prisma.js";
-import { requireDevelopmentRequester } from "../middleware/requesterContext.js";
+import { requireRequester } from "../middleware/requesterContext.js";
 import {
     MAX_ACTIVE_ATTACHMENTS,
     validateAttachmentFile,
@@ -99,18 +99,18 @@ async function findOwnedTicket(
 // ---------------------------------------------------------------------------
 attachmentsRouter.post(
     "/",
-    requireDevelopmentRequester,
+    requireRequester,
     upload.array("files", 10),
     async (req: Request, res: Response) => {
-        const requester = req.requester;
+        const requester = req.auth?.user;
         const { ticketId } = req.params;
 
         if (!requester) {
-            return res.status(400).json({
+            return res.status(401).json({
                 error: {
-                    code: "MISSING_REQUESTER_HEADER",
+                    code: "AUTHENTICATION_REQUIRED",
                     message:
-                        "Development Requester context is required.",
+                        "Authentication is required.",
                     correlationId: randomUUID(),
                 },
             });
@@ -317,18 +317,18 @@ attachmentsRouter.post(
 // ---------------------------------------------------------------------------
 attachmentsRouter.get(
     "/:attachmentId",
-    requireDevelopmentRequester,
+    requireRequester,
     async (req: Request, res: Response) => {
-        const requester = req.requester;
+        const requester = req.auth?.user;
         const { ticketId, attachmentId } =
             req.params;
 
         if (!requester) {
-            return res.status(400).json({
+            return res.status(401).json({
                 error: {
-                    code: "MISSING_REQUESTER_HEADER",
+                    code: "AUTHENTICATION_REQUIRED",
                     message:
-                        "Development Requester context is required.",
+                        "Authentication is required.",
                     correlationId: randomUUID(),
                 },
             });
@@ -401,18 +401,18 @@ attachmentsRouter.get(
 // ---------------------------------------------------------------------------
 attachmentsRouter.get(
     "/:attachmentId/download",
-    requireDevelopmentRequester,
+    requireRequester,
     async (req: Request, res: Response) => {
-        const requester = req.requester;
+        const requester = req.auth?.user;
         const { ticketId, attachmentId } =
             req.params;
 
         if (!requester) {
-            return res.status(400).json({
+            return res.status(401).json({
                 error: {
-                    code: "MISSING_REQUESTER_HEADER",
+                    code: "AUTHENTICATION_REQUIRED",
                     message:
-                        "Development Requester context is required.",
+                        "Authentication is required.",
                     correlationId: randomUUID(),
                 },
             });
@@ -504,18 +504,18 @@ attachmentsRouter.get(
 // ---------------------------------------------------------------------------
 attachmentsRouter.delete(
     "/:attachmentId",
-    requireDevelopmentRequester,
+    requireRequester,
     async (req: Request, res: Response) => {
-        const requester = req.requester;
+        const requester = req.auth?.user;
         const { ticketId, attachmentId } =
             req.params;
 
         if (!requester) {
-            return res.status(400).json({
+            return res.status(401).json({
                 error: {
-                    code: "MISSING_REQUESTER_HEADER",
+                    code: "AUTHENTICATION_REQUIRED",
                     message:
-                        "Development Requester context is required.",
+                        "Authentication is required.",
                     correlationId: randomUUID(),
                 },
             });

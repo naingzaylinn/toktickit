@@ -1,109 +1,46 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../../src/App.js";
 import * as api from "../../src/api.js";
-
-describe("Feature-A: Requester Context Restoration & Switching Tests", () => {
-  const ALICE: api.DevelopmentRequester = {
-    id: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
-    name: "Alice Developer",
-    email: "alice@kmutt.ac.th",
-  };
-
-  const BOB: api.DevelopmentRequester = {
-    id: "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
-    name: "Bob Developer",
-    email: "bob@kmutt.ac.th",
-  };
-
-  const activeRequesters = [ALICE, BOB];
-
-  beforeEach(() => {
-    sessionStorage.clear();
-    window.history.pushState({}, "", "/");
-    vi.restoreAllMocks();
-  });
-
-  afterEach(() => {
-    sessionStorage.clear();
-    vi.restoreAllMocks();
-  });
-
-  // UI-004: Page reload with valid requester in sessionStorage restores context and renders AppShell
-  it("UI-004: restores valid requester context on reload and renders active requester badge in AppShell", async () => {
-    // Setup stored active requester ID
-    sessionStorage.setItem(api.REQUESTER_STORAGE_KEY, ALICE.id);
-    vi.spyOn(api, "getDevelopmentRequesters").mockResolvedValue(activeRequesters);
-
-    render(<App />);
-
-    // AppShell header displays requester badge
-    const badge = await screen.findByTestId("requester-badge");
-    expect(badge).toBeInTheDocument();
-    expect(badge).toHaveTextContent("Requester: Alice Developer");
-
-    // Confirms no redirect to /requester-select
-    expect(screen.queryByText("Development Requester Selection")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "My Tickets" })).toBeInTheDocument();
-  });
-
-  // UI-005: App initialization with inactive or missing stored requester clears storage and redirects
-  it("UI-005: clears sessionStorage and redirects to /requester-select when stored requester is inactive or missing", async () => {
-    // Stored ID belongs to inactive or nonexistent user
-    sessionStorage.setItem(api.REQUESTER_STORAGE_KEY, "nonexistent-or-inactive-uuid");
-    vi.spyOn(api, "getDevelopmentRequesters").mockResolvedValue(activeRequesters);
-
-    render(<App />);
-
-    // Should redirect to Requester Selection screen
-    expect(await screen.findByText("Development Requester Selection")).toBeInTheDocument();
-
-    // Storage is cleared
-    expect(sessionStorage.getItem(api.REQUESTER_STORAGE_KEY)).toBeNull();
-
-    // Explanatory alert banner is displayed
-    expect(
-      screen.getByText(/The previously selected Development Requester is no longer active or available/i)
-    ).toBeInTheDocument();
-  });
-
-  // UI-006: Activating Change Requester executes switching workflow
-  it("UI-006: activates Change Requester, switches identity, updates sessionStorage, and reloads context", async () => {
-    // Initial active session with Alice
-    sessionStorage.setItem(api.REQUESTER_STORAGE_KEY, ALICE.id);
-    vi.spyOn(api, "getDevelopmentRequesters").mockResolvedValue(activeRequesters);
-
-    render(<App />);
-
-    // Verify Alice is active
-    expect(await screen.findByText("Requester: Alice Developer")).toBeInTheDocument();
-
-    // Click Change Requester button
-    const changeBtn = screen.getByRole("button", { name: /Change Requester/i });
-    await userEvent.click(changeBtn);
-
-    // Navigates to Requester Selection view
-    expect(await screen.findByText("Development Requester Selection")).toBeInTheDocument();
-
-    // Select Bob from dropdown
-    const select = screen.getByLabelText(/Development Requester/i);
-    await userEvent.selectOptions(select, BOB.id);
-
-    // Click Continue
-    const continueBtn = screen.getByRole("button", { name: /Continue/i });
-    await userEvent.click(continueBtn);
-
-    // Storage now holds Bob's ID
-    expect(sessionStorage.getItem(api.REQUESTER_STORAGE_KEY)).toBe(BOB.id);
-
-    // Context reloaded with Bob
-    expect(
-      await screen.findByText("Requester: Bob Developer")
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("heading", { name: "My Tickets" })
-    ).toBeInTheDocument();
-  });
+const alice: api.AuthUser = { id: "alice", name: "Alice", email: "alice@example.com", role: "REQUESTER", isActive: true, mustChangePassword: false };
+beforeEach(() => { vi.restoreAllMocks(); sessionStorage.clear(); window.history.pushState({}, "", "/tickets"); vi.spyOn(api, "getMyTickets").mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 10, totalItems: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false } }); vi.spyOn(api, "getTicketCategories").mockResolvedValue([]); vi.spyOn(api, "getRelatedSystems").mockResolvedValue([]); });
+describe("Authenticated shell replaces selector", () => {
+    it("a delayed session response cannot restore the shell after logout", async () => {
+        let finishRefresh!: (user: api.AuthUser) => void;
+        let finishLogout!: (value: unknown) => void;
+        vi.spyOn(api, "getCurrentUser").mockResolvedValueOnce(alice)
+            .mockImplementationOnce(() => new Promise(resolve => { finishRefresh = resolve; }));
+        vi.spyOn(api, "logout").mockImplementationOnce(() => new Promise(resolve => { finishLogout = resolve; }));
+        render(<App />);
+        await userEvent.click(await screen.findByRole("button", { name: "Logout" }));
+        act(() => { window.dispatchEvent(new Event("session-access-changed")); });
+        await act(async () => { finishLogout({}); });
+        await act(async () => { finishRefresh(alice); });
+        expect(screen.getByRole("heading", { name: "Login" })).toBeInTheDocument();
+        expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+    });
+    it("an older session response cannot override a newer mandatory-password restriction", async () => {
+        let finishOlder!: (user: api.AuthUser) => void;
+        let finishNewer!: (user: api.AuthUser) => void;
+        vi.spyOn(api, "getCurrentUser").mockResolvedValueOnce(alice)
+            .mockImplementationOnce(() => new Promise(resolve => { finishOlder = resolve; }))
+            .mockImplementationOnce(() => new Promise(resolve => { finishNewer = resolve; }));
+        render(<App />);
+        await screen.findByRole("navigation");
+        act(() => {
+            window.dispatchEvent(new Event("session-access-changed"));
+            window.dispatchEvent(new Event("session-access-changed"));
+        });
+        await act(async () => { finishNewer({ ...alice, mustChangePassword: true }); });
+        await act(async () => { finishOlder(alice); });
+        expect(screen.getByRole("heading", { name: "Change Password" })).toBeInTheDocument();
+        expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+    });
+    it("restores server identity and ignores old selector storage", async () => { sessionStorage.setItem("toktickit_requester_id", "bob"); vi.spyOn(api, "getCurrentUser").mockResolvedValue(alice); render(<App />); expect(await screen.findByText("Requester: Alice")).toBeInTheDocument(); expect(screen.queryByText(/Development Requester Selection|Change Requester/)).not.toBeInTheDocument(); expect(screen.queryByRole("link", { name: "Ticket Queue" })).not.toBeInTheDocument(); });
+    it("invalid session cannot restore identity from storage", async () => { sessionStorage.setItem("toktickit_requester_id", "alice"); vi.spyOn(api, "getCurrentUser").mockRejectedValue(new api.ApiError("AUTHENTICATION_REQUIRED", "Sign in.", 401)); render(<App />); expect(await screen.findByRole("heading", { name: "Login" })).toBeInTheDocument(); expect(screen.queryByRole("navigation")).not.toBeInTheDocument(); });
+    it("logs out and removes protected content including browser-back navigation", async () => { vi.spyOn(api, "getCurrentUser").mockResolvedValue(alice); const logout = vi.spyOn(api, "logout").mockResolvedValue({}); render(<App />); await userEvent.click(await screen.findByRole("button", { name: "Logout" })); expect(logout).toHaveBeenCalledOnce(); expect(await screen.findByRole("heading", { name: "Login" })).toBeInTheDocument(); expect(screen.queryByRole("navigation")).not.toBeInTheDocument(); });
+    it.each(["IT_STAFF", "ADMINISTRATOR"] as const)("renders only permitted navigation for %s", async (role) => { vi.spyOn(api, "getCurrentUser").mockResolvedValue({ ...alice, role }); render(<App />); expect(await screen.findByRole("link", { name: "Ticket Queue" })).toBeInTheDocument(); expect(screen.queryByRole("link", { name: "Create Ticket" })).not.toBeInTheDocument(); expect(Boolean(screen.queryByRole("link", { name: "User Management" }))).toBe(role === "ADMINISTRATOR"); expect(api.getMyTickets).not.toHaveBeenCalled(); });
+    it("password change blocks normal navigation", async () => { vi.spyOn(api, "getCurrentUser").mockResolvedValue({ ...alice, mustChangePassword: true }); render(<App />); expect(await screen.findByRole("heading", { name: "Change Password" })).toBeInTheDocument(); expect(screen.queryByRole("navigation")).not.toBeInTheDocument(); });
+    it("logout failure remains visible", async () => { vi.spyOn(api, "getCurrentUser").mockResolvedValue(alice); vi.spyOn(api, "logout").mockRejectedValue(new Error()); render(<App />); await userEvent.click(await screen.findByRole("button", { name: "Logout" })); expect(await screen.findByRole("alert")).toHaveTextContent("Unable to log out"); });
 });

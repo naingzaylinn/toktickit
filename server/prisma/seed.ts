@@ -185,7 +185,7 @@ export async function seed(prisma = getPrisma()) {
       await tx.ticket.create({ data: {
         ticketNumber: await generateTicketNumber(tx, new Date().getFullYear()),
         requesterId: requester.id, clientRequestId, categoryId: category.id, relatedSystemId: system.id,
-        summary: example.summary, description: example.description, requestedPriority: example.priority,
+        summary: example.summary, description: example.description, requestedPriority: example.priority, itPriority: example.priority,
       } });
     });
   }
