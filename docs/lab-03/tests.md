@@ -1,5 +1,59 @@
 # Lab 3 Test Plan and Traceability
 
+## Automated coverage audit for the Automated / E2E Testing issue
+
+The existing API suites already cover API-01–17, UNIT-01–04, AUTH-01–09,
+REG-01–06, QUEUE-01–12, DETAIL-01–10, RESOLVE-01–03,
+COMMENT-01–08, NOTE-01–09, and ADMIN-01–17. Their implementation filenames
+sometimes differ from the planned filenames in the tables below:
+`staff-ticket-queue.api.test.ts` covers QUEUE, while
+`staff-ticket-operations.api.test.ts` covers DETAIL, staff comments and notes.
+`users-admin.api.test.ts` covers the Administrator cases. The Lab 2 suite still
+tests ticket creation, listing, detail, attachments and reference data. Existing
+client suites cover role navigation, Requester discussion, Staff Queue and Detail,
+User Management, and session transport. The historical `Planned` table entries
+below should not be read as absence of those tests.
+
+The connected API workflow is covered by
+`server/tests/lab-03/cross-role-workflow.api.test.ts`. It runs through the real
+Express API with real password authentication, sessions and database writes in
+the disposable schema. This is an API-level end-to-end integration test. It
+connects E2E-01/02/05–14/17, including cross-role Public Comment and Internal
+Note visibility; existing isolated API tests cover invalid/inactive login,
+self-deactivation, last Administrator and attachment cases. Browser journeys
+E2E-01–18 are exercised by six Playwright tests under `client/e2e/lab-03`.
+They run Edge against real Vite and Express services, all 10 migrations, and a
+disposable seeded schema. The new `client/tests/lab-03/AuthScreen.test.tsx` covers labeled login and
+password-change controls, safe login failure, mismatch validation and successful
+submission; existing AppShell tests cover role navigation and logout.
+
+Migration verification now applies every later Lab 3 migration in order after
+the populated Lab 2 fixture, then compares original requester, ticket,
+attachment, event, category, system and sequence data. The isolated runner
+deploys all migrations and performs a Prisma schema diff with `--exit-code`.
+Existing tests cover initial IT Priority copying and selector removal. Seed
+distribution, statuses, ownership, Public Comments, Internal Notes, and
+idempotence are checked by `seed.test.ts` (SEED-01–08).
+
+Run from `server`: `npm run test:lab3`, `npm run test:isolated`,
+`npm run test:workflow`, `npm run test:migration`, or `npm run test:e2e`.
+The browser command requires Microsoft Edge installed. Each command uses a fresh
+schema and leaves the normal development schema intact. Run client tests with
+`npm test` from `client`. VIS-01–08 and the visual parts of VIS-09/10 require
+the later Zen Green desktop/tablet/mobile browser review. Component tests can
+prove labels, names and role content, but cannot prove visible focus, clipping,
+overlap, color contrast or horizontal overflow in a real viewport.
+
+Verification on `feature/automated-e2e-testing` (working tree only): Prisma
+format, validate and generate passed; server build passed; focused Lab 3 server
+suite passed (10 files, 139 tests); full isolated server regression passed
+(20 files, 209 tests); client tests passed (14 files, 90 tests); client
+production build passed. Both server test invocations applied all 10 migrations
+in a fresh schema, detected no schema drift, and cleaned up that schema.
+The new connected API workflow passed as one scenario in both server suites.
+This prior verification paragraph predates the final browser suite; see the
+current issue verification below. No visual viewport evidence is claimed here.
+
 ## 1. Purpose
 
 This document defines the planned test coverage for TokTickIT Sprint 3.
@@ -365,8 +419,8 @@ Primary traceability is based on:
 | SEED-04 | Integration | Seed requirement | Active IT Staff count | At least three active IT Staff exist | `server/tests/lab-03/seed.test.ts` | Pass |
 | SEED-05 | Integration | Seed requirement | Inactive IT Staff | At least one inactive IT Staff exists | `server/tests/lab-03/seed.test.ts` | Pass |
 | SEED-06 | Integration | Seed requirement | Administrator availability | At least one active Administrator exists | `server/tests/lab-03/seed.test.ts` | Pass |
-| SEED-07 | Integration | Seed requirement | Realistic Tickets | Tickets cover multiple statuses, priorities, and ownership states | Seed/integration test | Planned |
-| SEED-08 | Integration | Seed requirement | Comments and Notes | Example Public Comments and Internal Notes exist without sensitive content | Seed/integration test | Planned |
+| SEED-07 | Integration | Seed requirement | Realistic Tickets | Tickets cover multiple statuses, priorities, and ownership states | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-08 | Integration | Seed requirement | Comments and Notes | Example Public Comments and Internal Notes exist without sensitive content | `server/tests/lab-03/seed.test.ts` | Pass |
 
 ---
 
@@ -499,24 +553,24 @@ These checks apply to:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| E2E-01 | E2E | AC-01 | Valid login | User reaches correct authenticated role shell | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-02 | E2E | AC-02 | Initial-password login and change | Normal app opens only after valid password change | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-03 | E2E | FR-02 | Invalid login | Safe failure shown and app remains protected | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-04 | E2E | AC-05 | Inactive account login | Access denied with safe feedback | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-05 | E2E | FR-05 | Login then logout | Protected app unavailable after logout | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-06 | E2E | AC-07 | IT Staff Queue workflow | Staff logs in, searches/filters Queue, opens Ticket Detail | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-07 | E2E | AC-08 | Claim Ticket flow | Staff claims an unassigned Ticket successfully | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-08 | E2E | AC-09 | IT Priority workflow | Staff updates IT Priority successfully | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-09 | E2E | AC-10 | Status workflow | Valid transition succeeds and invalid transition is blocked | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-10 | E2E | AC-11 | Public Comment workflow | Staff/Requester can post and view Public Comment | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-11 | E2E | AC-12 | Internal Note workflow | Staff creates Internal Note and Requester cannot see it | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-12 | E2E | FR-13 | Requester Problem Appears Resolved | Requester submits indication without formal Ticket closure | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-13 | E2E | AC-13 | Administrator creates user | New account appears with exactly one role | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-14 | E2E | FR-32 | Administrator edits user | Updated account information displayed | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-15 | E2E | AC-15 | Self-deactivation prevention | Administrator cannot deactivate own account | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-16 | E2E | AC-16 | Last Administrator protection | Final active Administrator cannot be deactivated | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-17 | E2E | AC-17 | Administrator sets initial password | User must change new initial password on next login | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-18 | E2E | AC-18 | Requester Lab 2 regression flow | Existing Requester Ticket/Attachment workflow remains functional | Appropriate Lab 3 E2E file | Planned |
+| E2E-01 | E2E | AC-01 | Valid login | User reaches correct authenticated role shell | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-02 | E2E | AC-02 | Initial-password login and change | Normal app opens only after valid password change | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-03 | E2E | FR-02 | Invalid login | Safe failure shown and app remains protected | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-04 | E2E | AC-05 | Inactive account login | Access denied with safe feedback | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-05 | E2E | FR-05 | Login then logout | Protected app unavailable after logout | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-06 | E2E | AC-07 | IT Staff Queue workflow | Staff logs in, searches/filters Queue, opens Ticket Detail | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-07 | E2E | AC-08 | Claim Ticket flow | Staff claims an unassigned Ticket successfully | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-08 | E2E | AC-09 | IT Priority workflow | Staff updates IT Priority successfully | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-09 | E2E | AC-10 | Status workflow | Valid transition succeeds and invalid transition is blocked | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-10 | E2E | AC-11 | Public Comment workflow | Staff/Requester can post and view Public Comment | `client/e2e/lab-03/staff-ticket-flow.spec.ts`, `client/e2e/lab-03/requester-regression.spec.ts` | Pass |
+| E2E-11 | E2E | AC-12 | Internal Note workflow | Staff creates Internal Note and Requester cannot see it | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-12 | E2E | FR-13 | Requester Problem Appears Resolved | Requester submits indication without formal Ticket closure | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-13 | E2E | AC-13 | Administrator creates user | New account appears with exactly one role | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-14 | E2E | FR-32 | Administrator edits user | Updated account information displayed | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-15 | E2E | AC-15 | Self-deactivation prevention | Administrator cannot deactivate own account | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-16 | E2E | AC-16 | Last Administrator protection | Final active Administrator cannot be deactivated | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-17 | E2E | AC-17 | Administrator sets initial password | User must change new initial password on next login | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-18 | E2E | AC-18 | Requester Lab 2 regression flow | Existing Requester Ticket/Attachment workflow remains functional | `client/e2e/lab-03/requester-regression.spec.ts` | Pass |
 
 ---
 

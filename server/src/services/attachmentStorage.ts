@@ -8,7 +8,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 
 const STORAGE_DIRECTORY =
-    path.resolve(process.cwd(), "storage", "attachments");
+    path.resolve(process.env.ATTACHMENT_STORAGE_DIRECTORY ?? path.join(process.cwd(), "storage", "attachments"));
 
 async function ensureStorageDirectory() {
     await mkdir(STORAGE_DIRECTORY, {

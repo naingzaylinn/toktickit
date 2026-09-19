@@ -34,7 +34,7 @@ describe("Issue 2 non-destructive migration", () => {
       await prisma.user.update({ where: { id: inactive.id }, data: { passwordHash: changedHash, mustChangePassword: false } });
       await applyMigration(prisma, "20260919000000_complete_authentication");
       await applyMigration(prisma, "20260920000000_requester_authorization");
-      await applyMigration(prisma, "20260921000000_staff_ticket_queue");
+      for (const name of migrations.filter(name => name >= "20260921000000")) await applyMigration(prisma, name);
       expect(await prisma.ticket.findUnique({ where: { id: ticket.id } })).toEqual({...ticket, itPriority: "High", problemAppearsResolvedAt: null, ownerId: null});
       expect(await prisma.attachment.findUnique({ where: { id: attachment.id } })).toEqual(attachment);
       expect(await prisma.ticketEvent.findUnique({ where: { id: event.id } })).toEqual(event);

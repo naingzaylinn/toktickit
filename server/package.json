@@ -10,7 +10,11 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
     "test": "vitest run",
-    "test:isolated": "tsx scripts/test-isolated.ts"
+    "test:isolated": "tsx scripts/test-isolated.ts",
+    "test:lab3": "tsx scripts/test-isolated.ts tests/lab-03",
+    "test:workflow": "tsx scripts/test-isolated.ts tests/lab-03/cross-role-workflow.api.test.ts",
+    "test:migration": "tsx scripts/test-isolated.ts tests/lab-03/migration.test.ts",
+    "test:e2e": "tsx scripts/test-e2e.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

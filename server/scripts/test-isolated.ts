@@ -24,6 +24,16 @@ try {
   run(["node_modules/prisma/build/index.js", "migrate", "deploy"]);
   run(["node_modules/prisma/build/index.js", "migrate", "diff", "--from-schema-datasource", "prisma/schema.prisma", "--to-schema-datamodel", "prisma/schema.prisma", "--exit-code"]);
   run(["node_modules/tsx/dist/cli.mjs", "prisma/seed.ts"]);
+  // Legacy Lab 2 suites replace all tickets in their own disposable schema.
+  // Preserve the richer seed contract in seed.test.ts, but remove its dependent
+  // communication examples before those regression fixtures delete tickets.
+  const fixture = new PrismaClient({ datasources: { db: { url: url.toString() } } });
+  try {
+    await fixture.internalNote.deleteMany();
+    await fixture.publicComment.deleteMany();
+  } finally {
+    await fixture.$disconnect();
+  }
   run(["node_modules/vitest/vitest.mjs", "run", ...process.argv.slice(2)]);
 } finally {
   // Only this invocation's newly created, strictly generated schema is removed.
