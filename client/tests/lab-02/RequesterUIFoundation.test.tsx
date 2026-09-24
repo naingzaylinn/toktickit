@@ -14,10 +14,10 @@ import FormField from "../../src/components/common/FormField.js";
 import * as api from "../../src/api.js";
 
 describe("Feature-B: Requester UI Foundation Tests", () => {
-    const ALICE: api.DevelopmentRequester = {
+    const ALICE: api.AuthUser = {
         id: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
         name: "Alice Developer",
-        email: "alice@kmutt.ac.th",
+        email: "alice@kmutt.ac.th", role: "REQUESTER", isActive: true, mustChangePassword: false,
     };
 
     beforeEach(() => {
@@ -35,8 +35,8 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
     it("UI-009: renders TokTickIT branding, requester navigation, and active requester badge", () => {
         render(
             <AppShell
-                currentRequester={ALICE}
-                onChangeRequester={vi.fn()}
+                currentUser={ALICE}
+                onLogout={vi.fn()}
                 activePath="/tickets"
             >
                 <div>Content</div>
@@ -59,7 +59,7 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
         expect(badge).toHaveTextContent("Requester: Alice Developer");
 
         expect(
-            screen.getByRole("button", { name: "Change Requester" })
+            screen.getByRole("button", { name: "Logout" })
         ).toBeInTheDocument();
     });
 
@@ -67,9 +67,9 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
     it("UI-010: keeps the AppShell mounted while navigating between requester routes", async () => {
         const user = userEvent.setup();
 
-        sessionStorage.setItem(api.REQUESTER_STORAGE_KEY, ALICE.id);
 
-        vi.spyOn(api, "getDevelopmentRequesters").mockResolvedValue([ALICE]);
+
+        vi.spyOn(api, "getCurrentUser").mockResolvedValue(ALICE);
 
         window.history.pushState({}, "", "/tickets");
 
@@ -188,8 +188,8 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
 
         const { container } = render(
             <AppShell
-                currentRequester={ALICE}
-                onChangeRequester={vi.fn()}
+                currentUser={ALICE}
+                onLogout={vi.fn()}
             />
         );
 
@@ -221,8 +221,8 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
     it("RESP-003: AppShell uses the desktop horizontal navigation breakpoint", () => {
         const { container } = render(
             <AppShell
-                currentRequester={ALICE}
-                onChangeRequester={vi.fn()}
+                currentUser={ALICE}
+                onLogout={vi.fn()}
             />
         );
 
@@ -244,7 +244,7 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
         ).toBeInTheDocument();
 
         expect(
-            screen.getByRole("button", { name: "Change Requester" })
+            screen.getByRole("button", { name: "Logout" })
         ).toBeInTheDocument();
     });
 
@@ -254,8 +254,8 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
 
         render(
             <AppShell
-                currentRequester={ALICE}
-                onChangeRequester={vi.fn()}
+                currentUser={ALICE}
+                onLogout={vi.fn()}
             />
         );
 
@@ -281,7 +281,7 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
         expect(createTicket).toHaveFocus();
 
         const changeRequester = screen.getByRole("button", {
-            name: "Change Requester",
+            name: "Logout",
         });
 
         changeRequester.focus();

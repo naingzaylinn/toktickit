@@ -1,3 +1,4 @@
+import {requesterCookie} from "../lab-03/sessionFixture.js";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import request from "supertest";
 import { app } from "../../src/app.js";
@@ -29,7 +30,7 @@ describe("Feature-C: Ticket Reference Data", () => {
         });
 
         try {
-            const res = await request(app).get("/api/v1/categories");
+            const res = await request(app).get("/api/v1/categories").set("Cookie", await requesterCookie("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"));
 
             expect(res.status).toBe(200);
             expect(res.body).toHaveProperty("data");
@@ -74,7 +75,7 @@ describe("Feature-C: Ticket Reference Data", () => {
         });
 
         try {
-            const res = await request(app).get("/api/v1/related-systems");
+            const res = await request(app).get("/api/v1/related-systems").set("Cookie", await requesterCookie("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"));
 
             expect(res.status).toBe(200);
             expect(res.body).toHaveProperty("data");
@@ -132,6 +133,8 @@ describe("Feature-C: Ticket Reference Data", () => {
 
     // API-008
     it("API-008: seed execution is idempotent", async () => {
+        const existingCommentIds = new Set((await prisma.publicComment.findMany({ select: { id: true } })).map(({ id }) => id));
+        const existingNoteIds = new Set((await prisma.internalNote.findMany({ select: { id: true } })).map(({ id }) => id));
         const beforeCategories = await prisma.category.count();
         const beforeSystems = await prisma.relatedSystem.count();
         const beforeRequesters = await prisma.developmentRequester.count();
@@ -155,6 +158,13 @@ describe("Feature-C: Ticket Reference Data", () => {
         expect(afterSecondCategories).toBe(afterFirstCategories);
         expect(afterSecondSystems).toBe(afterFirstSystems);
         expect(afterSecondRequesters).toBe(afterFirstRequesters);
+
+        // Lab 3 seed adds communication examples; remove only this test's
+        // new rows so Lab 2 fixture suites can replace their tickets.
+        const newNotes = (await prisma.internalNote.findMany({ select: { id: true } })).filter(({ id }) => !existingNoteIds.has(id));
+        const newComments = (await prisma.publicComment.findMany({ select: { id: true } })).filter(({ id }) => !existingCommentIds.has(id));
+        await prisma.internalNote.deleteMany({ where: { id: { in: newNotes.map(({ id }) => id) } } });
+        await prisma.publicComment.deleteMany({ where: { id: { in: newComments.map(({ id }) => id) } } });
     });
 
     // API-013
@@ -167,8 +177,8 @@ describe("Feature-C: Ticket Reference Data", () => {
             .spyOn(prisma.relatedSystem, "findMany")
             .mockResolvedValueOnce([]);
 
-        const categoryRes = await request(app).get("/api/v1/categories");
-        const systemRes = await request(app).get("/api/v1/related-systems");
+        const categoryRes = await request(app).get("/api/v1/categories").set("Cookie", await requesterCookie("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"));
+        const systemRes = await request(app).get("/api/v1/related-systems").set("Cookie", await requesterCookie("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"));
 
         expect(categoryRes.status).toBe(200);
         expect(categoryRes.body).toEqual({ data: [] });
@@ -188,7 +198,7 @@ describe("Feature-C: Ticket Reference Data", () => {
                 new Error("Prisma SQL connection details should never leak")
             );
 
-        const categoryRes = await request(app).get("/api/v1/categories");
+        const categoryRes = await request(app).get("/api/v1/categories").set("Cookie", await requesterCookie("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"));
 
         expect(categoryRes.status).toBe(500);
         expect(categoryRes.body.error.code).toBe("INTERNAL_SERVER_ERROR");
@@ -208,7 +218,7 @@ describe("Feature-C: Ticket Reference Data", () => {
                 new Error("Database connection string must remain private")
             );
 
-        const systemRes = await request(app).get("/api/v1/related-systems");
+        const systemRes = await request(app).get("/api/v1/related-systems").set("Cookie", await requesterCookie("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"));
 
         expect(systemRes.status).toBe(500);
         expect(systemRes.body.error.code).toBe("INTERNAL_SERVER_ERROR");

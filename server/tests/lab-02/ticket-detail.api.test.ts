@@ -1,3 +1,4 @@
+import {requesterCookie} from "../lab-03/sessionFixture.js";
 import {
     afterEach,
     beforeEach,
@@ -120,10 +121,7 @@ describe("Feature-F: Requester Ticket Detail API", () => {
 
         const res = await request(app)
             .get(`/api/v1/tickets/${ticket.id}`)
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
 
@@ -173,10 +171,7 @@ describe("Feature-F: Requester Ticket Detail API", () => {
 
         const res = await request(app)
             .get(`/api/v1/tickets/${nonexistentId}`)
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(404);
         expect(res.body.error.code).toBe(
@@ -198,10 +193,7 @@ describe("Feature-F: Requester Ticket Detail API", () => {
 
         const res = await request(app)
             .get(`/api/v1/tickets/${bobTicket.id}`)
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(404);
         expect(res.body.error.code).toBe(
@@ -223,10 +215,7 @@ describe("Feature-F: Requester Ticket Detail API", () => {
             .get(
                 "/api/v1/tickets/not-a-valid-ticket-id"
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(400);
         expect(res.body.error.code).toBe(
@@ -261,10 +250,7 @@ describe("Feature-F: Requester Ticket Detail API", () => {
 
         const res = await request(app)
             .get(`/api/v1/tickets/${ticket.id}`)
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
 

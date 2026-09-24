@@ -3,7 +3,7 @@ import {
     ApiError,
     createTicket,
     CreatedTicket,
-    DevelopmentRequester,
+    RequesterIdentity,
     getRelatedSystems,
     getTicketCategories,
     RelatedSystem,
@@ -16,7 +16,7 @@ import LoadingSpinner from "./common/LoadingSpinner.js";
 import ErrorAlert from "./common/ErrorAlert.js";
 
 interface CreateTicketScreenProps {
-    currentRequester: DevelopmentRequester;
+    currentRequester: RequesterIdentity;
     onCreated: (ticket: CreatedTicket) => void;
     onCancel: () => void;
 }
@@ -69,8 +69,8 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
 
         try {
             const [categoryData, systemData] = await Promise.all([
-                getTicketCategories(currentRequester.id),
-                getRelatedSystems(currentRequester.id),
+                getTicketCategories(),
+                getRelatedSystems(),
             ]);
 
             setCategories(categoryData);
@@ -188,7 +188,7 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
         setSubmitting(true);
 
         try {
-            const ticket = await createTicket(currentRequester.id, {
+            const ticket = await createTicket({
                 categoryId: Number(categoryId),
                 relatedSystemId,
                 requestedPriority,
@@ -200,7 +200,6 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
             if (stagedAttachments.length > 0) {
                 try {
                     await uploadTicketAttachments(
-                        currentRequester.id,
                         ticket.id,
                         stagedAttachments
                     );

@@ -1,6 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
-
-export const REQUESTER_STORAGE_KEY = "toktickit_requester_id";
+// Lab 3 sessions require one application origin, including existing local .env setups.
+const API_URL = "";
 
 // Lab 1 Types
 export interface Category {
@@ -18,15 +17,11 @@ export interface HealthResponse {
   service: string;
 }
 
-// Lab 2 Feature-A Types
-export interface DevelopmentRequester {
+// Safe requester identity, supplied by the authenticated server session.
+export interface RequesterIdentity {
   id: string;
   name: string;
   email: string;
-}
-
-export interface DevelopmentRequestersResponse {
-  data: DevelopmentRequester[];
 }
 
 export interface ApiErrorDetails {
@@ -75,30 +70,6 @@ export async function checkSystem(): Promise<SystemStatus> {
   }
   const categories: Category[] = await res.json();
   return { online: true, categories };
-}
-
-// Lab 2 Feature-A — Get active development requesters
-export async function getDevelopmentRequesters(): Promise<DevelopmentRequester[]> {
-  const res = await fetch(`${API_URL}/api/v1/development-requesters`, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
-  if (!res.ok) {
-    let errorData: ApiErrorEnvelope | null = null;
-    try {
-      errorData = await res.json();
-    } catch {
-      // Ignored
-    }
-    const code = errorData?.error?.code ?? "INTERNAL_SERVER_ERROR";
-    const message = errorData?.error?.message ?? "Unable to load development requesters.";
-    throw new ApiError(code, message, res.status, errorData?.error?.correlationId);
-  }
-
-  const json: DevelopmentRequestersResponse = await res.json();
-  return json.data || [];
 }
 
 // ---------------------------------------------------------------------------
@@ -153,7 +124,8 @@ interface CreateTicketResponse {
 
 async function readApiError(
   res: Response,
-  fallbackMessage: string
+  fallbackMessage: string,
+  authenticationEndpoint = false
 ): Promise<ApiError> {
   let errorData: ApiErrorEnvelope | null = null;
 
@@ -163,6 +135,9 @@ async function readApiError(
     // Use safe fallback below.
   }
 
+  if (!authenticationEndpoint && (res.status === 401 || errorData?.error?.code === "PASSWORD_CHANGE_REQUIRED")) {
+    window.dispatchEvent(new CustomEvent("session-access-changed", {detail: errorData?.error?.code}));
+  }
   return new ApiError(
     errorData?.error?.code ?? "INTERNAL_SERVER_ERROR",
     errorData?.error?.message ?? fallbackMessage,
@@ -172,12 +147,10 @@ async function readApiError(
 }
 
 export async function getTicketCategories(
-  requesterId: string
 ): Promise<TicketReferenceCategory[]> {
   const res = await fetch(`${API_URL}/api/v1/categories`, {
     headers: {
       Accept: "application/json",
-      "X-Development-Requester-Id": requesterId,
     },
   });
 
@@ -193,12 +166,10 @@ export async function getTicketCategories(
 }
 
 export async function getRelatedSystems(
-  requesterId: string
 ): Promise<RelatedSystem[]> {
   const res = await fetch(`${API_URL}/api/v1/related-systems`, {
     headers: {
       Accept: "application/json",
-      "X-Development-Requester-Id": requesterId,
     },
   });
 
@@ -214,15 +185,13 @@ export async function getRelatedSystems(
 }
 
 export async function createTicket(
-  requesterId: string,
   input: CreateTicketInput
 ): Promise<CreatedTicket> {
-  const res = await fetch(`${API_URL}/api/v1/tickets`, {
+  const res = await fetch(`${API_URL}/api/tickets`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "X-Development-Requester-Id": requesterId,
     },
     body: JSON.stringify(input),
   });
@@ -327,17 +296,15 @@ export function buildMyTicketsQuery(
 }
 
 export async function getMyTickets(
-  requesterId: string,
   query: MyTicketsQuery = {}
 ): Promise<MyTicketsResponse> {
   const queryString = buildMyTicketsQuery(query);
 
   const res = await fetch(
-    `${API_URL}/api/v1/tickets?${queryString}`,
+    `${API_URL}/api/tickets?${queryString}`,
     {
       headers: {
         Accept: "application/json",
-        "X-Development-Requester-Id": requesterId,
       },
     }
   );
@@ -351,7 +318,6 @@ export async function getMyTickets(
 
   return res.json();
 }
-
 
 // ---------------------------------------------------------------------------
 // Feature-G — Attachments
@@ -386,6 +352,7 @@ export interface AttachmentUploadResult {
 // ---------------------------------------------------------------------------
 
 export interface TicketDetail {
+  problemAppearsResolvedAt?: string | null;
   id: string;
   ticketNumber: string;
   ticketDate: string;
@@ -420,15 +387,13 @@ export interface TicketDetail {
 }
 
 export async function getTicketDetail(
-  requesterId: string,
   ticketId: string
 ): Promise<TicketDetail> {
   const res = await fetch(
-    `${API_URL}/api/v1/tickets/${encodeURIComponent(ticketId)}`,
+    `${API_URL}/api/tickets/${encodeURIComponent(ticketId)}`,
     {
       headers: {
         Accept: "application/json",
-        "X-Development-Requester-Id": requesterId,
       },
     }
   );
@@ -445,7 +410,6 @@ export async function getTicketDetail(
 }
 
 export async function uploadTicketAttachments(
-  requesterId: string,
   ticketId: string,
   files: File[]
 ): Promise<AttachmentUploadResult> {
@@ -456,11 +420,10 @@ export async function uploadTicketAttachments(
   }
 
   const res = await fetch(
-    `${API_URL}/api/v1/tickets/${encodeURIComponent(ticketId)}/attachments`,
+    `${API_URL}/api/tickets/${encodeURIComponent(ticketId)}/attachments`,
     {
       method: "POST",
       headers: {
-        "X-Development-Requester-Id": requesterId,
       },
       body: formData,
     }
@@ -483,7 +446,7 @@ export function getAttachmentContentUrl(
   inline = false
 ): string {
   return (
-    `${API_URL}/api/v1/tickets/` +
+    `${API_URL}/api/tickets/` +
     `${encodeURIComponent(ticketId)}/attachments/` +
     `${encodeURIComponent(attachmentId)}/download` +
     `?inline=${inline ? "true" : "false"}`
@@ -491,7 +454,6 @@ export function getAttachmentContentUrl(
 }
 
 export async function getAttachmentContent(
-  requesterId: string,
   ticketId: string,
   attachmentId: string,
   inline = false
@@ -504,7 +466,6 @@ export async function getAttachmentContent(
     ),
     {
       headers: {
-        "X-Development-Requester-Id": requesterId,
       },
     }
   );
@@ -520,13 +481,12 @@ export async function getAttachmentContent(
 }
 
 export async function removeTicketAttachment(
-  requesterId: string,
   ticketId: string,
   attachmentId: string,
   reason: string
 ): Promise<TicketAttachment> {
   const res = await fetch(
-    `${API_URL}/api/v1/tickets/` +
+    `${API_URL}/api/tickets/` +
     `${encodeURIComponent(ticketId)}/attachments/` +
     `${encodeURIComponent(attachmentId)}`,
     {
@@ -534,7 +494,6 @@ export async function removeTicketAttachment(
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
-        "X-Development-Requester-Id": requesterId,
       },
       body: JSON.stringify({
         reason,
@@ -551,4 +510,204 @@ export async function removeTicketAttachment(
 
   const body = await res.json();
   return body.data as TicketAttachment;
+}
+
+export interface AuthUser extends RequesterIdentity {
+  role: "REQUESTER" | "IT_STAFF" | "ADMINISTRATOR";
+  isActive: boolean;
+  mustChangePassword: boolean;
+}
+export async function sessionRequest<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, { method: body === undefined ? "GET" : "POST", headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  if (!res.ok) throw await readApiError(res, "Unable to complete the request.", path.startsWith("/api/auth/"));
+  return (await res.json()).data;
+}
+export const getCurrentUser = () => sessionRequest<AuthUser>("/api/auth/me");
+export const login = (email: string, password: string) => sessionRequest<{user: AuthUser}>("/api/auth/login", {email,password});
+export const logout = () => sessionRequest("/api/auth/logout", {});
+export const changePassword = (currentPassword: string, newPassword: string, confirmPassword: string) => sessionRequest("/api/auth/change-password", {currentPassword,newPassword,confirmPassword});
+export type UserRole = AuthUser["role"];
+export type ManagedUser = AuthUser;
+export type UserDraft = Pick<ManagedUser, "name" | "email" | "role" | "isActive">;
+async function adminRequest<T>(path: string, method: "GET" | "POST" | "PATCH" = "GET", body?: unknown): Promise<T> {
+  const res = await fetch(path, { method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  if (!res.ok) throw await readApiError(res, "Unable to manage users.");
+  return (await res.json()).data;
+}
+export const getManagedUsers = (search = "", role = "") => adminRequest<ManagedUser[]>("/api/admin/users?" + new URLSearchParams({ search, ...(role ? { role } : {}) }));
+export const createManagedUser = (input: UserDraft & { initialPassword: string }) => adminRequest<ManagedUser>("/api/admin/users", "POST", input);
+export const updateManagedUser = (id: string, input: UserDraft) => adminRequest<ManagedUser>("/api/admin/users/" + encodeURIComponent(id), "PATCH", input);
+export const setManagedInitialPassword = (id: string, initialPassword: string) => adminRequest<ManagedUser>("/api/admin/users/" + encodeURIComponent(id) + "/initial-password", "POST", { initialPassword });
+export interface PublicComment { id: string; ticketId: string; content: string; author: {id: string; name: string; role: string}; createdAt: string; }
+export const getComments = (id: string) => sessionRequest<PublicComment[]>("/api/tickets/"+encodeURIComponent(id)+"/comments");
+export const postComment = (id: string, content: string) => sessionRequest<PublicComment>("/api/tickets/"+encodeURIComponent(id)+"/comments", {content});
+export const indicateResolved = (id: string) => sessionRequest<{ticketId:string; problemAppearsResolvedAt:string}>("/api/tickets/"+encodeURIComponent(id)+"/problem-appears-resolved", {});
+
+export interface StaffTicketDetail extends StaffTicketQueueItem {
+  description: string;
+  ticketDate: string;
+  relatedSystem: { id: string; name: string };
+  problemAppearsResolvedAt: string | null;
+  attachments: { id: string; originalFilename: string; mimeType: string; sizeBytes: number; createdAt: string }[];
+  publicComments: PublicComment[];
+  internalNotes: PublicComment[];
+}
+export interface EligibleOwner { id: string; name: string; role: "IT_STAFF" | "ADMINISTRATOR" }
+async function staffRequest<T>(path: string, method: "GET" | "PATCH" | "POST" = "GET", body?: unknown): Promise<T> {
+  const res = await fetch(path, { method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  if (!res.ok) throw await readApiError(res, "Unable to complete the request.");
+  return (await res.json()).data;
+}
+export const getStaffTicket = (id: string) => staffRequest<StaffTicketDetail>("/api/staff/tickets/" + encodeURIComponent(id));
+export const getEligibleOwners = () => staffRequest<EligibleOwner[]>("/api/staff/tickets/owners");
+export const updateStaffOwner = (id: string, ownerId: string | null) => staffRequest<{ owner: StaffTicketDetail["owner"] }>("/api/staff/tickets/" + encodeURIComponent(id) + "/owner", "PATCH", { ownerId });
+export const updateStaffPriority = (id: string, itPriority: StaffTicketPriority) => staffRequest<{ itPriority: StaffTicketPriority }>("/api/staff/tickets/" + encodeURIComponent(id) + "/priority", "PATCH", { itPriority });
+export const updateStaffStatus = (id: string, status: StaffTicketStatus) => staffRequest<{ status: StaffTicketStatus }>("/api/staff/tickets/" + encodeURIComponent(id) + "/status", "PATCH", { status });
+export const postInternalNote = (id: string, content: string) => staffRequest<PublicComment>("/api/staff/tickets/" + encodeURIComponent(id) + "/notes", "POST", { content });
+
+
+// ---------------------------------------------------------------------------
+// Lab 3 — Staff Ticket Queue
+// ---------------------------------------------------------------------------
+
+export type StaffTicketStatus =
+  | "NEW"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "WAITING_FOR_REQUESTER"
+  | "RESOLVED"
+  | "CLOSED"
+  | "REOPENED"
+  | "CANCELLED";
+
+export type StaffTicketPriority =
+  | "LOW"
+  | "MEDIUM"
+  | "HIGH"
+  | "URGENT";
+
+export type StaffTicketSort =
+  | "ticketNumber"
+  | "createdAt"
+  | "updatedAt"
+  | "status"
+  | "requestedPriority"
+  | "itPriority";
+
+export type StaffTicketOrder = "asc" | "desc";
+
+export interface StaffTicketQueueItem {
+  id: string;
+  ticketNumber: string;
+  summary: string;
+
+  category: {
+    id: number;
+    name: string;
+  };
+
+  requester: {
+    id: string;
+    name: string;
+    email: string;
+  };
+
+  requestedPriority: StaffTicketPriority;
+  itPriority: StaffTicketPriority;
+  status: StaffTicketStatus;
+
+  owner: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffTicketQueueMeta {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface StaffTicketQueueResponse {
+  data: StaffTicketQueueItem[];
+  meta: StaffTicketQueueMeta;
+}
+
+export interface StaffTicketQueueQuery {
+  search?: string;
+  status?: StaffTicketStatus;
+  requestedPriority?: StaffTicketPriority;
+  itPriority?: StaffTicketPriority;
+  owner?: "assigned" | "unassigned" | string;
+  sort?: StaffTicketSort;
+  order?: StaffTicketOrder;
+  page?: number;
+  pageSize?: 10 | 20 | 50;
+}
+
+export async function getStaffTickets(
+  query: StaffTicketQueueQuery = {}
+): Promise<StaffTicketQueueResponse> {
+  const params = new URLSearchParams();
+
+  if (query.search) {
+    params.set("search", query.search);
+  }
+
+  if (query.status) {
+    params.set("status", query.status);
+  }
+
+  if (query.requestedPriority) {
+    params.set("requestedPriority", query.requestedPriority);
+  }
+
+  if (query.itPriority) {
+    params.set("itPriority", query.itPriority);
+  }
+
+  if (query.owner) {
+    params.set("owner", query.owner);
+  }
+
+  if (query.sort) {
+    params.set("sort", query.sort);
+  }
+
+  if (query.order) {
+    params.set("order", query.order);
+  }
+
+  if (query.page !== undefined) {
+    params.set("page", String(query.page));
+  }
+
+  if (query.pageSize !== undefined) {
+    params.set("pageSize", String(query.pageSize));
+  }
+
+  const queryString = params.toString();
+
+  const res = await fetch(
+    `/api/staff/tickets${queryString ? `?${queryString}` : ""}`,
+    {
+      headers: {
+        Accept: "application/json",
+      },
+    }
+  );
+
+  if (!res.ok) {
+    throw await readApiError(
+      res,
+      "Unable to load the staff ticket queue."
+    );
+  }
+
+  return res.json();
 }

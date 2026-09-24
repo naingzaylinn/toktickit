@@ -1,17 +1,21 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../../src/App.js";
 import * as api from "../../src/api.js";
 
 describe("App", () => {
+  beforeEach(() => {
+    vi.spyOn(api, "getCurrentUser").mockRejectedValue(new api.ApiError("AUTHENTICATION_REQUIRED", "Sign in.", 401));
+  });
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   // WORKED EXAMPLE — provided for you.
-  it("renders the TokTickIT heading", () => {
+  it("renders the TokTickIT heading", async () => {
     render(<App />);
+    await screen.findByRole("heading", {name: "Login"});
     expect(screen.getByText(/TokTickIT/i)).toBeInTheDocument();
   });
 

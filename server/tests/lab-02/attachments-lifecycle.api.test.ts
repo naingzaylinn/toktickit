@@ -1,3 +1,4 @@
+import {requesterCookie} from "../lab-03/sessionFixture.js";
 import { beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { randomUUID } from "node:crypto";
@@ -106,10 +107,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .get(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
 
@@ -136,10 +134,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .get(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                BOB_ID
-            );
+            .set("Cookie", await requesterCookie(BOB_ID));
 
         expect(res.status).toBe(404);
         expect(res.body.error.code).toBe(
@@ -152,10 +147,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .get(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}/download?inline=true`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.headers["content-type"]).toContain(
@@ -174,10 +166,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .get(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}/download?inline=false`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(200);
         expect(res.headers["content-type"]).toContain(
@@ -193,10 +182,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .get(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}/download?inline=false`
             )
-            .set(
-                "X-Development-Requester-Id",
-                BOB_ID
-            );
+            .set("Cookie", await requesterCookie(BOB_ID));
 
         expect(res.status).toBe(404);
         expect(res.body.error.code).toBe(
@@ -209,10 +195,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .delete(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send({
                 reason:
                     "Uploaded the wrong screenshot",
@@ -271,10 +254,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .delete(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send({
                 reason: "   ",
             });
@@ -290,10 +270,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .delete(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send({
                 reason: "a".repeat(201),
             });
@@ -309,10 +286,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .delete(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send({
                 reason: "No longer needed",
             });
@@ -321,10 +295,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .get(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}/download?inline=false`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(404);
         expect(res.body.error.code).toBe(
@@ -337,10 +308,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .delete(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send({
                 reason: "First removal",
             });
@@ -349,10 +317,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .delete(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send({
                 reason: "Second removal",
             });
@@ -392,10 +357,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .delete(
                 `/api/v1/tickets/${ticketId}/attachments/${first.id}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .send({
                 reason: "Free one slot",
             });
@@ -406,10 +368,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .post(
                 `/api/v1/tickets/${ticketId}/attachments`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            )
+            .set("Cookie", await requesterCookie(ALICE_ID))
             .attach(
                 "files",
                 pngBuffer,
@@ -430,10 +389,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .delete(
                 `/api/v1/tickets/${ticketId}/attachments/${attachmentId}`
             )
-            .set(
-                "X-Development-Requester-Id",
-                BOB_ID
-            )
+            .set("Cookie", await requesterCookie(BOB_ID))
             .send({
                 reason: "Attempted removal",
             });
@@ -449,10 +405,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
             .get(
                 `/api/v1/tickets/${ticketId}/attachments/not-a-valid-id`
             )
-            .set(
-                "X-Development-Requester-Id",
-                ALICE_ID
-            );
+            .set("Cookie", await requesterCookie(ALICE_ID));
 
         expect(res.status).toBe(400);
         expect(res.body.error.code).toBe(

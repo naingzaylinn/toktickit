@@ -1,4 +1,19 @@
 import { getPrisma } from "../src/prisma.js";
+import { pathToFileURL } from "node:url";
+import { hashPassword } from "../src/services/passwords.js";
+import { generateTicketNumber } from "../src/services/ticketNumber.js";
+import type { Role, RequestedPriority } from "@prisma/client";
+
+// LOCAL DEVELOPMENT / TEST ONLY. All newly seeded accounts must replace this
+// initial password. Re-running the seed never resets an existing User password.
+export const LOCAL_INITIAL_PASSWORD = "Initial123";
+export const STAFF_USERS: { name: string; email: string; role: Role; isActive: boolean }[] = [
+  { name: "IT Staff One", email: "staff1@example.com", role: "IT_STAFF", isActive: true },
+  { name: "IT Staff Two", email: "staff2@example.com", role: "IT_STAFF", isActive: true },
+  { name: "IT Staff Three", email: "staff3@example.com", role: "IT_STAFF", isActive: true },
+  { name: "Inactive IT Staff", email: "staff-inactive@example.com", role: "IT_STAFF", isActive: false },
+  { name: "Lab Administrator", email: "admin@example.com", role: "ADMINISTRATOR", isActive: true },
+];
 
 // Lab 1 categories, extended for Lab 2 active/inactive reference support
 const CATEGORIES = [
@@ -81,8 +96,7 @@ export const DEVELOPMENT_REQUESTERS = [
   },
 ];
 
-export async function seed() {
-  const prisma = getPrisma();
+export async function seed(prisma = getPrisma()) {
 
   // Seed Categories
   for (const name of CATEGORIES) {
@@ -130,12 +144,64 @@ export async function seed() {
     });
   }
 
+  const passwordHash = await hashPassword(LOCAL_INITIAL_PASSWORD);
+  // Include existing Lab 2 identities, using their actual persisted IDs. Do not
+  // replace an ID just because an older database used a different seed UUID.
+  const requesters = await prisma.developmentRequester.findMany();
+  for (const requester of requesters) {
+    await prisma.user.upsert({
+      where: { id: requester.id },
+      update: {},
+      create: {
+        id: requester.id, name: requester.name, email: requester.email.trim().toLowerCase(),
+        role: "REQUESTER", isActive: requester.isActive, passwordHash,
+        mustChangePassword: true, createdAt: requester.createdAt,
+      },
+    });
+  }
+  for (const user of STAFF_USERS) {
+    await prisma.user.upsert({
+      where: { email: user.email }, update: {},
+      create: { ...user, passwordHash, mustChangePassword: true },
+    });
+  }
+
+  // Preserve every existing ticket. New examples span the Lab 3 workflow.
+  const examples: { summary: string; description: string; priority: RequestedPriority; system: string }[] = [
+    { summary: "Wi-Fi disconnects during lectures", description: "The campus wireless connection drops every few minutes in the lecture room.", priority: "High", system: "Campus Wi-Fi" },
+    { summary: "Printer produces faded pages", description: "Pages from the shared printer are too faint to read even after replacing paper.", priority: "Medium", system: "Printing Service" },
+    { summary: "Cannot submit coursework in LEB2", description: "The submission page reports an error before tonight's coursework deadline.", priority: "Urgent", system: "LEB2" },
+    { summary: "Email signature needs updating", description: "Please help update the contact information shown in my university email signature.", priority: "Low", system: "Email" },
+  ];
+  for (const [index, example] of examples.entries()) {
+    const requester = requesters.find(item => item.email === DEVELOPMENT_REQUESTERS[index].email)!;
+    const category = await prisma.category.findUniqueOrThrow({ where: { name: index === 0 ? "Network" : index === 1 ? "Hardware" : "Software" } });
+    const system = await prisma.relatedSystem.findUniqueOrThrow({ where: { name: example.system } });
+    const clientRequestId = `lab3-seed-${requester.id}`;
+    const staff = await prisma.user.findUniqueOrThrow({ where: { email: "staff1@example.com" } });
+    await prisma.$transaction(async (tx) => {
+      if (await tx.ticket.findUnique({ where: { requesterId_clientRequestId: { requesterId: requester.id, clientRequestId } } })) return;
+      const ticket = await tx.ticket.create({ data: {
+        ticketNumber: await generateTicketNumber(tx, new Date().getFullYear()),
+        requesterId: requester.id, clientRequestId, categoryId: category.id, relatedSystemId: system.id,
+        summary: example.summary, description: example.description, requestedPriority: example.priority, itPriority: example.priority,
+        currentStatus: (["New", "Open", "InProgress", "WaitingForRequester"] as const)[index],
+        ownerId: index < 2 ? null : staff.id,
+      } });
+      if (index === 0) {
+        await tx.publicComment.create({ data: { ticketId: ticket.id, authorId: requester.id, content: "The wireless connection still drops during lectures." } });
+        await tx.internalNote.create({ data: { ticketId: ticket.id, authorId: staff.id, content: "Check the lecture room access point logs." } });
+      }
+    });
+  }
+
   console.log("Seeded database successfully.");
 }
 
-seed()
+// Importing the seed in tests must not mutate the default database.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) seed()
   .catch((e) => {
-    console.error(e);
+    console.error("Database seed failed.");
     process.exit(1);
   })
   .finally(async () => {

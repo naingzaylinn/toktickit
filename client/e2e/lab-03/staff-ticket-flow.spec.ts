@@ -1,0 +1,45 @@
+import { expect, test } from "@playwright/test";
+import { signIn, signOut } from "./helpers.js";
+
+test("E2E-06–12: staff queue, claim, priority, status, public and private communication", async ({ page }) => {
+  await signIn(page, "staff1@example.com");
+  await expect(page.getByRole("link", { name: "Ticket Queue" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "User Management" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Ticket Queue" })).toBeVisible();
+  await page.getByRole("searchbox", { name: "Search" }).fill("Wi-Fi disconnects during lectures");
+  await page.getByLabel("Status", { exact: true }).selectOption("NEW");
+  const row = page.getByRole("row").filter({ hasText: "Wi-Fi disconnects during lectures" });
+  await expect(row).toBeVisible();
+  await row.getByRole("button", { name: "Open" }).click();
+  await expect(page.getByRole("heading", { name: /Wi-Fi disconnects during lectures/ })).toBeVisible();
+  const ticketId = new URL(page.url()).pathname.split("/").at(-1)!;
+  await page.getByRole("button", { name: "Claim Ticket" }).click();
+  await expect(page.getByText("Current owner:")).toContainText("IT Staff One");
+  await page.getByLabel("IT Priority").selectOption("URGENT");
+  await page.getByRole("button", { name: "Save IT Priority" }).click();
+  await expect(page.getByText("IT Priority updated.")).toBeVisible();
+  await expect(page.getByText("Requested Priority:").locator("xpath=..")).toContainText("High");
+  await expect(page.getByLabel("Next Status").locator("option[value='CLOSED']")).toHaveCount(0);
+  await page.getByLabel("Next Status").selectOption("OPEN");
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "Update Status" }).click();
+  await expect(page.getByText("Current Status:").locator("xpath=..")).toContainText("Open");
+  await page.getByLabel("Public Comment").fill("Staff public response");
+  await page.getByRole("button", { name: "Post Public Comment" }).click();
+  await expect(page.getByText("Staff public response")).toBeVisible();
+  await page.getByLabel("Internal Note").fill("Private staff observation");
+  await page.getByRole("button", { name: "Add Internal Note" }).click();
+  await expect(page.getByText("Private staff observation")).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, "alice@kmutt.ac.th");
+  await expect(page.getByRole("link", { name: "My Tickets" })).toBeVisible();
+  await page.goto(`/tickets/${ticketId}`);
+  await expect(page.getByText("Staff public response")).toBeVisible();
+  await expect(page.getByText("Private staff observation")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Internal Notes" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^(Resolve|Close)$/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Problem Appears Resolved" }).click();
+  await expect(page.getByText(/IT Staff remains responsible/)).toBeVisible();
+  await expect(page.getByText("Open", { exact: true }).first()).toBeVisible();
+});

@@ -41,6 +41,13 @@ enum RequestedPriority {
 
 enum TicketStatus {
   New
+  Open
+  InProgress
+  WaitingForRequester
+  Resolved
+  Closed
+  Reopened
+  Cancelled
 }
 
 enum TicketEventType {
@@ -59,12 +66,19 @@ model Ticket {
   requesterId       String
   categoryId        Int
   relatedSystemId   String
+  ownerId           String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  requester     DevelopmentRequester @relation(fields: [requesterId], references: [id])
-  category      Category             @relation(fields: [categoryId], references: [id])
-  relatedSystem RelatedSystem        @relation(fields: [relatedSystemId], references: [id])
+  requester     User          @relation("RequesterTickets", fields: [requesterId], references: [id])
+  owner         User?         @relation("OwnedTickets", fields: [ownerId], references: [id])
+  category      Category      @relation(fields: [categoryId], references: [id])
+  relatedSystem RelatedSystem @relation(fields: [relatedSystemId], references: [id])
+
+  itPriority               RequestedPriority @default(Medium)
+  problemAppearsResolvedAt DateTime?
+  publicComments           PublicComment[]
+  internalNotes            InternalNote[]
 
   attachments Attachment[]
   events      TicketEvent[]
@@ -72,6 +86,7 @@ model Ticket {
   @@unique([requesterId, clientRequestId])
   @@index([requesterId])
   @@index([categoryId])
+  @@index([ownerId])
   @@index([relatedSystemId])
   @@index([ticketDate])
 }
@@ -90,8 +105,8 @@ model Attachment {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  ticket             Ticket                @relation(fields: [ticketId], references: [id])
-  removedByRequester DevelopmentRequester? @relation("AttachmentRemovedBy", fields: [removedByRequesterId], references: [id])
+  ticket             Ticket        @relation(fields: [ticketId], references: [id])
+  removedByRequester User?         @relation("AttachmentRemovedBy", fields: [removedByRequesterId], references: [id])
   events             TicketEvent[]
 
   @@index([ticketId])
@@ -108,9 +123,9 @@ model TicketEvent {
   details          Json?
   createdAt        DateTime        @default(now())
 
-  ticket         Ticket                @relation(fields: [ticketId], references: [id])
-  attachment     Attachment?           @relation(fields: [attachmentId], references: [id])
-  actorRequester DevelopmentRequester? @relation("TicketEventActor", fields: [actorRequesterId], references: [id])
+  ticket         Ticket      @relation(fields: [ticketId], references: [id])
+  attachment     Attachment? @relation(fields: [attachmentId], references: [id])
+  actorRequester User?       @relation("TicketEventActor", fields: [actorRequesterId], references: [id])
 
   @@index([ticketId])
   @@index([attachmentId])
@@ -132,11 +147,76 @@ model DevelopmentRequester {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
 
-  tickets Ticket[]
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
+}
 
-  removedAttachments Attachment[]  @relation("AttachmentRemovedBy")
-  ticketEvents       TicketEvent[] @relation("TicketEventActor")
+model User {
+  id                 String   @id @default(uuid())
+  name               String
+  email              String   @unique
+  role               Role     @default(REQUESTER)
+  isActive           Boolean  @default(true)
+  passwordHash       String
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  sessions     Session[]
+  tickets      Ticket[]  @relation("RequesterTickets")
+  ownedTickets Ticket[]  @relation("OwnedTickets")
+
+  removedAttachments Attachment[]    @relation("AttachmentRemovedBy")
+  ticketEvents       TicketEvent[]   @relation("TicketEventActor")
+  publicComments     PublicComment[]
+  internalNotes      InternalNote[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  // SHA-256 digest of the opaque browser token; never the bearer token itself.
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model LoginAttempt {
+  key      String     @id
+  failures DateTime[]
+}
+
+model PublicComment {
+  id        String   @id @default(uuid())
+  ticketId  String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+}
+
+model InternalNote {
+  id        String   @id @default(uuid())
+  ticketId  String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
 }
 
 enum Role {

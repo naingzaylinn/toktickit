@@ -466,7 +466,6 @@ describe("Feature-D: Create Ticket UI", () => {
             expect(
                 uploadTicketAttachments
             ).toHaveBeenCalledWith(
-                requester.id,
                 createdTicket.id,
                 [file]
             );

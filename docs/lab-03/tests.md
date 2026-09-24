@@ -1,5 +1,63 @@
 # Lab 3 Test Plan and Traceability
 
+## Final integration traceability note (2026-09-20)
+
+See [release-evidence.md](release-evidence.md) for the integrated requirement-to-evidence matrix and current command results. The tables below originated as a test plan: `Planned` cells and placeholder paths in the API/UI sections record the original plan, not the current implementation state. In particular, `staff-ticket-queue.api.test.ts`, `staff-ticket-operations.api.test.ts`, `AuthScreen.test.tsx`, `StaffTicketQueue.test.tsx`, `StaffTicketDetail.test.tsx`, and `UserManagement.test.tsx` implement many of those planned rows. The automated suite counts actual executable tests, not one test per plan ID. Manual VIS-01–10 remain pending; the three `responsive.spec.ts` cases assert viewport behavior but are not visual screenshots. The historical issue-specific counts below apply only to their named branches.
+
+## Automated coverage audit for the Automated / E2E Testing issue
+
+The existing API suites already cover API-01–17, UNIT-01–04, AUTH-01–09,
+REG-01–06, QUEUE-01–12, DETAIL-01–10, RESOLVE-01–03,
+COMMENT-01–08, NOTE-01–09, and ADMIN-01–17. Their implementation filenames
+sometimes differ from the planned filenames in the tables below:
+`staff-ticket-queue.api.test.ts` covers QUEUE, while
+`staff-ticket-operations.api.test.ts` covers DETAIL, staff comments and notes.
+`users-admin.api.test.ts` covers the Administrator cases. The Lab 2 suite still
+tests ticket creation, listing, detail, attachments and reference data. Existing
+client suites cover role navigation, Requester discussion, Staff Queue and Detail,
+User Management, and session transport. The historical `Planned` table entries
+below should not be read as absence of those tests.
+
+The connected API workflow is covered by
+`server/tests/lab-03/cross-role-workflow.api.test.ts`. It runs through the real
+Express API with real password authentication, sessions and database writes in
+the disposable schema. This is an API-level end-to-end integration test. It
+connects E2E-01/02/05–14/17, including cross-role Public Comment and Internal
+Note visibility; existing isolated API tests cover invalid/inactive login,
+self-deactivation, last Administrator and attachment cases. Browser journeys
+E2E-01–18 are exercised by six Playwright tests under `client/e2e/lab-03`.
+They run Edge against real Vite and Express services, all 10 migrations, and a
+disposable seeded schema. The new `client/tests/lab-03/AuthScreen.test.tsx` covers labeled login and
+password-change controls, safe login failure, mismatch validation and successful
+submission; existing AppShell tests cover role navigation and logout.
+
+Migration verification now applies every later Lab 3 migration in order after
+the populated Lab 2 fixture, then compares original requester, ticket,
+attachment, event, category, system and sequence data. The isolated runner
+deploys all migrations and performs a Prisma schema diff with `--exit-code`.
+Existing tests cover initial IT Priority copying and selector removal. Seed
+distribution, statuses, ownership, Public Comments, Internal Notes, and
+idempotence are checked by `seed.test.ts` (SEED-01–08).
+
+Run from `server`: `npm run test:lab3`, `npm run test:isolated`,
+`npm run test:workflow`, `npm run test:migration`, or `npm run test:e2e`.
+The browser command requires Microsoft Edge installed. Each command uses a fresh
+schema and leaves the normal development schema intact. Run client tests with
+`npm test` from `client`. VIS-01–08 and the visual parts of VIS-09/10 require
+the later Zen Green desktop/tablet/mobile browser review. Component tests can
+prove labels, names and role content, but cannot prove visible focus, clipping,
+overlap, color contrast or horizontal overflow in a real viewport.
+
+Verification on `feature/automated-e2e-testing` (working tree only): Prisma
+format, validate and generate passed; server build passed; focused Lab 3 server
+suite passed (10 files, 139 tests); full isolated server regression passed
+(20 files, 209 tests); client tests passed (14 files, 90 tests); client
+production build passed. Both server test invocations applied all 10 migrations
+in a fresh schema, detected no schema drift, and cleaned up that schema.
+The new connected API workflow passed as one scenario in both server suites.
+This prior verification paragraph predates the final browser suite; see the
+current issue verification below. No visual viewport evidence is claimed here.
+
 ## 1. Purpose
 
 This document defines the planned test coverage for TokTickIT Sprint 3.
@@ -35,6 +93,125 @@ Each planned test uses one of the following final statuses:
 
 During implementation, this document will be updated with the actual automated test file path and final status.
 
+## Issue #34 verification scope
+
+Issue #34 supersedes the historical Issue 2 compatibility boundary below.
+All normal requester APIs require a valid active session and completed password
+change; the retired selector endpoint no longer exists. Both /api/tickets and
+/api/v1/tickets use the same authenticated ownership checks. The two public Lab 1
+diagnostic endpoints remain public and do not expose ticket or user records.
+
+The 26 tests in server/tests/lab-03/requester-regression.api.test.ts cover role
+boundaries, forged identity/role values, safe ownership failures, Public Comments,
+private-field serialization, attachment access, direct formal status attempts,
+and concurrent resolution indications. Existing Lab 2 ticket/reference/attachment
+tests now create real sessions using sessionFixture.ts without bypassing production
+middleware. The six retired requester-header tests now verify that headers cannot
+authenticate and that the selector endpoint is unavailable. No ticket or attachment
+regression assertions were removed to preserve the obsolete identity mechanism.
+
+The migration test now creates historical Ticket rows using SQL so the latest
+Prisma client cannot accidentally require new columns in the old schema. It then
+verifies preservation through the new ownership migration, including credentials,
+IDs, attachment metadata, events, reference data, and sequence state.
+
+Client tests replace selector/switching expectations with authentication, restored
+server identity, required password change, role navigation and logout checks.
+RequesterDiscussion tests cover plain-text rendering, authorship/time display,
+comment validation, safe failures and the separate resolution action.
+Session transport tests verify that requester identity headers are absent and
+session rejection removes access without recursive authentication requests.
+
+Staff/Admin positive feature tests, staff comments/notes, E2E, visual polish and
+final-main evidence remain Planned. AUTH-06 is deliberately not marked Pass:
+the Administrator role passes the role gate, but User Management is unimplemented.
+Permitted roles receive the safe 404 fallback for deferred routes; forbidden
+roles receive 403 before any feature handler. No staff features are simulated.
+
+Verification on feature/34-role-authorization-requester-regression (no commit):
+
+| Working directory | Exact command / check | Result |
+|---|---|---|
+| server | npx.cmd prisma validate | Pass |
+| server | npx.cmd prisma generate | Pass, Prisma Client 5.22.0 |
+| server | npm.cmd run build | Pass |
+| server | npm.cmd run test:isolated -- tests/lab-03 | 6 files, 79 tests passed |
+| server | npm.cmd run test:isolated | 16 files, 149 tests passed |
+| repository | npm.cmd run build --prefix client | Pass |
+| repository | npm.cmd test --prefix client | 10 files, 64 tests passed |
+| repository | npm.cmd test --prefix client -- tests/lab-02/TicketDetail.test.tsx | 1 file, 6 tests passed after strengthening the read-only-field assertion |
+| isolated runner | prisma migrate deploy; prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code | All 8 migrations applied; no difference detected |
+| repository | git diff --check | Pass |
+
+The server total includes all 70 Lab 1/Lab 2 tests adapted where identity behavior
+was intentionally replaced. Windows sandbox restrictions blocked tsx/esbuild;
+these commands passed outside the sandbox. Two cost-12 bcrypt tests initially
+exceeded five seconds during concurrent verification; the authentication suite
+now allows fifteen seconds without changing assertions or password hashing.
+Historical migration-fixture and obsolete selector assertions were corrected.
+Final client tests produce no React act warnings. Git may report harmless LF/CRLF
+normalization warnings. No development-schema migration/reset was performed.
+The new migration must be deployed before using this branch with the working DB.
+E2E/browser visual checks and final-main release evidence were not performed.
+These are Issue #34 results, not Lab 3 release evidence.
+
+## Issue 2 verification scope
+
+Issue 2 implements backend authentication and user migration. API-01 through
+API-17, UNIT-01 through UNIT-04, MIG-01/02/03/05, and SEED-01 through SEED-06 have
+automated coverage in `server/tests/lab-03`. The current suite has 53 tests across
+five test files. Additional cases cover exact session expiration, cookie flags,
+logout replay, inactive-session rejection, safe DTOs/errors, normalized-email/IP
+limits, concurrent failures, the fifteen-minute boundary, and Unicode password
+hashing without bcrypt truncation. Review regressions also check exact session
+preservation after password change, logout isolation between sessions, rejection
+of conflicting legacy requester headers/current roles, and bcrypt work for
+overlong input against legacy/unknown accounts.
+
+API-16 covers the reusable middleware and the transitional session guard on the
+existing reference-data route. It does not certify the Issue 3 requester identity
+conversion: cookie-less Lab 2 requester behavior remains unchanged. AUTH-01 through
+AUTH-09 and authenticated requester regression cases remain Planned for their
+feature work. Login/password-change UI, role navigation and E2E remain Planned.
+SEED-07 is partially covered for requester distribution and Requested Priority;
+expanded statuses/staff ownership and SEED-08 await their feature migrations.
+
+The temporary guard rejects a supplied requester header when it conflicts with
+the session identity or the current role is not REQUESTER. This does not mark
+AUTH-07 complete: the final Issue 3 contract will ignore client-selected identity
+and use authenticated ownership throughout the requester APIs.
+
+Run `npm.cmd run test:isolated -- tests/lab-03` from `server` for Issue 2 coverage,
+or `npm.cmd run test:isolated` for the full server suite. The runner applies
+migrations and seeds in a separate schema, checks Prisma drift, and cleans up only
+its own schema. It never resets the development database. See
+[authentication implementation notes](authentication.md) for credentials and
+migration decisions. These are branch verification results, not final-main release
+or visual/E2E evidence.
+
+Verification on `feature/32-authentication-user-migration-completion`:
+
+| Command / check | Result |
+|---|---|
+| `npx.cmd prisma validate` | Pass |
+| `npx.cmd prisma generate` | Pass |
+| Server `npm.cmd run build` | Pass |
+| `npm.cmd run test:isolated -- tests/lab-03` | 5 files, 53 tests passed |
+| `npm.cmd run test:isolated` | 15 files, 123 tests passed, including all 70 Lab 1/Lab 2 tests |
+| Isolated migration deploy and Prisma migrate diff | Pass; no schema drift |
+| Client `npm.cmd run build` | Pass |
+| Client `npm.cmd test` | 8 files, 50 tests passed |
+
+Windows sandbox restrictions initially blocked tsx/esbuild startup. Those checks
+passed when rerun outside the sandbox. The final client run emitted a non-failing
+React `act(...)` warning from the existing Lab 1 App test. No existing tests were
+weakened or removed. The working development schema was not migrated or reset.
+
+The pre-commit review first reproduced three failures: conflicting requester
+identity, a changed non-Requester role using legacy requester context, and skipped
+bcrypt work for overlong legacy input. The corrected suite passes all three.
+The isolated runner also now requires successful schema creation before cleanup.
+
 ---
 
 # 3. Traceability Rules
@@ -55,16 +232,16 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| API-01 | API | AC-01 | Valid login with active account and correct credentials | Authenticated response returns safe user identity and role | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-02 | API | FR-02 | Login with incorrect password | Login rejected with safe authentication failure | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-03 | API | FR-02 | Login with unknown email | Login rejected without exposing unnecessary account information | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-04 | API | AC-05 | Login using inactive account | Authenticated application access denied | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-05 | API | FR-01 | Login with missing email | Validation failure returned | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-06 | API | FR-01 | Login with missing password | Validation failure returned | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-07 | API | FR-06 | Retrieve current authenticated user | Safe current-user identity and role returned | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-08 | API | FR-06 | Retrieve current user without session | `401 Unauthorized` | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-09 | API | FR-05 | Logout authenticated user | Session invalidated successfully | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-10 | API | FR-05 | Access protected API after logout | Request rejected as unauthenticated | `server/tests/lab-03/auth.api.test.ts` | Planned |
+| API-01 | API | AC-01 | Valid login with active account and correct credentials | Authenticated response returns safe user identity and role | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-02 | API | FR-02 | Login with incorrect password | Login rejected with safe authentication failure | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-03 | API | FR-02 | Login with unknown email | Login rejected without exposing unnecessary account information | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-04 | API | AC-05 | Login using inactive account | Authenticated application access denied | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-05 | API | FR-01 | Login with missing email | Validation failure returned | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-06 | API | FR-01 | Login with missing password | Validation failure returned | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-07 | API | FR-06 | Retrieve current authenticated user | Safe current-user identity and role returned | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-08 | API | FR-06 | Retrieve current user without session | `401 Unauthorized` | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-09 | API | FR-05 | Logout authenticated user | Session invalidated successfully | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-10 | API | FR-05 | Access protected API after logout | Request rejected as unauthenticated | `server/tests/lab-03/auth.api.test.ts` | Pass |
 
 ---
 
@@ -72,13 +249,13 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| API-11 | API | AC-02 | Login with user marked `mustChangePassword` | Login succeeds but normal application access remains restricted | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-12 | API | AC-02 | Valid initial-password replacement | Password updated and `mustChangePassword` cleared | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-13 | API | FR-04 | New password and confirmation mismatch | Validation failure | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-14 | API | FR-04 | Invalid new password boundary | Validation failure | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-15 | API | FR-04 | Incorrect current password | Password change rejected safely | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-16 | API | AC-02 | Access normal protected endpoint before required password change | 403 Forbidden with PASSWORD_CHANGE_REQUIRED; normal protected application access remains blocked | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| API-17 | API | BR-24 | More than 5 failed login attempts within 15 minutes | Additional attempt is rejected with `429 Too Many Requests` | `server/tests/lab-03/auth.api.test.ts` | Planned |
+| API-11 | API | AC-02 | Login with user marked `mustChangePassword` | Login succeeds but normal application access remains restricted | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-12 | API | AC-02 | Valid initial-password replacement | Password updated and `mustChangePassword` cleared | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-13 | API | FR-04 | New password and confirmation mismatch | Validation failure | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-14 | API | FR-04 | Invalid new password boundary | Validation failure | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-15 | API | FR-04 | Incorrect current password | Password change rejected safely | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-16 | API | AC-02 | Access normal protected endpoint before required password change | 403 Forbidden with PASSWORD_CHANGE_REQUIRED; normal protected application access remains blocked | `server/tests/lab-03/authorization.api.test.ts` | Pass |
+| API-17 | API | BR-24 | More than 5 failed login attempts within 15 minutes | Additional attempt is rejected with `429 Too Many Requests` | `server/tests/lab-03/auth.api.test.ts` | Pass |
 
 ---
 
@@ -86,10 +263,10 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| UNIT-01 | Unit | BR-07 | Password hashing helper | Plaintext password produces secure hash | `server/tests/lab-03/auth.unit.test.ts` | Planned |
-| UNIT-02 | Unit | BR-07 | Password verification helper with correct password | Verification succeeds | `server/tests/lab-03/auth.unit.test.ts` | Planned |
-| UNIT-03 | Unit | BR-07 | Password verification helper with incorrect password | Verification fails | `server/tests/lab-03/auth.unit.test.ts` | Planned |
-| UNIT-04 | Unit | BR-07 | Stored password value | Plaintext password is not stored | `server/tests/lab-03/auth.unit.test.ts` | Planned |
+| UNIT-01 | Unit | BR-07 | Password hashing helper | Plaintext password produces secure hash | `server/tests/lab-03/auth.unit.test.ts` | Pass |
+| UNIT-02 | Unit | BR-07 | Password verification helper with correct password | Verification succeeds | `server/tests/lab-03/auth.unit.test.ts` | Pass |
+| UNIT-03 | Unit | BR-07 | Password verification helper with incorrect password | Verification fails | `server/tests/lab-03/auth.unit.test.ts` | Pass |
+| UNIT-04 | Unit | BR-07 | Stored password value | Plaintext password is not stored | `server/tests/lab-03/auth.unit.test.ts` | Pass |
 
 ---
 
@@ -97,15 +274,15 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| AUTH-01 | Authorization | FR-07 | Unauthenticated access to protected Requester endpoint | `401 Unauthorized` | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| AUTH-02 | Authorization | FR-07 | Requester accesses IT Staff Queue API | `403 Forbidden` | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| AUTH-03 | Authorization | AC-04 | Requester accesses Internal Notes endpoint | Forbidden; no Internal Note content returned | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| AUTH-04 | Authorization | FR-28 | IT Staff accesses Administrator user list | `403 Forbidden` | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| AUTH-05 | Authorization | FR-28 | Requester accesses Administrator user list | `403 Forbidden` | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| AUTH-01 | Authorization | FR-07 | Unauthenticated access to protected Requester endpoint | `401 Unauthorized` | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| AUTH-02 | Authorization | FR-07 | Requester accesses IT Staff Queue API | `403 Forbidden` | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| AUTH-03 | Authorization | AC-04 | Requester accesses Internal Notes endpoint | Forbidden; no Internal Note content returned | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| AUTH-04 | Authorization | FR-28 | IT Staff accesses Administrator user list | `403 Forbidden` | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| AUTH-05 | Authorization | FR-28 | Requester accesses Administrator user list | `403 Forbidden` | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
 | AUTH-06 | Authorization | FR-28 | Administrator accesses permitted User Management endpoint | Access allowed | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| AUTH-07 | Authorization | AC-03 | Requester sends another Requester's `requesterId` | Backend ignores supplied identity and uses authenticated Requester | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| AUTH-08 | Authorization | AC-06 | Requester requests another user's Ticket | Protected Ticket data not exposed | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| AUTH-09 | Authorization | FR-11 | Requester requests Attachment from another user's Ticket | Protected Attachment not exposed | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| AUTH-07 | Authorization | AC-03 | Requester sends another Requester's `requesterId` | Backend ignores supplied identity and uses authenticated Requester | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| AUTH-08 | Authorization | AC-06 | Requester requests another user's Ticket | Protected Ticket data not exposed | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| AUTH-09 | Authorization | FR-11 | Requester requests Attachment from another user's Ticket | Protected Attachment not exposed | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
 
 ---
 
@@ -113,12 +290,12 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| REG-01 | Regression/API | AC-18 | Authenticated Requester creates Ticket | Ticket created using authenticated Requester identity | Existing Lab 2 tests / Lab 3 regression test | Planned |
-| REG-02 | Regression/API | AC-18 | My Tickets after authentication migration | Only authenticated Requester's Tickets returned | Existing Lab 2 tests / Lab 3 regression test | Planned |
-| REG-03 | Regression/API | AC-18 | Requester Ticket Detail | Owned Ticket remains accessible | Existing Lab 2 tests / Lab 3 regression test | Planned |
-| REG-04 | Regression/API | AC-18 | Requester Attachment upload | Existing permitted upload behavior continues | Existing Lab 2 tests / Lab 3 regression test | Planned |
-| REG-05 | Regression/API | AC-18 | Requester Attachment retrieval | Existing ownership protection continues | Existing Lab 2 tests / Lab 3 regression test | Planned |
-| REG-06 | Regression/API | AC-18 | Category/reference-data APIs | Existing Lab 2 behavior remains valid | Existing Lab 2 tests | Planned |
+| REG-01 | Regression/API | AC-18 | Authenticated Requester creates Ticket | Ticket created using authenticated Requester identity | `server/tests/lab-02/create-ticket.api.test.ts` | Pass |
+| REG-02 | Regression/API | AC-18 | My Tickets after authentication migration | Only authenticated Requester's Tickets returned | `server/tests/lab-02/my-tickets.api.test.ts` | Pass |
+| REG-03 | Regression/API | AC-18 | Requester Ticket Detail | Owned Ticket remains accessible | `server/tests/lab-02/ticket-detail.api.test.ts` | Pass |
+| REG-04 | Regression/API | AC-18 | Requester Attachment upload | Existing permitted upload behavior continues | `server/tests/lab-02/attachments-upload.api.test.ts` | Pass |
+| REG-05 | Regression/API | AC-18 | Requester Attachment retrieval | Existing ownership protection continues | `server/tests/lab-02/attachments-lifecycle.api.test.ts` | Pass |
+| REG-06 | Regression/API | AC-18 | Category/reference-data APIs | Existing Lab 2 behavior remains valid | `server/tests/lab-02/reference-data.api.test.ts` | Pass |
 
 ---
 
@@ -149,12 +326,12 @@ Primary traceability is based on:
 | DETAIL-02 | API | AC-08 | Claim unassigned Ticket | Authenticated permitted staff becomes owner | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
 | DETAIL-03 | API | FR-22 | Reassign Ticket to active permitted staff user | Ticket Owner updated | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
 | DETAIL-04 | API | BR-11 | Assign Ticket to inactive user | Request rejected | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| DETAIL-05 | Authorization | FR-22 | Requester attempts ownership update | `403 Forbidden` | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
+| DETAIL-05 | Authorization | FR-22 | Requester attempts ownership update | `403 Forbidden` | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
 | DETAIL-06 | API | AC-09 | Update valid IT Priority | IT Priority stored and returned | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| DETAIL-07 | API | BR-14 | Requester attempts IT Priority update | Request rejected | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
+| DETAIL-07 | API | BR-14 | Requester attempts IT Priority update | Request rejected | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
 | DETAIL-08 | API | AC-10 | Perform valid status transition | Status successfully updated | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
 | DETAIL-09 | API | AC-10 | Perform invalid status transition | Transition rejected | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| DETAIL-10 | Authorization | BR-06 | Requester formally sets Resolved/Closed | Request rejected | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
+| DETAIL-10 | Authorization | BR-06 | Requester formally sets Resolved/Closed | Request rejected | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
 
 ---
 
@@ -162,9 +339,9 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| RESOLVE-01 | API | FR-13 | Requester indicates owned problem appears resolved | Resolution indication recorded according to contract | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| RESOLVE-02 | Authorization | FR-13 | Requester uses action on another Requester's Ticket | Request rejected without protected data leakage | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| RESOLVE-03 | API | BR-06 | Problem Appears Resolved action | Ticket is not automatically formally Closed by Requester | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
+| RESOLVE-01 | API | FR-13 | Requester indicates owned problem appears resolved | Resolution indication recorded according to contract | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| RESOLVE-02 | Authorization | FR-13 | Requester uses action on another Requester's Ticket | Request rejected without protected data leakage | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| RESOLVE-03 | API | BR-06 | Problem Appears Resolved action | Ticket is not automatically formally Closed by Requester | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
 
 ---
 
@@ -172,14 +349,14 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| COMMENT-01 | API | AC-11 | Requester posts valid Public Comment on owned Ticket | Comment created | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
+| COMMENT-01 | API | AC-11 | Requester posts valid Public Comment on owned Ticket | Comment created | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
 | COMMENT-02 | API | AC-11 | IT Staff posts valid Public Comment | Comment created | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| COMMENT-03 | API | BR-18 | Empty Public Comment | Validation failure | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| COMMENT-04 | API | BR-18 | Whitespace-only Public Comment | Validation failure | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| COMMENT-05 | API | AC-11 | Public Comment authorship | Backend records authenticated author | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| COMMENT-06 | API | AC-11 | Public Comment creation time | Backend records creation time | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| COMMENT-07 | Authorization | FR-12 | Requester posts comment to another Requester's Ticket | Request rejected | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| COMMENT-08 | API | BR-16 | Edit/delete Public Comment attempt | Not supported in Lab 3 | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
+| COMMENT-03 | API | BR-18 | Empty Public Comment | Validation failure | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| COMMENT-04 | API | BR-18 | Whitespace-only Public Comment | Validation failure | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| COMMENT-05 | API | AC-11 | Public Comment authorship | Backend records authenticated author | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| COMMENT-06 | API | AC-11 | Public Comment creation time | Backend records creation time | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| COMMENT-07 | Authorization | FR-12 | Requester posts comment to another Requester's Ticket | Request rejected | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| COMMENT-08 | API | BR-16 | Edit/delete Public Comment attempt | Not supported in Lab 3 | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
 
 ---
 
@@ -189,8 +366,8 @@ Primary traceability is based on:
 |---|---|---|---|---|---|---|
 | NOTE-01 | API | AC-12 | IT Staff creates valid Internal Note | Note created | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
 | NOTE-02 | API | AC-12 | IT Staff retrieves Internal Notes | Note content returned | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| NOTE-03 | Authorization | AC-04 | Requester retrieves Internal Notes | Forbidden with no note content returned | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| NOTE-04 | Authorization | AC-04 | Requester creates Internal Note | `403 Forbidden` | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
+| NOTE-03 | Authorization | AC-04 | Requester retrieves Internal Notes | Forbidden with no note content returned | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
+| NOTE-04 | Authorization | AC-04 | Requester creates Internal Note | `403 Forbidden` | `server/tests/lab-03/requester-regression.api.test.ts` | Pass |
 | NOTE-05 | API | BR-18 | Empty Internal Note | Validation failure | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
 | NOTE-06 | API | BR-18 | Whitespace-only Internal Note | Validation failure | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
 | NOTE-07 | API | AC-12 | Internal Note author | Backend records authenticated author | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
@@ -227,11 +404,11 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| MIG-01 | Migration | AC-18 | Existing Development Requesters migrate/evolve into Users | User records remain associated with correct existing Tickets | Migration verification script/test | Planned |
-| MIG-02 | Migration | AC-18 | Existing Ticket records after migration | Existing Tickets remain present | Migration verification script/test | Planned |
-| MIG-03 | Migration | AC-18 | Existing Attachment records after migration | Existing Attachments remain valid | Migration verification script/test | Planned |
+| MIG-01 | Migration | AC-18 | Existing Development Requesters migrate/evolve into Users | User records remain associated with correct existing Tickets | `server/tests/lab-03/migration.test.ts` | Pass |
+| MIG-02 | Migration | AC-18 | Existing Ticket records after migration | Existing Tickets remain present | `server/tests/lab-03/migration.test.ts` | Pass |
+| MIG-03 | Migration | AC-18 | Existing Attachment records after migration | Existing Attachments remain valid | `server/tests/lab-03/migration.test.ts` | Pass |
 | MIG-04 | Migration | BR-13 | Existing/new Tickets receive valid IT Priority initialization | IT Priority correctly initialized from Requested Priority where required | Migration verification script/test | Planned |
-| MIG-05 | Migration | FR-04 | Migrated Requester initial credentials | Migrated test users can authenticate with documented local credentials and are required to change initial password where specified | Migration verification script/test | Planned |
+| MIG-05 | Migration | FR-04 | Migrated Requester initial credentials | Migrated test users can authenticate with documented local credentials and are required to change initial password where specified | `server/tests/lab-03/migration.test.ts` | Pass |
 | MIG-06 | Migration | FR-09 | Development Requester selector dependency removed | Authenticated User identity replaces temporary selector identity | Regression/E2E verification | Planned |
 
 ---
@@ -240,14 +417,14 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| SEED-01 | Integration | Seed requirement | Seed is safe to run repeatedly | Re-running seed does not create invalid duplicate data | Seed/integration test | Planned |
-| SEED-02 | Integration | Seed requirement | Active Requester count | At least four active Requesters exist | Seed/integration test | Planned |
-| SEED-03 | Integration | Seed requirement | Inactive Requester | At least one inactive Requester exists | Seed/integration test | Planned |
-| SEED-04 | Integration | Seed requirement | Active IT Staff count | At least three active IT Staff exist | Seed/integration test | Planned |
-| SEED-05 | Integration | Seed requirement | Inactive IT Staff | At least one inactive IT Staff exists | Seed/integration test | Planned |
-| SEED-06 | Integration | Seed requirement | Administrator availability | At least one active Administrator exists | Seed/integration test | Planned |
-| SEED-07 | Integration | Seed requirement | Realistic Tickets | Tickets cover multiple statuses, priorities, and ownership states | Seed/integration test | Planned |
-| SEED-08 | Integration | Seed requirement | Comments and Notes | Example Public Comments and Internal Notes exist without sensitive content | Seed/integration test | Planned |
+| SEED-01 | Integration | Seed requirement | Seed is safe to run repeatedly | Re-running seed does not create invalid duplicate data | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-02 | Integration | Seed requirement | Active Requester count | At least four active Requesters exist | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-03 | Integration | Seed requirement | Inactive Requester | At least one inactive Requester exists | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-04 | Integration | Seed requirement | Active IT Staff count | At least three active IT Staff exist | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-05 | Integration | Seed requirement | Inactive IT Staff | At least one inactive IT Staff exists | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-06 | Integration | Seed requirement | Administrator availability | At least one active Administrator exists | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-07 | Integration | Seed requirement | Realistic Tickets | Tickets cover multiple statuses, priorities, and ownership states | `server/tests/lab-03/seed.test.ts` | Pass |
+| SEED-08 | Integration | Seed requirement | Comments and Notes | Example Public Comments and Internal Notes exist without sensitive content | `server/tests/lab-03/seed.test.ts` | Pass |
 
 ---
 
@@ -325,11 +502,11 @@ Primary traceability is based on:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| UI-36 | Regression/UI | AC-18 | Development Requester selector removed | Selector and Change Requester action absent | Requester regression test | Planned |
-| UI-37 | UI Component | AC-11 | Requester Public Comments | Comment list and form available on owned Ticket | Requester Ticket Detail test | Planned |
-| UI-38 | UI Component | FR-13 | Problem Appears Resolved action | Action visible and submits permitted request | Requester Ticket Detail test | Planned |
-| UI-39 | UI Component | BR-06 | Requester formal resolve/close controls | Formal Resolved/Closed actions not available | Requester Ticket Detail test | Planned |
-| UI-40 | Authorization/UI | AC-04 | Internal Notes on Requester screen | Internal Notes not displayed | Requester Ticket Detail test | Planned |
+| UI-36 | Regression/UI | AC-18 | Development Requester selector removed | Selector and Change Requester action absent | `client/tests/lab-02/AppShell.test.tsx` | Pass |
+| UI-37 | UI Component | AC-11 | Requester Public Comments | Comment list and form available on owned Ticket | `client/tests/lab-03/RequesterDiscussion.test.tsx` | Pass |
+| UI-38 | UI Component | FR-13 | Problem Appears Resolved action | Action visible and submits permitted request | `client/tests/lab-03/RequesterDiscussion.test.tsx` | Pass |
+| UI-39 | UI Component | BR-06 | Requester formal resolve/close controls | Formal Resolved/Closed actions not available | `client/tests/lab-03/RequesterDiscussion.test.tsx` | Pass |
+| UI-40 | Authorization/UI | AC-04 | Internal Notes on Requester screen | Internal Notes not displayed | `client/tests/lab-03/RequesterDiscussion.test.tsx` | Pass |
 
 ---
 
@@ -351,6 +528,15 @@ Primary traceability is based on:
 ---
 
 # 24. Responsive and Visual Tests
+
+The focused browser checks in `client/e2e/lab-03/responsive.spec.ts` exercise
+375px, 768px, and 1280px viewports. They assert visible authentication,
+Requester, IT Staff, and Administrator controls, usable role navigation,
+active navigation semantics, and no document-level horizontal overflow.
+These are automated responsive and accessibility-oriented assertions. Visual
+judgment of spacing, typography, contrast, focus appearance, zoom behavior,
+and all detail/form states still requires manual inspection; the VIS checklist
+below remains a manual checklist rather than a claim of automated coverage.
 
 These checks apply to:
 
@@ -380,24 +566,24 @@ These checks apply to:
 
 | Test ID | Type | Requirement / AC | What It Tests | Expected Result | Automated Test File | Final Status |
 |---|---|---|---|---|---|---|
-| E2E-01 | E2E | AC-01 | Valid login | User reaches correct authenticated role shell | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-02 | E2E | AC-02 | Initial-password login and change | Normal app opens only after valid password change | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-03 | E2E | FR-02 | Invalid login | Safe failure shown and app remains protected | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-04 | E2E | AC-05 | Inactive account login | Access denied with safe feedback | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-05 | E2E | FR-05 | Login then logout | Protected app unavailable after logout | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-06 | E2E | AC-07 | IT Staff Queue workflow | Staff logs in, searches/filters Queue, opens Ticket Detail | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-07 | E2E | AC-08 | Claim Ticket flow | Staff claims an unassigned Ticket successfully | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-08 | E2E | AC-09 | IT Priority workflow | Staff updates IT Priority successfully | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-09 | E2E | AC-10 | Status workflow | Valid transition succeeds and invalid transition is blocked | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-10 | E2E | AC-11 | Public Comment workflow | Staff/Requester can post and view Public Comment | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-11 | E2E | AC-12 | Internal Note workflow | Staff creates Internal Note and Requester cannot see it | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-12 | E2E | FR-13 | Requester Problem Appears Resolved | Requester submits indication without formal Ticket closure | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-13 | E2E | AC-13 | Administrator creates user | New account appears with exactly one role | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-14 | E2E | FR-32 | Administrator edits user | Updated account information displayed | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-15 | E2E | AC-15 | Self-deactivation prevention | Administrator cannot deactivate own account | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-16 | E2E | AC-16 | Last Administrator protection | Final active Administrator cannot be deactivated | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-17 | E2E | AC-17 | Administrator sets initial password | User must change new initial password on next login | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-18 | E2E | AC-18 | Requester Lab 2 regression flow | Existing Requester Ticket/Attachment workflow remains functional | Appropriate Lab 3 E2E file | Planned |
+| E2E-01 | E2E | AC-01 | Valid login | User reaches correct authenticated role shell | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-02 | E2E | AC-02 | Initial-password login and change | Normal app opens only after valid password change | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-03 | E2E | FR-02 | Invalid login | Safe failure shown and app remains protected | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-04 | E2E | AC-05 | Inactive account login | Access denied with safe feedback | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-05 | E2E | FR-05 | Login then logout | Protected app unavailable after logout | `client/e2e/lab-03/authentication.spec.ts` | Pass |
+| E2E-06 | E2E | AC-07 | IT Staff Queue workflow | Staff logs in, searches/filters Queue, opens Ticket Detail | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-07 | E2E | AC-08 | Claim Ticket flow | Staff claims an unassigned Ticket successfully | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-08 | E2E | AC-09 | IT Priority workflow | Staff updates IT Priority successfully | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-09 | E2E | AC-10 | Status workflow | Valid transition succeeds and invalid transition is blocked | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-10 | E2E | AC-11 | Public Comment workflow | Staff/Requester can post and view Public Comment | `client/e2e/lab-03/staff-ticket-flow.spec.ts`, `client/e2e/lab-03/requester-regression.spec.ts` | Pass |
+| E2E-11 | E2E | AC-12 | Internal Note workflow | Staff creates Internal Note and Requester cannot see it | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-12 | E2E | FR-13 | Requester Problem Appears Resolved | Requester submits indication without formal Ticket closure | `client/e2e/lab-03/staff-ticket-flow.spec.ts` | Pass |
+| E2E-13 | E2E | AC-13 | Administrator creates user | New account appears with exactly one role | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-14 | E2E | FR-32 | Administrator edits user | Updated account information displayed | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-15 | E2E | AC-15 | Self-deactivation prevention | Administrator cannot deactivate own account | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-16 | E2E | AC-16 | Last Administrator protection | Final active Administrator cannot be deactivated | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-17 | E2E | AC-17 | Administrator sets initial password | User must change new initial password on next login | `client/e2e/lab-03/user-administration.spec.ts` | Pass |
+| E2E-18 | E2E | AC-18 | Requester Lab 2 regression flow | Existing Requester Ticket/Attachment workflow remains functional | `client/e2e/lab-03/requester-regression.spec.ts` | Pass |
 
 ---
 
