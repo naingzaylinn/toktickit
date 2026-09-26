@@ -42,7 +42,9 @@ body {
   color: #FFFFFF;
 }
 
-.btn-primary-green:hover:not(:disabled) {
+.btn-primary-green:hover:not(:disabled),
+.btn-primary-green.active,
+.btn.btn-primary-green:active {
   background-color: #0B7A46;
   border-color: #0B7A46;
   color: #FFFFFF;
@@ -174,4 +176,23 @@ textarea:focus-visible, .form-control:focus-visible, .form-select:focus-visible,
   .staff-ticket-queue-screen .btn-group { display: flex; flex-wrap: wrap; }
   .staff-ticket-queue-screen .btn-group > .btn { min-height: 44px; }
   .navbar-collapse.show .nav-link, .navbar-collapse.show .btn { min-height: 44px; display: flex; align-items: center; }
+}
+
+/* One identity badge stays visible independently of the mobile menu. */
+.shell-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: 100%;
+  flex-basis: 100%;
+  margin-top: 0.5rem;
+  text-align: left;
+  line-height: 1.4;
+}
+.shell-identity > span { min-width: 0; }
+@media (min-width: 992px) {
+  .shell-identity { flex-basis: auto; max-width: 30%; margin-top: 0; margin-left: 1rem; }
 }

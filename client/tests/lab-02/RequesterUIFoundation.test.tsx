@@ -344,3 +344,26 @@ describe("Feature-B: Requester UI Foundation Tests", () => {
         expect(cancel).toHaveBeenCalledTimes(1);
     });
 });
+
+describe("Persistent authenticated identity", () => {
+  it.each(["REQUESTER", "IT_STAFF", "ADMINISTRATOR"] as const)("keeps one complete identity outside the collapsed menu for %s", role => {
+    const name = "VeryLongUnbrokenAuthenticatedUserName".repeat(4);
+    render(<AppShell currentUser={{ id: "user", name, email: "user@example.com", role, isActive: true, mustChangePassword: false }} onLogout={vi.fn()} />);
+    const badge = screen.getByTestId("requester-badge");
+    expect(badge.closest(".collapse")).toBeNull();
+    expect(badge).toHaveTextContent(name);
+    expect(badge).toHaveTextContent({ REQUESTER: "Requester", IT_STAFF: "IT Staff", ADMINISTRATOR: "Administrator" }[role]);
+    expect(screen.getAllByTestId("requester-badge")).toHaveLength(1);
+    expect(badge.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("button", { name: "Toggle navigation" })).toHaveAttribute("aria-expanded", "false");
+  });
+  it("keeps the primary Create Ticket link label, route and active semantics", () => {
+    render(<AppShell currentUser={{ id: "user", name: "Alice", email: "alice@example.com", role: "REQUESTER", isActive: true, mustChangePassword: false }} onLogout={vi.fn()} activePath="/tickets/new" />);
+    const link = screen.getByRole("link", { name: "Create Ticket" });
+    expect(link).toHaveClass("btn-primary-green");
+    expect(link).toHaveAttribute("href", "/tickets/new");
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "My Tickets" })).not.toHaveAttribute("aria-current");
+    expect(link.querySelector("svg")).toBeNull();
+  });
+});

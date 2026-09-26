@@ -53,27 +53,30 @@ export const AppShell: React.FC<AppShellProps> = ({
             <span className="navbar-toggler-icon" />
           </button>
 
+          <span
+            className="shell-identity badge rounded-pill bg-pale-green text-primary-green px-3 py-2 border border-primary-green order-1 order-lg-2"
+            data-testid="requester-badge"
+            role="status"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" focusable="false" className="flex-shrink-0">
+              <circle cx="12" cy="7" r="4" />
+              <path d="M4 21v-2a8 8 0 0 1 16 0v2" />
+            </svg>
+            <span>{({REQUESTER: "Requester", IT_STAFF: "IT Staff", ADMINISTRATOR: "Administrator"})[currentUser.role]}: {currentUser.name}</span>
+          </span>
+
           {/* Collapsible content */}
           <div
-            className={`collapse navbar-collapse ${navOpen ? "show" : ""}`}
+            className={`collapse navbar-collapse order-2 order-lg-1 ${navOpen ? "show" : ""}`}
             id="toktickit-navbar-nav"
           >
             {/* Links */}
             <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-              {(currentUser.role === "REQUESTER" ? [["/tickets", "My Tickets"], ["/tickets/new", "Create Ticket"]] : currentUser.role === "ADMINISTRATOR" ? [["/staff/tickets", "Ticket Queue"], ["/admin/users", "User Management"]] : [["/staff/tickets", "Ticket Queue"]]).map(([path,label]) => <li className="nav-item" key={path}><a aria-current={isCurrent(path) ? "page" : undefined} className={"nav-link px-3 " + (isCurrent(path) ? "active fw-bold text-primary-green" : "text-secondary")} href={path} onClick={e=>{e.preventDefault();window.history.pushState({},"",path);window.dispatchEvent(new PopStateEvent("popstate"));setNavOpen(false);}}>{label}</a></li>)}
+              {(currentUser.role === "REQUESTER" ? [["/tickets", "My Tickets"], ["/tickets/new", "Create Ticket"]] : currentUser.role === "ADMINISTRATOR" ? [["/staff/tickets", "Ticket Queue"], ["/admin/users", "User Management"]] : [["/staff/tickets", "Ticket Queue"]]).map(([path,label]) => <li className="nav-item" key={path}><a aria-current={isCurrent(path) ? "page" : undefined} className={(path === "/tickets/new" ? "btn btn-primary-green px-3" : "nav-link px-3 " + (isCurrent(path) ? "text-primary-green" : "text-secondary")) + (isCurrent(path) ? " active fw-bold" : "")} href={path} onClick={e=>{e.preventDefault();window.history.pushState({},"",path);window.dispatchEvent(new PopStateEvent("popstate"));setNavOpen(false);}}>{label}</a></li>)}
             </ul>
 
-            {/* Authenticated identity and logout */}
+            {/* Logout remains available in the collapsible navigation. */}
             <div className="d-flex align-items-center flex-wrap gap-2 pt-2 pt-lg-0">
-              <span
-                className="badge rounded-pill bg-pale-green text-primary-green px-3 py-2 border border-primary-green"
-                data-testid="requester-badge"
-                role="status"
-                aria-label={`Current user: ${currentUser.name}`}
-              >
-                {({REQUESTER: "Requester", IT_STAFF: "IT Staff", ADMINISTRATOR: "Administrator"})[currentUser.role]}: {currentUser.name}
-              </span>
-
               <button
                 type="button"
                 className="btn btn-sm btn-outline-primary-green"

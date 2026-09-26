@@ -254,7 +254,7 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
                 <div className="row g-3">
                     <div className="col-12 col-md-6">
                         <div className="small text-secondary">Requester</div>
-                        <div className="fw-semibold">
+                        <div className="fw-semibold text-break">
                             {currentRequester.name}
                         </div>
                     </div>
