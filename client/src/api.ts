@@ -35,6 +35,7 @@ export interface ApiErrorEnvelope {
     message: string;
     correlationId?: string;
     details?: ApiErrorDetails[];
+    fields?: Record<string, unknown>;
   };
 }
 
@@ -42,13 +43,15 @@ export class ApiError extends Error {
   code: string;
   correlationId?: string;
   status: number;
+  fields: Record<string, string>;
 
-  constructor(code: string, message: string, status: number, correlationId?: string) {
+  constructor(code: string, message: string, status: number, correlationId?: string, fields: Record<string, string> = {}) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
     this.correlationId = correlationId;
+    this.fields = fields;
   }
 }
 
@@ -142,7 +145,12 @@ async function readApiError(
     errorData?.error?.code ?? "INTERNAL_SERVER_ERROR",
     errorData?.error?.message ?? fallbackMessage,
     res.status,
-    errorData?.error?.correlationId
+    errorData?.error?.correlationId,
+    // Only the documented auth validation fields are needed by these forms.
+    authenticationEndpoint && res.status === 400 && errorData?.error?.code === "VALIDATION_ERROR"
+      ? Object.fromEntries(Object.entries(errorData.error.fields ?? {}).filter(([key, value]) =>
+          ["email", "password", "currentPassword", "newPassword", "confirmPassword"].includes(key) && typeof value === "string")) as Record<string, string>
+      : {}
   );
 }
 

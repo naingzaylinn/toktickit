@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, AuthUser, EligibleOwner, getEligibleOwners, getStaffTicket, postComment, postInternalNote, StaffTicketDetail, StaffTicketPriority, StaffTicketStatus, updateStaffOwner, updateStaffPriority, updateStaffStatus } from "../api.js";
 
+import FormField from "./common/FormField.js";
+
 const transitions: Record<StaffTicketStatus, StaffTicketStatus[]> = {
   NEW: ["OPEN", "IN_PROGRESS", "CANCELLED"],
   OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"],
@@ -19,6 +21,7 @@ export default function StaffTicketDetailScreen({ ticketId, currentUser, onBack 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState("");
   const [ownerId, setOwnerId] = useState("");
   const [priority, setPriority] = useState<StaffTicketPriority>("MEDIUM");
@@ -49,8 +52,9 @@ export default function StaffTicketDetailScreen({ ticketId, currentUser, onBack 
     finally { setBusy(false); }
   };
   const validText = (content: string, kind: string) => {
-    if (content.trim().length < 1 || content.trim().length > 2000) { setError(`${kind} must contain 1 to 2000 characters after trimming.`); return false; }
-    return true;
+    const message = content.trim().length < 1 || content.trim().length > 2000 ? `${kind} must contain 1 to 2000 characters after trimming.` : "";
+    setFieldErrors(previous => ({ ...previous, [kind]: message }));
+    return !message;
   };
   return <div className="container-fluid px-0">
     <button className="btn btn-outline-primary-green mb-3" onClick={onBack}>Back to Ticket Queue</button>
@@ -71,8 +75,8 @@ export default function StaffTicketDetailScreen({ ticketId, currentUser, onBack 
       </div></section></div>
       <section className="zen-card p-4 mb-3"><h2 className="h5">Ticket Ownership</h2><p>Current owner: <strong>{ticket.owner?.name ?? "Unassigned"}</strong></p><div className="d-flex gap-2 flex-wrap">{!ticket.owner && <button className="btn btn-primary-green" disabled={busy} onClick={() => void save(() => updateStaffOwner(ticketId, currentUser.id), "Ticket claimed.")}>Claim Ticket</button>}<label className="visually-hidden" htmlFor="staff-owner">Assign or reassign owner</label><select id="staff-owner" className="form-select flex-grow-1" style={{ minWidth: 180 }} value={ownerId} disabled={busy} onChange={e => setOwnerId(e.target.value)}><option value="">Unassigned</option>{owners.map(owner => <option key={owner.id} value={owner.id}>{owner.name} ({label(owner.role)})</option>)}</select><button className="btn btn-outline-primary-green" disabled={busy || ownerId === (ticket.owner?.id ?? "")} onClick={() => void save(() => updateStaffOwner(ticketId, ownerId || null), "Owner updated.")}>Save Owner</button></div></section>
       <section className="zen-card p-4 mb-3"><h2 className="h5">Attachments</h2>{ticket.attachments.length ? <ul>{ticket.attachments.map(a => <li className="text-break" key={a.id}><a href={`/api/staff/tickets/${encodeURIComponent(ticketId)}/attachments/${encodeURIComponent(a.id)}/download`}>{a.originalFilename}</a> ({Math.ceil(a.sizeBytes / 1024)} KB)</li>)}</ul> : <p>No attachments.</p>}</section>
-      <div className="row g-3"><section className="col-12 col-lg-6"><div className="zen-card p-4 h-100"><h2 className="h5">Public Comments</h2><p className="text-secondary">Visible to the Requester. Do not include private staff information.</p>{ticket.publicComments.map(item => <article className="border-top py-2" key={item.id}><strong>{item.author.name}</strong> <time className="text-secondary small" dateTime={item.createdAt}>{date(item.createdAt)}</time><p className="text-break mb-0" style={{ whiteSpace: "pre-wrap" }}>{item.content}</p></article>)}<label className="form-label mt-3" htmlFor="staff-comment">Public Comment</label><textarea id="staff-comment" className="form-control" maxLength={2000} value={comment} onChange={e => setComment(e.target.value)} /><button className="btn btn-primary-green mt-2" disabled={busy} onClick={() => { if (validText(comment, "Comment")) void save(async () => { await postComment(ticketId, comment); setComment(""); }, "Public Comment added."); }}>Post Public Comment</button></div></section>
-      <section className="col-12 col-lg-6"><div className="zen-card p-4 h-100 border border-warning"><h2 className="h5">Internal Notes</h2><p className="text-secondary">Private to IT Staff and Administrators. The Requester cannot see these notes.</p>{ticket.internalNotes.map(item => <article className="border-top py-2" key={item.id}><strong>{item.author.name}</strong> <time className="text-secondary small" dateTime={item.createdAt}>{date(item.createdAt)}</time><p className="text-break mb-0" style={{ whiteSpace: "pre-wrap" }}>{item.content}</p></article>)}<label className="form-label mt-3" htmlFor="staff-note">Internal Note</label><textarea id="staff-note" className="form-control" maxLength={2000} value={note} onChange={e => setNote(e.target.value)} /><button className="btn btn-outline-primary-green mt-2" disabled={busy} onClick={() => { if (validText(note, "Note")) void save(async () => { await postInternalNote(ticketId, note); setNote(""); }, "Internal Note added."); }}>Add Internal Note</button></div></section></div>
+      <div className="row g-3"><section className="col-12 col-lg-6"><div className="zen-card p-4 h-100"><h2 className="h5">Public Comments</h2><p className="text-secondary">Visible to the Requester. Do not include private staff information.</p>{ticket.publicComments.map(item => <article className="border-top py-2" key={item.id}><strong>{item.author.name}</strong> <time className="text-secondary small" dateTime={item.createdAt}>{date(item.createdAt)}</time><p className="text-break mb-0" style={{ whiteSpace: "pre-wrap" }}>{item.content}</p></article>)}<FormField id="staff-comment" label="Public Comment" className="mt-3" error={fieldErrors.Comment}><textarea className="form-control" maxLength={2000} value={comment} onChange={e => { setComment(e.target.value); setFieldErrors(previous => ({ ...previous, Comment: "" })); }} /></FormField><button className="btn btn-primary-green mt-2" disabled={busy} onClick={() => { if (validText(comment, "Comment")) void save(async () => { await postComment(ticketId, comment); setComment(""); }, "Public Comment added."); }}>Post Public Comment</button></div></section>
+      <section className="col-12 col-lg-6"><div className="zen-card p-4 h-100 border border-warning"><h2 className="h5">Internal Notes</h2><p className="text-secondary">Private to IT Staff and Administrators. The Requester cannot see these notes.</p>{ticket.internalNotes.map(item => <article className="border-top py-2" key={item.id}><strong>{item.author.name}</strong> <time className="text-secondary small" dateTime={item.createdAt}>{date(item.createdAt)}</time><p className="text-break mb-0" style={{ whiteSpace: "pre-wrap" }}>{item.content}</p></article>)}<FormField id="staff-note" label="Internal Note" className="mt-3" error={fieldErrors.Note}><textarea className="form-control" maxLength={2000} value={note} onChange={e => { setNote(e.target.value); setFieldErrors(previous => ({ ...previous, Note: "" })); }} /></FormField><button className="btn btn-outline-primary-green mt-2" disabled={busy} onClick={() => { if (validText(note, "Note")) void save(async () => { await postInternalNote(ticketId, note); setNote(""); }, "Internal Note added."); }}>Add Internal Note</button></div></section></div>
     </>}
   </div>;
 }

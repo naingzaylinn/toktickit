@@ -70,3 +70,36 @@ describe("Staff Ticket Detail", () => {
     expect(screen.queryByText("Ticket claimed.")).not.toBeInTheDocument();
   });
 });
+
+describe("Staff field feedback", () => {
+  it.each([
+    ["Public Comment", "Post Public Comment", "staff-comment", postComment],
+    ["Internal Note", "Add Internal Note", "staff-note", postInternalNote],
+  ] as const)("associates invalid %s with its control and clears feedback on correction", async (label, action, id, request) => {
+    render(<StaffTicketDetailScreen ticketId="ticket-1" currentUser={user} onBack={vi.fn()} />);
+    const field = await screen.findByLabelText(label);
+    for (const value of ["   ", "x".repeat(2001)]) {
+      fireEvent.change(field, { target: { value } });
+      fireEvent.click(screen.getByRole("button", { name: action }));
+      expect(field).toHaveAttribute("aria-invalid", "true");
+      expect(field).toHaveAttribute("aria-describedby", `${id}-error`);
+      expect(field).toHaveAccessibleDescription(/must contain 1 to 2000 characters/);
+      expect(request).not.toHaveBeenCalled();
+      expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    }
+    fireEvent.change(field, { target: { value: "Valid communication" } });
+    expect(field).not.toHaveAttribute("aria-invalid");
+    fireEvent.click(screen.getByRole("button", { name: action }));
+    await waitFor(() => expect(request).toHaveBeenCalledWith("ticket-1", "Valid communication"));
+  });
+  it("retains a general safe alert for API failures without marking valid text invalid", async () => {
+    vi.mocked(postComment).mockRejectedValueOnce(new Error("private server detail"));
+    render(<StaffTicketDetailScreen ticketId="ticket-1" currentUser={user} onBack={vi.fn()} />);
+    const field = await screen.findByLabelText("Public Comment");
+    fireEvent.change(field, { target: { value: "Valid reply" } });
+    fireEvent.click(screen.getByRole("button", { name: "Post Public Comment" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Unable to save. Please retry.");
+    expect(field).not.toHaveAttribute("aria-invalid");
+    expect(field).toHaveValue("Valid reply");
+  });
+});
