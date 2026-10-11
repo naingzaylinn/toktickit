@@ -29,6 +29,10 @@ try {
   // communication examples before those regression fixtures delete tickets.
   const fixture = new PrismaClient({ datasources: { db: { url: url.toString() } } });
   try {
+    // This client targets only the schema generated above. Keep restrictive FKs
+    // enabled while removing demo children before legacy ticket-deletion fixtures.
+    await fixture.actionTakenRevision.deleteMany();
+    await fixture.actionTaken.deleteMany();
     await fixture.internalNote.deleteMany();
     await fixture.publicComment.deleteMany();
   } finally {

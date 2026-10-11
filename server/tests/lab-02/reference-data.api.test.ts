@@ -139,13 +139,15 @@ describe("Feature-C: Ticket Reference Data", () => {
         const beforeSystems = await prisma.relatedSystem.count();
         const beforeRequesters = await prisma.developmentRequester.count();
 
-        await seed();
+        // Keep this legacy reference-data fixture independent of Lab 4 children;
+        // the complete seed is verified in lab-04/seed.test.ts.
+        await seed(prisma, { lab4: false });
 
         const afterFirstCategories = await prisma.category.count();
         const afterFirstSystems = await prisma.relatedSystem.count();
         const afterFirstRequesters = await prisma.developmentRequester.count();
 
-        await seed();
+        await seed(prisma, { lab4: false });
 
         const afterSecondCategories = await prisma.category.count();
         const afterSecondSystems = await prisma.relatedSystem.count();
