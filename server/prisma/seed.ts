@@ -3,16 +3,17 @@ import { pathToFileURL } from "node:url";
 import { hashPassword } from "../src/services/passwords.js";
 import { generateTicketNumber } from "../src/services/ticketNumber.js";
 import type { Role, RequestedPriority } from "@prisma/client";
+import { seedLab4 } from "./seed-lab4.js";
 
 // LOCAL DEVELOPMENT / TEST ONLY. All newly seeded accounts must replace this
 // initial password. Re-running the seed never resets an existing User password.
 export const LOCAL_INITIAL_PASSWORD = "Initial123";
-export const STAFF_USERS: { name: string; email: string; role: Role; isActive: boolean }[] = [
-  { name: "IT Staff One", email: "staff1@example.com", role: "IT_STAFF", isActive: true },
-  { name: "IT Staff Two", email: "staff2@example.com", role: "IT_STAFF", isActive: true },
-  { name: "IT Staff Three", email: "staff3@example.com", role: "IT_STAFF", isActive: true },
-  { name: "Inactive IT Staff", email: "staff-inactive@example.com", role: "IT_STAFF", isActive: false },
-  { name: "Lab Administrator", email: "admin@example.com", role: "ADMINISTRATOR", isActive: true },
+export const STAFF_USERS: { id: string; seedKey: string; name: string; email: string; role: Role; isActive: boolean }[] = [
+  { id: "57000000-0000-4000-8000-000000000801", seedKey: "staff-one", name: "IT Staff One", email: "staff1@example.com", role: "IT_STAFF", isActive: true },
+  { id: "57000000-0000-4000-8000-000000000802", seedKey: "staff-two", name: "IT Staff Two", email: "staff2@example.com", role: "IT_STAFF", isActive: true },
+  { id: "57000000-0000-4000-8000-000000000803", seedKey: "staff-three", name: "IT Staff Three", email: "staff3@example.com", role: "IT_STAFF", isActive: true },
+  { id: "57000000-0000-4000-8000-000000000804", seedKey: "staff-inactive", name: "Inactive IT Staff", email: "staff-inactive@example.com", role: "IT_STAFF", isActive: false },
+  { id: "57000000-0000-4000-8000-000000000805", seedKey: "administrator", name: "Lab Administrator", email: "admin@example.com", role: "ADMINISTRATOR", isActive: true },
 ];
 
 // Lab 1 categories, extended for Lab 2 active/inactive reference support
@@ -96,15 +97,14 @@ export const DEVELOPMENT_REQUESTERS = [
   },
 ];
 
-export async function seed(prisma = getPrisma()) {
+export async function seed(prisma = getPrisma(), options = { lab4: true }) {
+  if (process.env.NODE_ENV === "production") throw new Error("Demonstration seeds are not permitted in production.");
 
   // Seed Categories
   for (const name of CATEGORIES) {
     await prisma.category.upsert({
       where: { name },
-      update: {
-        isActive: true,
-      },
+      update: {},
       create: {
         name,
         isActive: true,
@@ -116,9 +116,7 @@ export async function seed(prisma = getPrisma()) {
   for (const system of RELATED_SYSTEMS) {
     await prisma.relatedSystem.upsert({
       where: { name: system.name },
-      update: {
-        isActive: system.isActive,
-      },
+      update: {},
       create: {
         id: system.id,
         name: system.name,
@@ -128,43 +126,53 @@ export async function seed(prisma = getPrisma()) {
   }
 
   // Seed Development Requesters
-  for (const req of DEVELOPMENT_REQUESTERS) {
-    await prisma.developmentRequester.upsert({
-      where: { email: req.email },
-      update: {
-        name: req.name,
-        isActive: req.isActive,
-      },
-      create: {
-        id: req.id,
-        name: req.name,
-        email: req.email,
-        isActive: req.isActive,
-      },
-    });
-  }
-
   const passwordHash = await hashPassword(LOCAL_INITIAL_PASSWORD);
-  // Include existing Lab 2 identities, using their actual persisted IDs. Do not
-  // replace an ID just because an older database used a different seed UUID.
-  const requesters = await prisma.developmentRequester.findMany();
-  for (const requester of requesters) {
-    await prisma.user.upsert({
-      where: { id: requester.id },
-      update: {},
-      create: {
+  // Bootstrap durable mappings atomically. Emails are used only for first-time
+  // adoption of legacy random IDs, never for identities already registered.
+  const identities = await prisma.$transaction(async tx => {
+    const requesters = [];
+    for (const [index, req] of DEVELOPMENT_REQUESTERS.entries()) {
+      const seedKey = `requester-${index}`;
+      const mapped = await tx.seedUserIdentity.findUnique({ where: { seedKey } });
+      const requester = mapped
+        ? await tx.developmentRequester.findUniqueOrThrow({ where: { id: mapped.userId } })
+        : await tx.developmentRequester.findUnique({ where: { id: req.id } })
+          ?? await tx.developmentRequester.findUnique({ where: { email: req.email } })
+          ?? await tx.developmentRequester.create({ data: req });
+      requesters.push(requester);
+    }
+    // Preserve support for additional persisted Lab 2 identities.
+    for (const requester of await tx.developmentRequester.findMany()) {
+      await tx.user.upsert({ where: { id: requester.id }, update: {}, create: {
         id: requester.id, name: requester.name, email: requester.email.trim().toLowerCase(),
         role: "REQUESTER", isActive: requester.isActive, passwordHash,
         mustChangePassword: true, createdAt: requester.createdAt,
-      },
-    });
-  }
-  for (const user of STAFF_USERS) {
-    await prisma.user.upsert({
-      where: { email: user.email }, update: {},
-      create: { ...user, passwordHash, mustChangePassword: true },
-    });
-  }
+      } });
+    }
+    for (const [index, requester] of requesters.entries()) {
+      await tx.seedUserIdentity.upsert({ where: { seedKey: `requester-${index}` }, update: {},
+        create: { seedKey: `requester-${index}`, userId: requester.id } });
+    }
+    const legacyCandidates = await tx.user.findMany({ where: { email: { in: STAFF_USERS.map(u => u.email) } }, select: { id: true } });
+    const knownIds = [...STAFF_USERS.map(u => u.id), ...legacyCandidates.map(u => u.id), ...(await tx.developmentRequester.findMany()).map(r => r.id),
+      ...(await tx.seedUserIdentity.findMany()).map(m => m.userId)];
+    // Include role-changed legacy staff: current role cannot prove identity.
+    const unregisteredLegacyUsers = await tx.user.count({ where: { id: { notIn: knownIds } } });
+    const staff = [];
+    for (const { seedKey, ...defaults } of STAFF_USERS) {
+      const mapped = await tx.seedUserIdentity.findUnique({ where: { seedKey }, include: { user: true } });
+      let user = mapped?.user ?? await tx.user.findUnique({ where: { id: defaults.id } })
+        ?? await tx.user.findUnique({ where: { email: defaults.email } });
+      if (!user) {
+        if (unregisteredLegacyUsers) throw new Error(`Cannot safely identify legacy seed user ${seedKey}; register its existing ID in SeedUserIdentity before reseeding.`);
+        user = await tx.user.create({ data: { ...defaults, passwordHash, mustChangePassword: true } });
+      }
+      if (!mapped) await tx.seedUserIdentity.create({ data: { seedKey, userId: user.id } });
+      staff.push(user);
+    }
+    return { requesters, staff };
+  });
+  const { requesters, staff: staffUsers } = identities;
 
   // Preserve every existing ticket. New examples span the Lab 3 workflow.
   const examples: { summary: string; description: string; priority: RequestedPriority; system: string }[] = [
@@ -174,11 +182,11 @@ export async function seed(prisma = getPrisma()) {
     { summary: "Email signature needs updating", description: "Please help update the contact information shown in my university email signature.", priority: "Low", system: "Email" },
   ];
   for (const [index, example] of examples.entries()) {
-    const requester = requesters.find(item => item.email === DEVELOPMENT_REQUESTERS[index].email)!;
+    const requester = requesters[index];
     const category = await prisma.category.findUniqueOrThrow({ where: { name: index === 0 ? "Network" : index === 1 ? "Hardware" : "Software" } });
     const system = await prisma.relatedSystem.findUniqueOrThrow({ where: { name: example.system } });
     const clientRequestId = `lab3-seed-${requester.id}`;
-    const staff = await prisma.user.findUniqueOrThrow({ where: { email: "staff1@example.com" } });
+    const staff = staffUsers[0];
     await prisma.$transaction(async (tx) => {
       if (await tx.ticket.findUnique({ where: { requesterId_clientRequestId: { requesterId: requester.id, clientRequestId } } })) return;
       const ticket = await tx.ticket.create({ data: {
@@ -195,6 +203,7 @@ export async function seed(prisma = getPrisma()) {
     });
   }
 
+  if (options.lab4) await seedLab4(prisma, passwordHash);
   console.log("Seeded database successfully.");
 }
 
