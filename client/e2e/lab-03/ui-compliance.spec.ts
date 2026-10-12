@@ -32,6 +32,7 @@ async function mockApi(page: Page, initial: AuthUser | null) {
     if (path === "/api/admin/users" && method === "GET") return data([managedUser]);
     if (path === "/api/staff/tickets/owners") return data([{ id: "user", name: "Staff", role: "IT_STAFF" }]);
     if (path === "/api/staff/tickets/ticket-1" && method === "GET") return data(ticket);
+    if (path === "/api/staff/tickets/ticket-1/actions" && method === "GET") return route.fulfill({ json: { data: [], meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } } });
     // Never allow unhandled API traffic through to Vite's backend proxy.
     unexpected.push(`${method} ${path}`);
     return route.abort();

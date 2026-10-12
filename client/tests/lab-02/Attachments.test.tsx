@@ -33,6 +33,7 @@ vi.mock("../../src/api.js", async () => {
     return {
         ...actual,
         getTicketDetail: vi.fn(),
+        getActions: vi.fn().mockResolvedValue({ data: [], meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } }),
         getComments: vi.fn().mockResolvedValue([]),
         uploadTicketAttachments: vi.fn(),
         getAttachmentContent: vi.fn(),

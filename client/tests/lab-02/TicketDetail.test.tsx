@@ -28,6 +28,7 @@ vi.mock("../../src/api.js", async () => {
     return {
         ...actual,
         getTicketDetail: vi.fn(),
+        getActions: vi.fn().mockResolvedValue({ data: [], meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } }),
         getComments: vi.fn().mockResolvedValue([]),
     };
 });
@@ -252,17 +253,20 @@ describe("Feature-F: Ticket Detail UI", () => {
             screen.queryByText(/Internal Notes/i)
         ).not.toBeInTheDocument();
 
-        expect(
-            screen.queryByText(/Actions Taken/i)
-        ).not.toBeInTheDocument();
+        // Lab 4 deliberately adds shared read-only history to this existing page.
+        expect(screen.getByRole("heading", { name: "Actions Taken" })).toBeInTheDocument();
+        for (const name of [/Add Action/, /Edit Action/, /Complete action/, /Cancel action/]) {
+            expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+        }
 
         expect(
             screen.queryByText(/Assigned To/i)
         ).not.toBeInTheDocument();
 
-        expect(
-            screen.queryByRole("combobox")
-        ).not.toBeInTheDocument();
+        // Pagination is read-only navigation; workflow and assignment stay forbidden.
+        expect(screen.getAllByRole("combobox")).toHaveLength(1);
+        expect(screen.getByRole("combobox", { name: "Actions per page" })).toBeInTheDocument();
+        expect(screen.queryByRole("combobox", { name: /Status|Assignee|Owner/i })).not.toBeInTheDocument();
     });
 
     it("Back to My Tickets calls onBack", async () => {
