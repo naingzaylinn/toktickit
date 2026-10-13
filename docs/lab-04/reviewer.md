@@ -1,5 +1,85 @@
 # Lab 4 Review and Integration Plan
 
+## Phase 3B - targeted independent-review corrections (2026-10-14)
+
+The independent review returned REQUEST CHANGES: R1 Major, R2-R4 Minor,
+and O1 test-quality observation. Earlier implementation/review evidence below is
+historical and remains intact; this section records the targeted corrections.
+
+| Finding | Root cause | Correction and regression evidence |
+|---|---|---|
+| R1: obsolete authentication failure cleared a newer user's dashboard | Shared error parsing dispatched global access loss before component generation checks | Optional ApiReadContext checks signal and current-read validity immediately before dispatch, after error-body parsing. Requester Dashboard, My Tickets and its reference reads cancel/invalidate superseded or unmounted reads. Real deferred fetch tests exercise delayed 401/password-change, identity/role changes, ignored abort, unmount, body parsing, superseded filters, current access loss and recoverable errors. Default Staff/API behavior remains enabled. |
+| R2: historical category/system predicates displayed All | Active-only options omitted selected historical IDs | A selected-only, neutral ID fallback option preserves the predicate without inventing a name or offering inactive records as new choices. Tests cover category/system/both, API values, pagination, restoration and reset. |
+| R3: Detail explicit Back lost its originating list after browser restoration | One mutable return reference was cleared by Dashboard navigation | An opaque per-entry History state key references an in-memory identity/role-scoped map. Multiple Detail entries retain independent list URLs; access/identity changes clear the map. Direct and Dashboard-origin Detail fall back to /tickets. Component tests cover separate entries and identity invalidation; real browser tests traverse Back/Forward through Dashboard. |
+| R4: an empty page claimed no Tickets existed | Empty state used row length without authoritative matching totals | Positive pagination.totalItems with zero rows displays a page-specific empty state and first-page action, preserving filters/sort in History. Zero totals retain genuine-empty versus filtered-empty behavior; errors remain separate. Browser/component tests verify recovery and history. |
+| O1: timestamp direction was untested | All own fixture timestamps tied | Fixed mixed dates, multiple ties, eight Resolved Tickets and newer foreign rows now produce literal expected ID sequences for both capped lists, independently of production ordering helpers. |
+
+New regression file: client/tests/lab-04/RequesterReadContext.test.tsx (real API
+transport and global event). Extended RequesterDashboardDrilldowns.test.tsx,
+MyTickets.test.tsx (context assertions), requester-dashboard.api.test.ts and
+requester-dashboard.spec.ts. The API contract, requester predicates, metrics,
+RepeatableRead transaction, schema, workflow, Actions and Staff calculations did
+not change. No browser storage contains protected data or return URLs.
+
+Detail return metadata intentionally lasts only for this mounted authenticated
+App session; a full document reload/direct entry falls back to /tickets.
+Manual screen-reader evaluation remains a separate human check. Independent
+re-review is still required; passing tests are not a merge approval.
+
+### Phase 3B verification results
+
+- `npm.cmd run build --prefix server`: passed (TypeScript).
+- `npm.cmd run build --prefix client`: passed (TypeScript and Vite).
+- Focused client run covering RequesterReadContext, RequesterDashboard,
+  RequesterDashboardDrilldowns, requester-dashboard-api, MyTickets,
+  StaffDashboard, DashboardDrilldowns and session-transport: 105 tests / 8 files
+  passed. Two additional late-success/failure cases were then included in the
+  final complete run.
+- `npm.cmd test --prefix client`: final run 332 tests / 26 files passed.
+- From server, `npm.cmd run test:isolated`: 587 tests / 35 files passed,
+  including the mixed-timestamp ordering regression and both snapshot suites.
+- From server, `npm.cmd run test:e2e`: 55 browser tests passed, including
+  Detail restoration, out-of-range page recovery, responsive and focus suites.
+- No test assertion failed in these runs. The first focused client startup and
+  first browser startup were blocked by sandbox `spawn EPERM` (esbuild/Prisma);
+  authorized outside-sandbox retries passed. The backend/browser runners were
+  inspected first and created/removed only generated disposable schemas.
+- Relative to Phase 2: 30 additional client cases, one additional backend case,
+  two additional browser cases. Existing assertions were retained; query-call
+  expectations additionally verify the new validity context.
+- `git diff --check` passed; all 15 new Issue #62 files passed a separate
+  trailing-whitespace/final-newline scan. Branch and HEAD remain
+  feature/sprint4-requester-dashboard / 8ee1b934ad1a4c9b8f0212c2d4cda792912bd3b2;
+  local lab4-staging is unchanged and the index is empty. Total Issue #62 scope
+  is 17 modified tracked files and 15 new files; docs/references/ was excluded
+  from enumeration/content reads and remains unrelated and untouched.
+
+The regression tests execute the reported failure sequences against the corrected
+implementation. A separate pre-correction red run was not recorded in Phase 3B;
+no red-run claim is made. The independent review supplied the original reproductions.
+
+## Issue #62 independent-review preparation - 2026-10-14
+
+The user approved Phase 1 and authorized full Requester implementation, testing and
+documentation on feature/sprint4-requester-dashboard at 8ee1b934ad1a4c9b8f0212c2d4cda792912bd3b2.
+[requester-dashboard.md](requester-dashboard.md) contains all 31 changed/new files,
+exact predicates, privacy/snapshot behavior, URL return state and verification evidence.
+
+Review every aggregate/list requesterId predicate, five-field projections and caps,
+active versus Open distinction, currently Resolved versus Closed, raw query validation
+behind all guards, deterministic snapshot barrier and full My Tickets parity.
+Check identity/role/access-loss clearing, late success/failure, truthful refresh time,
+Retry/Refresh focus, query/back/forward/detail return, 375/768/1280 wrapping and keyboard.
+Existing staff production code, Action lifecycle and Ticket workflow remain unchanged.
+Only authorized superseded navigation/status-input expectations were updated.
+
+Focused backend 377/0, client 172/0 and Requester browser 7/0 passed; full client 302/0
+and browser 53/0 passed. Final full backend passed 586/0; final label verification passed build/full client and 12 browser layout/focus checks.
+No stage/commit/push/PR/branch switch, developer-data writes, references access or
+#63/#64 work. Peer review, PR to lab4-staging and any later integration remain future
+human-controlled steps. Do not infer approval or issue completion from AI verification.
+
+
 ## Issue #61 Phase 3 correction review — 2026-10-13
 
 The two reproduced Minor findings (parser-discarded raw keys and keyboard Retry

@@ -22,7 +22,7 @@ for (const email of ["staff1@example.com", "admin@example.com"]) {
 }
 test("requester cannot view staff dashboard through navigation, direct URL or API", async ({ page }) => {
   await signIn(page, "alice@kmutt.ac.th"); await expect(page.getByRole("link", { name: "My Tickets", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Dashboard", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Dashboard", exact: true })).toHaveAttribute("href", "/dashboard");
   expect((await page.request.get("/api/staff/dashboard")).status()).toBe(403);
   await page.goto("/staff/dashboard"); await expect(page.getByText("This page is not available for your role.")).toBeVisible();
   await expect(page.getByRole("link", { name: /Total Tickets/ })).toHaveCount(0);

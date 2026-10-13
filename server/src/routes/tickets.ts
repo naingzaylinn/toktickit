@@ -13,6 +13,7 @@ import {
     ValidationDetail,
 } from "../services/ticketValidation.js";
 import { generateTicketNumber } from "../services/ticketNumber.js";
+import { activeTicketStatuses, statusToApi } from "../services/ticketDashboardDefinitions.js";
 
 export const ticketsRouter = Router();
 
@@ -174,10 +175,15 @@ ticketsRouter.get(
             );
         }
 
-        if (
-            currentStatus !== undefined &&
-            currentStatus !== "New"
-        ) {
+        const rawQuery = new URLSearchParams(req.originalUrl.slice(req.originalUrl.indexOf("?") < 0 ? req.originalUrl.length : req.originalUrl.indexOf("?")));
+        for (const key of ["currentStatus", "statusGroup"]) {
+            const values = rawQuery.getAll(key);
+            if (values.length > 1 || values.some(value => !value) || [...rawQuery.keys()].some(name => name.startsWith(key + "[")))
+                return sendQueryError(res, "Status filter is invalid.");
+        }
+        const statusGroup = rawQuery.get("statusGroup");
+        if (statusGroup !== null && statusGroup !== "active") return sendQueryError(res, "Status group is invalid.");
+        if (currentStatus !== undefined && !Object.hasOwn(statusToApi, currentStatus)) {
             return sendQueryError(
                 res,
                 "Current Status filter is invalid."
@@ -229,8 +235,9 @@ ticketsRouter.get(
         }
 
         if (currentStatus !== undefined) {
-            where.currentStatus = "New";
+            where.currentStatus = currentStatus as keyof typeof statusToApi;
         }
+        if (statusGroup === "active") where.AND = [{ currentStatus: { in: activeTicketStatuses } }];
 
         let orderBy: Prisma.TicketOrderByWithRelationInput[];
 

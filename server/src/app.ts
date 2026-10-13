@@ -11,6 +11,7 @@ import { ticketsRouter } from "./routes/tickets.js";
 import { attachmentsRouter } from "./routes/attachments.js";
 import { staffTicketsRouter } from "./routes/staffTickets.js";
 import { staffDashboardRouter } from "./routes/staffDashboard.js";
+import { requesterDashboardRouter } from "./routes/requesterDashboard.js";
 import { adminUsersRouter } from "./routes/adminUsers.js";
 import { staffActionsTakenRouter, requesterActionsTakenRouter } from "./routes/actionsTaken.js";
 
@@ -68,6 +69,7 @@ app.use(["/api/staff", "/api/v1/staff"], requireRoles("IT_STAFF", "ADMINISTRATOR
 app.use(["/api/admin", "/api/v1/admin"], requireRoles("ADMINISTRATOR"));
 app.use("/api/staff/tickets", staffActionsTakenRouter);
 app.use("/api/staff/dashboard", staffDashboardRouter);
+app.use("/api/requester/dashboard", requesterDashboardRouter);
 app.use("/api/staff/tickets", staffTicketsRouter);
 app.use("/api/admin/users", adminUsersRouter);
 app.use("/api/v1", referenceDataRouter);
