@@ -129,10 +129,18 @@ interface CreateTicketResponse {
   data: CreatedTicket;
 }
 
+// Read owners invalidate this context on supersession, access loss and unmount.
+// Check it after parsing the error body, immediately before the global side effect.
+export interface ApiReadContext {
+  signal?: AbortSignal;
+  isCurrent: () => boolean;
+}
+
 async function readApiError(
   res: Response,
   fallbackMessage: string,
-  authenticationEndpoint = false
+  authenticationEndpoint = false,
+  context?: ApiReadContext
 ): Promise<ApiError> {
   let errorData: ApiErrorEnvelope | null = null;
 
@@ -142,7 +150,7 @@ async function readApiError(
     // Use safe fallback below.
   }
 
-  if (!authenticationEndpoint && (res.status === 401 || errorData?.error?.code === "PASSWORD_CHANGE_REQUIRED")) {
+  if (!authenticationEndpoint && !context?.signal?.aborted && (context?.isCurrent() ?? true) && (res.status === 401 || errorData?.error?.code === "PASSWORD_CHANGE_REQUIRED")) {
     window.dispatchEvent(new CustomEvent("session-access-changed", {detail: errorData?.error?.code}));
   }
   return new ApiError(
@@ -162,8 +170,10 @@ async function readApiError(
 }
 
 export async function getTicketCategories(
+  context?: ApiReadContext
 ): Promise<TicketReferenceCategory[]> {
   const res = await fetch(`${API_URL}/api/v1/categories`, {
+    ...(context ? { signal: context.signal } : {}),
     headers: {
       Accept: "application/json",
     },
@@ -172,7 +182,7 @@ export async function getTicketCategories(
   if (!res.ok) {
     throw await readApiError(
       res,
-      "Unable to load ticket categories."
+      "Unable to load ticket categories.", false, context
     );
   }
 
@@ -181,8 +191,10 @@ export async function getTicketCategories(
 }
 
 export async function getRelatedSystems(
+  context?: ApiReadContext
 ): Promise<RelatedSystem[]> {
   const res = await fetch(`${API_URL}/api/v1/related-systems`, {
+    ...(context ? { signal: context.signal } : {}),
     headers: {
       Accept: "application/json",
     },
@@ -191,7 +203,7 @@ export async function getRelatedSystems(
   if (!res.ok) {
     throw await readApiError(
       res,
-      "Unable to load related systems."
+      "Unable to load related systems.", false, context
     );
   }
 
@@ -237,7 +249,8 @@ export interface MyTicketsQuery {
   categoryId?: number;
   relatedSystemId?: string;
   requestedPriority?: RequestedPriority;
-  currentStatus?: "New";
+  currentStatus?: RequesterTicketStatus;
+  statusGroup?: "active";
   sortBy?: TicketSort;
   page?: number;
   pageSize?: 10 | 20 | 50;
@@ -247,7 +260,7 @@ export interface TicketListItem {
   id: string;
   ticketNumber: string;
   ticketDate: string;
-  currentStatus: "New";
+  currentStatus: RequesterTicketStatus;
   requestedPriority: RequestedPriority;
   summary: string;
   category: {
@@ -307,17 +320,20 @@ export function buildMyTicketsQuery(
     params.set("currentStatus", query.currentStatus);
   }
 
+  if (query.statusGroup) params.set("statusGroup", query.statusGroup);
   return params.toString();
 }
 
 export async function getMyTickets(
-  query: MyTicketsQuery = {}
+  query: MyTicketsQuery = {},
+  context?: ApiReadContext
 ): Promise<MyTicketsResponse> {
   const queryString = buildMyTicketsQuery(query);
 
   const res = await fetch(
     `${API_URL}/api/tickets?${queryString}`,
     {
+      ...(context ? { signal: context.signal } : {}),
       headers: {
         Accept: "application/json",
       },
@@ -327,7 +343,7 @@ export async function getMyTickets(
   if (!res.ok) {
     throw await readApiError(
       res,
-      "Unable to load tickets."
+      "Unable to load tickets.", false, context
     );
   }
 
@@ -371,7 +387,7 @@ export interface TicketDetail {
   id: string;
   ticketNumber: string;
   ticketDate: string;
-  currentStatus: "New";
+  currentStatus: RequesterTicketStatus;
   requestedPriority: RequestedPriority;
   summary: string;
   description: string;
@@ -786,5 +802,25 @@ export interface StaffDashboardResponse {
 export async function getStaffDashboard(): Promise<StaffDashboardResponse> {
   const res = await fetch("/api/staff/dashboard", { headers: { Accept: "application/json" }, cache: "no-store" });
   if (!res.ok) throw await readApiError(res, "Unable to load the staff dashboard.");
+  return res.json();
+}
+
+export type DashboardTicketStatus = StaffTicketStatus;
+export type RequesterTicketStatus = "New" | "Open" | "InProgress" | "WaitingForRequester" | "Resolved" | "Closed" | "Reopened" | "Cancelled";
+export const requesterStatusFromDashboard: Record<DashboardTicketStatus, RequesterTicketStatus> = {
+  NEW: "New", OPEN: "Open", IN_PROGRESS: "InProgress", WAITING_FOR_REQUESTER: "WaitingForRequester",
+  RESOLVED: "Resolved", CLOSED: "Closed", REOPENED: "Reopened", CANCELLED: "Cancelled",
+};
+export interface RequesterDashboardTicket {
+  id: string; ticketNumber: string; summary: string; status: DashboardTicketStatus; updatedAt: string;
+}
+export interface RequesterDashboardResponse {
+  data: { totalTickets: number; activeTickets: number; waitingForRequesterTickets: number; resolvedTickets: number;
+    byStatus: Record<DashboardTicketStatus, number>; recentTickets: RequesterDashboardTicket[]; resolvedTicketsRecent: RequesterDashboardTicket[] };
+  meta: { generatedAt: string };
+}
+export async function getRequesterDashboard(context?: ApiReadContext): Promise<RequesterDashboardResponse> {
+  const res = await fetch("/api/requester/dashboard", { ...(context ? { signal: context.signal } : {}), headers: { Accept: "application/json" }, cache: "no-store" });
+  if (!res.ok) throw await readApiError(res, "Unable to load your dashboard.", false, context);
   return res.json();
 }

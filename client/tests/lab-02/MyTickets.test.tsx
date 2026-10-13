@@ -101,6 +101,7 @@ function ticketResponse(data = [ticket]) {
 
 describe("Feature-E: My Tickets UI", () => {
     beforeEach(() => {
+    window.history.replaceState({}, "", "/tickets");
         vi.clearAllMocks();
 
         vi.mocked(getTicketCategories).mockResolvedValue(
@@ -295,7 +296,7 @@ describe("Feature-E: My Tickets UI", () => {
                 expect.objectContaining({
                     categoryId: 2,
                     page: 1,
-                })
+                }), expect.objectContaining({ isCurrent: expect.any(Function) })
             );
         });
     });
@@ -344,7 +345,21 @@ describe("Feature-E: My Tickets UI", () => {
             expect.objectContaining({
                 q: "vpn",
                 page: 1,
-            })
+            }), expect.objectContaining({ isCurrent: expect.any(Function) })
         );
     });
+    it("all eight statuses and active group remain visible and serialize together", async () => {
+        render(<MyTicketsScreen currentRequester={requester} onCreateTicket={vi.fn()} onOpenTicket={vi.fn()}/>);
+        await screen.findAllByText("TKT-2026-00001");
+        const status = screen.getByLabelText("Status"); expect(status.querySelectorAll("option")).toHaveLength(9);
+        fireEvent.change(status, { target: { value: "Closed" } }); fireEvent.change(screen.getByLabelText("Status group"), { target: { value: "active" } });
+        await waitFor(() => expect(getMyTickets).toHaveBeenLastCalledWith(expect.objectContaining({ currentStatus: "Closed", statusGroup: "active", page: 1 }), expect.objectContaining({ isCurrent: expect.any(Function) })));
+    });
+    it("retrieval failure is not rendered as a successful empty result", async () => {
+        vi.mocked(getMyTickets).mockRejectedValueOnce(new Error("private diagnostics"));
+        render(<MyTicketsScreen currentRequester={requester} onCreateTicket={vi.fn()} onOpenTicket={vi.fn()}/>);
+        await screen.findByRole("alert"); expect(screen.queryByText("No Tickets Found")).not.toBeInTheDocument(); expect(screen.queryByText("private diagnostics")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Retry: Error" })); await screen.findAllByText("TKT-2026-00001");
+    });
+
 });

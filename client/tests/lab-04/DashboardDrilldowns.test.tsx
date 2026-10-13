@@ -21,7 +21,7 @@ it("every card and row uses the exact approved destination", async () => {
 });
 it.each(["IT_STAFF", "ADMINISTRATOR", "REQUESTER"] as const)("shell role %s has appropriate navigation and original brand target", role => {
   render(<AppShell currentUser={{ ...dashboardUser, role }} onLogout={vi.fn()} activePath="/staff/dashboard"/>);
-  if (role === "REQUESTER") expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
+  if (role === "REQUESTER") { expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard"); expect(screen.getByRole("link", { name: "Dashboard" })).not.toHaveAttribute("aria-current"); }
   else { expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page"); expect(screen.getByRole("link", { name: "Ticket Queue" })).not.toHaveAttribute("aria-current"); }
   expect(screen.getByRole("link", { name: "TokTickIT" })).toHaveAttribute("href", role === "REQUESTER" ? "/tickets" : "/staff/tickets");
 });

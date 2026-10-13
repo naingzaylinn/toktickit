@@ -27,3 +27,23 @@ it("large fixture uses fixed aggregate calls and bounded relation projections", 
     console.info(JSON.stringify({ fixtureTickets: 150, fixtureActions: 150, logicalQueries: calls.length, elapsedMs: Math.round(performance.now() - start), responseBytes: JSON.stringify(r.body).length, recentPlan: plan }));
   } finally { spy.mockRestore(); }
 });
+
+it("Requester uses three scoped bounded operations and records a scoped query plan", async () => {
+  const calls: Array<{ method: string; args: any }> = [];
+  const original = f.prisma.$transaction.bind(f.prisma);
+  const spy = vi.spyOn(f.prisma, "$transaction").mockImplementation(((callback: (tx: Prisma.TransactionClient) => Promise<unknown>, options?: object) => original(async tx => callback(new Proxy(tx, {
+    get(target, key) { if (key !== "ticket") return Reflect.get(target, key); return new Proxy(target.ticket, {
+      get(delegate, method) { const value = Reflect.get(delegate, method); if (typeof value !== "function") return value;
+        return (args: unknown) => { calls.push({ method: String(method), args }); return value.call(delegate, args); }; },
+    }); },
+  })), options)) as typeof f.prisma.$transaction);
+  try {
+    const start = performance.now(); const r = await request(app).get("/api/requester/dashboard").set("Cookie", f.cookies[0]);
+    expect(r.status).toBe(200); expect(r.body.data.totalTickets).toBe(150); expect(calls).toHaveLength(3);
+    for (const call of calls) expect(call.args.where.requesterId).toBe(f.users[0].id);
+    for (const call of calls.filter(c => c.method === "findMany")) { expect(call.args.take).toBe(5); expect(Object.keys(call.args.select).sort()).toEqual(["id", "ticketNumber", "summary", "currentStatus", "updatedAt"].sort()); }
+    const plan = await f.prisma.$queryRaw<Array<{ "QUERY PLAN": string }>>`EXPLAIN SELECT "id" FROM "Ticket" WHERE "requesterId" = ${f.users[0].id} ORDER BY "updatedAt" DESC, "ticketNumber" ASC LIMIT 5`;
+    expect(plan.some(row => row["QUERY PLAN"].includes("Limit"))).toBe(true);
+    console.info(JSON.stringify({ requesterTickets: 150, logicalQueries: calls.length, elapsedMs: Math.round(performance.now() - start), responseBytes: JSON.stringify(r.body).length, scopedRecentPlan: plan }));
+  } finally { spy.mockRestore(); }
+});

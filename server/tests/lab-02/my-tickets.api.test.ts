@@ -478,7 +478,8 @@ describe("Feature-E: My Tickets API", () => {
             "pageSize=15",
             "sortBy=invalid",
             "requestedPriority=Critical",
-            "currentStatus=Closed",
+            // Lab 4 accepts Closed; uppercase remains invalid for this legacy filter.
+            "currentStatus=CLOSED",
             "categoryId=abc",
         ];
 

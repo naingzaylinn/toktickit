@@ -201,3 +201,9 @@ textarea:focus-visible, .form-control:focus-visible, .form-select:focus-visible,
 @media (min-width: 992px) {
   .shell-identity { flex-basis: auto; max-width: 30%; margin-top: 0; margin-left: 1rem; }
 }
+
+.requester-dashboard-screen .zen-card { overflow-wrap: anywhere; min-width: 0; }
+.requester-dashboard-screen .dashboard-metric { text-decoration: none; }
+.requester-dashboard-screen .dashboard-metric:hover { background: var(--color-pale-green); }
+.requester-dashboard-screen[aria-busy="true"] { min-height: 16rem; }
+.my-tickets-screen .zen-card { min-width: 0; overflow-wrap: anywhere; }
