@@ -146,11 +146,12 @@ async function readApiError(
     errorData?.error?.message ?? fallbackMessage,
     res.status,
     errorData?.error?.correlationId,
-    // Only the documented auth validation fields are needed by these forms.
+    // Map only documented string field errors used by the forms.
     authenticationEndpoint && res.status === 400 && errorData?.error?.code === "VALIDATION_ERROR"
       ? Object.fromEntries(Object.entries(errorData.error.fields ?? {}).filter(([key, value]) =>
           ["email", "password", "currentPassword", "newPassword", "confirmPassword"].includes(key) && typeof value === "string")) as Record<string, string>
-      : {}
+      : Object.fromEntries(Object.entries(errorData?.error?.fields ?? {}).filter(([key, value]) =>
+          ["actionDescription", "actionResult", "followUpRequired", "followUpNote", "attachmentNotes", "assigneeId"].includes(key) && typeof value === "string")) as Record<string, string>
   );
 }
 
@@ -568,6 +569,42 @@ async function staffRequest<T>(path: string, method: "GET" | "PATCH" | "POST" = 
 }
 export const getStaffTicket = (id: string) => staffRequest<StaffTicketDetail>("/api/staff/tickets/" + encodeURIComponent(id));
 export const getEligibleOwners = () => staffRequest<EligibleOwner[]>("/api/staff/tickets/owners");
+
+export type ActionStatus = "PENDING" | "COMPLETED" | "CANCELLED";
+export interface ActionContent {
+  actionDescription: string;
+  actionResult: string;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+}
+export interface ActionTaken extends ActionContent {
+  id: string; ticketId: string; actionDateTime: string;
+  performedBy: { id: string; name: string; role: string };
+  assignee: { id: string; name: string; role: string; isActive: boolean };
+  status: ActionStatus; version: number; createdAt: string; updatedAt: string;
+}
+export interface ActionHistory {
+  data: ActionTaken[];
+  meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
+}
+export interface ActionMutation { data: ActionTaken; meta: { workflowVersion: number }; replay: boolean }
+export type CreateActionInput = ActionContent & { assigneeId: string; clientRequestId: string };
+export type UpdateActionInput = Partial<ActionContent> & { expectedVersion: number; assigneeId?: string; status?: ActionStatus };
+const actionPath = (ticketId: string, staff: boolean) => `/api/${staff ? "staff/" : ""}tickets/${encodeURIComponent(ticketId)}/actions`;
+export async function getActions(ticketId: string, staff: boolean, query: { page?: number; pageSize?: 10 | 20 | 50; focusActionId?: string } = {}): Promise<ActionHistory> {
+  const params = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
+  const res = await fetch(`${actionPath(ticketId, staff)}?${params}`, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw await readApiError(res, "Unable to load Actions Taken.");
+  return res.json();
+}
+async function mutateAction(path: string, method: "POST" | "PATCH", input: CreateActionInput | UpdateActionInput): Promise<ActionMutation> {
+  const res = await fetch(path, { method, headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify(input) });
+  if (!res.ok) throw await readApiError(res, "Unable to save Action.");
+  return { ...await res.json(), replay: res.headers.get("Idempotent-Replay") === "true" };
+}
+export const createAction = (ticketId: string, input: CreateActionInput) => mutateAction(actionPath(ticketId, true), "POST", input);
+export const updateAction = (ticketId: string, actionId: string, input: UpdateActionInput) => mutateAction(`${actionPath(ticketId, true)}/${encodeURIComponent(actionId)}`, "PATCH", input);
 export const updateStaffOwner = (id: string, ownerId: string | null) => staffRequest<{ owner: StaffTicketDetail["owner"] }>("/api/staff/tickets/" + encodeURIComponent(id) + "/owner", "PATCH", { ownerId });
 export const updateStaffPriority = (id: string, itPriority: StaffTicketPriority) => staffRequest<{ itPriority: StaffTicketPriority }>("/api/staff/tickets/" + encodeURIComponent(id) + "/priority", "PATCH", { itPriority });
 export const updateStaffStatus = (id: string, status: StaffTicketStatus) => staffRequest<{ status: StaffTicketStatus }>("/api/staff/tickets/" + encodeURIComponent(id) + "/status", "PATCH", { status });

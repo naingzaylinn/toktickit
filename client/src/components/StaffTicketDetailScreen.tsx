@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, AuthUser, EligibleOwner, getEligibleOwners, getStaffTicket, postComment, postInternalNote, StaffTicketDetail, StaffTicketPriority, StaffTicketStatus, updateStaffOwner, updateStaffPriority, updateStaffStatus } from "../api.js";
 
 import FormField from "./common/FormField.js";
+import ActionsTaken from "./ActionsTaken.js";
 
 const transitions: Record<StaffTicketStatus, StaffTicketStatus[]> = {
   NEW: ["OPEN", "IN_PROGRESS", "CANCELLED"],
@@ -15,7 +16,12 @@ const transitions: Record<StaffTicketStatus, StaffTicketStatus[]> = {
 const label = (value: string) => value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 const date = (value: string) => new Date(value).toLocaleString();
 
-export default function StaffTicketDetailScreen({ ticketId, currentUser, onBack }: { ticketId: string; currentUser: AuthUser; onBack: () => void }) {
+type DetailProps = { ticketId: string; currentUser: AuthUser; onBack: () => void };
+export default function StaffTicketDetailScreen(props: DetailProps) {
+  if (props.currentUser.role === "REQUESTER" || !props.currentUser.isActive || props.currentUser.mustChangePassword) return <p role="alert">Ticket detail is unavailable for your session or role.</p>;
+  return <StaffTicketDetailContent key={props.currentUser.id + ":" + props.currentUser.role + ":" + props.ticketId} {...props}/>;
+}
+function StaffTicketDetailContent({ ticketId, currentUser, onBack }: DetailProps) {
   const [ticket, setTicket] = useState<StaffTicketDetail | null>(null);
   const [owners, setOwners] = useState<EligibleOwner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,25 +34,43 @@ export default function StaffTicketDetailScreen({ ticketId, currentUser, onBack 
   const [status, setStatus] = useState<StaffTicketStatus | "">("");
   const [comment, setComment] = useState("");
   const [note, setNote] = useState("");
+  const confirmedTicket = useRef<StaffTicketDetail | null>(null);
+  const generation = useRef(0);
+  const clearAccess = useCallback(() => {
+    ++generation.current; confirmedTicket.current = null;
+    setTicket(null); setOwners([]); setComment(""); setNote(""); setSuccess(""); setFieldErrors({});
+    setOwnerId(""); setStatus(""); setLoading(false);
+    setError("You are not permitted to view this ticket. Your session or access changed.");
+  }, []);
   const load = useCallback(async (): Promise<boolean> => {
+    const token = ++generation.current;
     setLoading(true); setError("");
     try {
       const [detail, eligible] = await Promise.all([getStaffTicket(ticketId), getEligibleOwners()]);
+      if (token !== generation.current) return false;
+      confirmedTicket.current = detail;
       setTicket(detail); setOwners(eligible); setOwnerId(detail.owner?.id ?? ""); setPriority(detail.itPriority); setStatus("");
       return true;
     } catch (cause) {
-      setTicket(null); setOwners([]); setSuccess("");
-      setError(cause instanceof ApiError && cause.status === 403 ? "You are not permitted to view this ticket." : cause instanceof ApiError && cause.status === 404 ? "Ticket not found." : "Unable to load ticket detail. Please retry.");
+      if (token !== generation.current) return false;
+      const accessLost = cause instanceof ApiError && ([401, 403, 404].includes(cause.status) || cause.code === "PASSWORD_CHANGE_REQUIRED");
+      if (accessLost || !confirmedTicket.current) {
+        confirmedTicket.current = null;
+        setTicket(null); setOwners([]); setSuccess(""); setComment(""); setNote("");
+        setError(cause instanceof ApiError && cause.status === 403 ? "You are not permitted to view this ticket." : cause instanceof ApiError && cause.status === 404 ? "Ticket not found." : cause instanceof ApiError && cause.status === 401 ? "Your session is unavailable. Please sign in again." : "Unable to load ticket detail. Please retry.");
+      } else {
+        setError("Ticket refresh failed. Previously loaded detail and unsaved Actions are preserved. Retry to review the current Ticket.");
+      }
       return false;
     }
-    finally { setLoading(false); }
+    finally { if (token === generation.current) setLoading(false); }
   }, [ticketId]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); return () => { ++generation.current; }; }, [load]);
   const save = async (action: () => Promise<unknown>, message: string) => {
     setBusy(true); setError(""); setSuccess("");
     try { await action(); if (await load()) setSuccess(message); }
     catch (cause) {
-      if (cause instanceof ApiError && cause.status === 403) { setTicket(null); setOwners([]); }
+      if (cause instanceof ApiError && ([401, 403, 404].includes(cause.status) || cause.code === "PASSWORD_CHANGE_REQUIRED")) { confirmedTicket.current = null; setTicket(null); setOwners([]); setComment(""); setNote(""); }
       setError(cause instanceof ApiError && cause.status < 500 ? cause.message : "Unable to save. Please retry.");
     }
     finally { setBusy(false); }
@@ -62,6 +86,7 @@ export default function StaffTicketDetailScreen({ ticketId, currentUser, onBack 
     {error && <div role="alert" className="alert alert-danger">{error} <button className="btn btn-sm btn-outline-danger ms-2" disabled={busy || loading} onClick={() => void load()}>Retry</button></div>}
     {success && <div role="status" className="alert alert-success">{success}</div>}
     {ticket && <>
+      <button className="btn btn-outline-primary-green mb-3" disabled={busy || loading} onClick={() => void load()}>Refresh Ticket detail</button>
       <header className="zen-card p-4 mb-3"><h1 className="h3 text-primary-green">{ticket.ticketNumber}: {ticket.summary}</h1><p className="mb-0 text-break" style={{ whiteSpace: "pre-wrap" }}>{ticket.description}</p></header>
       <div className="row g-3 mb-3"><section className="col-12 col-lg-6"><div className="zen-card p-4 h-100"><h2 className="h5">Ticket Information</h2><dl className="row mb-0">
         <dt className="col-5">Requester</dt><dd className="col-7 text-break">{ticket.requester.name} ({ticket.requester.email})</dd>
@@ -77,6 +102,7 @@ export default function StaffTicketDetailScreen({ ticketId, currentUser, onBack 
       <section className="zen-card p-4 mb-3"><h2 className="h5">Attachments</h2>{ticket.attachments.length ? <ul>{ticket.attachments.map(a => <li className="text-break" key={a.id}><a href={`/api/staff/tickets/${encodeURIComponent(ticketId)}/attachments/${encodeURIComponent(a.id)}/download`}>{a.originalFilename}</a> ({Math.ceil(a.sizeBytes / 1024)} KB)</li>)}</ul> : <p>No attachments.</p>}</section>
       <div className="row g-3"><section className="col-12 col-lg-6"><div className="zen-card p-4 h-100"><h2 className="h5">Public Comments</h2><p className="text-secondary">Visible to the Requester. Do not include private staff information.</p>{ticket.publicComments.map(item => <article className="border-top py-2" key={item.id}><strong>{item.author.name}</strong> <time className="text-secondary small" dateTime={item.createdAt}>{date(item.createdAt)}</time><p className="text-break mb-0" style={{ whiteSpace: "pre-wrap" }}>{item.content}</p></article>)}<FormField id="staff-comment" label="Public Comment" className="mt-3" error={fieldErrors.Comment}><textarea className="form-control" maxLength={2000} value={comment} onChange={e => { setComment(e.target.value); setFieldErrors(previous => ({ ...previous, Comment: "" })); }} /></FormField><button className="btn btn-primary-green mt-2" disabled={busy} onClick={() => { if (validText(comment, "Comment")) void save(async () => { await postComment(ticketId, comment); setComment(""); }, "Public Comment added."); }}>Post Public Comment</button></div></section>
       <section className="col-12 col-lg-6"><div className="zen-card p-4 h-100 border border-warning"><h2 className="h5">Internal Notes</h2><p className="text-secondary">Private to IT Staff and Administrators. The Requester cannot see these notes.</p>{ticket.internalNotes.map(item => <article className="border-top py-2" key={item.id}><strong>{item.author.name}</strong> <time className="text-secondary small" dateTime={item.createdAt}>{date(item.createdAt)}</time><p className="text-break mb-0" style={{ whiteSpace: "pre-wrap" }}>{item.content}</p></article>)}<FormField id="staff-note" label="Internal Note" className="mt-3" error={fieldErrors.Note}><textarea className="form-control" maxLength={2000} value={note} onChange={e => { setNote(e.target.value); setFieldErrors(previous => ({ ...previous, Note: "" })); }} /></FormField><button className="btn btn-outline-primary-green mt-2" disabled={busy} onClick={() => { if (validText(note, "Note")) void save(async () => { await postInternalNote(ticketId, note); setNote(""); }, "Internal Note added."); }}>Add Internal Note</button></div></section></div>
+      <ActionsTaken key={currentUser.id + ticketId} ticketId={ticketId} ticketNumber={ticket.ticketNumber} ticketStatus={ticket.status} currentUser={currentUser} onSaved={load} onRefreshTicket={load} onAccessLost={clearAccess}/>
     </>}
   </div>;
 }

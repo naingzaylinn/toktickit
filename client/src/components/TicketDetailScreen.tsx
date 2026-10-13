@@ -10,6 +10,7 @@ import {
     uploadTicketAttachments,
 } from "../api.js";
 import RequesterDiscussion from "./RequesterDiscussion.js";
+import ActionsTaken from "./ActionsTaken.js";
 import ErrorAlert from "./common/ErrorAlert.js";
 import LoadingSpinner from "./common/LoadingSpinner.js";
 import StatusBadge from "./common/StatusBadge.js";
@@ -709,6 +710,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                     )}
                 </div>
 
+                <ActionsTaken key={currentRequester.id + ticket.id} ticketId={ticket.id}/>
                 <RequesterDiscussion key={ticket.id} ticketId={ticket.id} resolvedAt={ticket.problemAppearsResolvedAt}/>
 
             {previewAttachment && previewUrl && (

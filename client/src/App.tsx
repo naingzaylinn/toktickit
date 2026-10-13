@@ -92,7 +92,7 @@ export default function App() {
     )}
 
     {path.startsWith("/staff/tickets/") && (
-        <StaffTicketDetailScreen key={path} ticketId={path.slice("/staff/tickets/".length)} currentUser={user} onBack={() => navigate("/staff/tickets")} />
+        <StaffTicketDetailScreen key={user.id + path} ticketId={path.slice("/staff/tickets/".length)} currentUser={user} onBack={() => navigate("/staff/tickets")} />
     )}
 
     {path === "/admin/users" &&
