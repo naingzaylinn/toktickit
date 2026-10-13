@@ -1,5 +1,40 @@
 # Lab 4 Review and Integration Plan
 
+## Issue #61 Phase 3 correction review — 2026-10-13
+
+The two reproduced Minor findings (parser-discarded raw keys and keyboard Retry
+focus loss) are corrected with focused real HTTP/component/browser coverage;
+see [staff-dashboard.md](staff-dashboard.md#phase-3--two-independent-review-corrections-2026-10-13).
+Review raw-key validation before service invocation, pending Retry heading focus,
+settled Refresh focus and respect for deliberate focus movement. Previous metric,
+snapshot, privacy and Queue behavior is unchanged. Human re-review and eventual
+PR remain pending; no new approval, commit, push or PR is claimed.
+
+Phase 3 final checks passed: builds, focused authorization 18/0, dashboard
+component 16/0, accessibility browser 3/0 and complete server/client/browser
+regressions 545/262/40 with zero failures. Re-review scope is the two fixes and
+their 8/6/2 added cases, not a changed metric or workflow contract.
+
+## Issue #61 independent-review preparation — 2026-10-13
+
+[staff-dashboard.md](staff-dashboard.md) records all 29 implementation/documentation
+files, exact predicates, snapshot/authorization, navigation, tests, actual results
+and limitations. Staff dashboard and active Queue drilldowns are implemented;
+requester dashboard, final hardening and release remain #62–#64.
+
+Review original performer versus current assignee/owner, eight/four zero buckets,
+RepeatableRead and deterministic concurrent test, narrow DTOs, active+CLOSED
+intersection, URL/back/pagination/reset, late responses, forbidden clearing and
+Action focusActionId page targeting. New cases: 31 backend/27 client/9 browser.
+Final checks: builds pass; server 537/0, client 256/0, browser 38/0. Previous
+506/229/29 cases retained. Human review and manual PR to lab4-staging are pending;
+no approval, stage, commit, push, PR or merge is claimed.
+
+Current discovery correction: Playwright testDir is ./e2e following #59, so the
+historical Lab-3-only warning in §5 no longer describes current infrastructure.
+Both Lab 3 and Lab 4 browser suites were discovered and executed. The isolated
+runner already cleans Action/revision seed children before legacy fixtures.
+
 Issue #56 engineering contract; branch `feature/sprint4-engineering-contract`; integration target `lab4-staging`. Revised 2026-10-11 following user review. **Design revision authorized; concrete revised contract awaits review. No Sprint 4 PR, peer approval, merge, feature-test execution or release claimed.**
 
 ## Issue #60 review preparation ? 2026-10-13

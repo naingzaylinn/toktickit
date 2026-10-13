@@ -7,6 +7,7 @@ import CreateTicketScreen from "./components/CreateTicketScreen.js";
 import MyTicketsScreen from "./components/MyTicketsScreen.js";
 import TicketDetailScreen from "./components/TicketDetailScreen.js";
 import StaffTicketQueueScreen from "./components/StaffTicketQueueScreen.js";
+import StaffDashboardScreen from "./components/StaffDashboardScreen.js";
 import StaffTicketDetailScreen from "./components/StaffTicketDetailScreen.js";
 import UserManagementScreen from "./components/UserManagementScreen.js";
 import "./theme.css";
@@ -15,16 +16,18 @@ export default function App() {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [path, setPath] = useState(window.location.pathname);
+    const [location, setLocation] = useState(() => ({ pathname: window.location.pathname, search: window.location.search, hash: window.location.hash }));
+    const path = location.pathname;
     const sessionRevision = useRef(0);
     const navigate = (next: string) => {
         window.history.pushState({}, "", next);
-        setPath(next);
+        window.dispatchEvent(new PopStateEvent("popstate"));
     };
     useEffect(() => {
-        const onPop = () => setPath(window.location.pathname);
+        const onPop = () => setLocation({ pathname: window.location.pathname, search: window.location.search, hash: window.location.hash });
         window.addEventListener("popstate", onPop);
-        return () => window.removeEventListener("popstate", onPop);
+        window.addEventListener("hashchange", onPop);
+        return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("hashchange", onPop); };
     }, []);
     useEffect(() => {
         let active = true;
@@ -81,10 +84,13 @@ export default function App() {
  {path.startsWith("/tickets/") && path !== "/tickets/new" && <TicketDetailScreen key={user.id + path} currentRequester={user} ticketId={path.slice(9)} onBack={() => navigate("/tickets")}/>}
  {!path.startsWith("/tickets") && path !== "/" && path !== "/login" && <p role="alert">This page is not available for your role.</p>}
  </> : <>
+    {path === "/staff/dashboard" && <StaffDashboardScreen key={user.id + user.role} currentUser={user} onNavigate={navigate}/>}
     {(path === "/staff/tickets" ||
         path === "/" ||
         path === "/login") && (
         <StaffTicketQueueScreen
+            key={user.id + user.role}
+            currentUser={user}
             onOpenTicket={(id) =>
                 navigate("/staff/tickets/" + id)
             }
@@ -112,6 +118,7 @@ export default function App() {
         !path.startsWith("/tickets") &&
         path !== "/" &&
         path !== "/login" &&
+        path !== "/staff/dashboard" &&
         path !== "/admin/users" && (
             <p>This page is not available yet.</p>
         )}

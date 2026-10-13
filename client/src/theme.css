@@ -7,6 +7,11 @@
   --color-text-primary: #1E2D24;
 }
 
+.staff-dashboard-screen .zen-card { overflow-wrap: anywhere; min-width: 0; }
+.staff-dashboard-screen .dashboard-metric { text-decoration: none; }
+.staff-dashboard-screen .dashboard-metric:hover { background: var(--color-pale-green); }
+.staff-dashboard-screen[aria-busy="true"] { min-height: 16rem; }
+
 body {
   background-color: #F5F7F6;
   color: #1E2D24;

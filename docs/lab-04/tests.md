@@ -1,5 +1,38 @@
 # Lab 4 Test DD and Requirement Traceability
 
+## Issue #61 Phase 3 focused review corrections — 2026-10-13
+
+The two reproduced Minor findings and fixes are recorded in
+[staff-dashboard.md](staff-dashboard.md#phase-3--two-independent-review-corrections-2026-10-13).
+Eight new backend cases verify raw-query rejection before calculation and a real
+no-query control; six new component cases verify keyboard Retry across initial/
+refresh failures, successful/repeated failed retries and deliberate focus moves;
+two browser cases hold real recovery requests and assert useful pending/settled
+focus. Existing assertions remain intact. Focused actual results: both builds
+pass, authorization 18/0, dashboard component 16/0, accessibility browser 3/0.
+These focused results supersede affected prior counts; earlier evidence is historical.
+
+Complete Phase 3 regression passed: server 545/0 in 31 files, client 262/0 in
+22 files, browser 40/0. Counts increased by exactly 8/6/2 over Phase 2; all
+previous assertions/cases remain. Authorization was rechecked at 18/0 after the
+final raw-query prefix adjustment. No developer-schema mutation or Git write.
+
+## Issue #61 implementation evidence — 2026-10-13
+
+Actual scope, file inventory, test cases, intermediate failures and final command
+results are in [staff-dashboard.md](staff-dashboard.md). New cases: 31 backend,
+27 client and 9 browser. Final isolated backend: 537/0 (31 files), focused Lab 4:
+328/0 (11 files); client: 256/0 (22 files), focused Lab 4: 128/0 (8 files);
+browser: 38/0, focused dashboard: 9/0. Both builds passed.
+
+T-24/25/26/35 are verified. Staff portions of T-14/29/30/37/43/44/45/48 are
+verified with independent DB counts, deterministic real snapshot barrier,
+Queue predicate parity, UI recovery/access safety and browser focus/reflow.
+Requester and product-wide portions remain future #62–#64 scope; older Planned
+matrix rows are original plans, not current staff-feature evidence. Screenshots
+and focused visual inspection are recorded in the linked implementation record.
+No developer-schema mutations, reference changes or Git writes occurred.
+
 Issue #56 revised draft, 2026-10-11. All tests are **Planned**, including regression reruns; no feature tests implemented/executed. [Specification](specification.md), [API](api-spec.md) and [UI](ui-spec.md) now define required assignment/lifecycle and immutable revisions; U-01/U-02 are resolved by user-directed project proposal. Historical [Lab 3 results](../lab-03/tests.md) are not current Lab 4 evidence.
 
 ## Issue #60 implementation evidence ? 2026-10-13

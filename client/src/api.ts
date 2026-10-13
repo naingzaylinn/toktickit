@@ -694,6 +694,7 @@ export interface StaffTicketQueueResponse {
 }
 
 export interface StaffTicketQueueQuery {
+  statusGroup?: "active";
   search?: string;
   status?: StaffTicketStatus;
   requestedPriority?: StaffTicketPriority;
@@ -729,6 +730,7 @@ export async function getStaffTickets(
   if (query.owner) {
     params.set("owner", query.owner);
   }
+  if (query.statusGroup) params.set("statusGroup", query.statusGroup);
 
   if (query.sort) {
     params.set("sort", query.sort);
@@ -764,5 +766,25 @@ export async function getStaffTickets(
     );
   }
 
+  return res.json();
+}
+
+export interface StaffDashboardResponse {
+  data: {
+    totalTickets: number; activeTickets: number; unassignedActiveTickets: number; myActiveTickets: number;
+    byStatus: Record<StaffTicketStatus, number>;
+    activeByItPriority: Record<StaffTicketPriority, number>;
+    recentTickets: Array<{ id: string; ticketNumber: string; summary: string; status: StaffTicketStatus;
+      itPriority: StaffTicketPriority; owner: { id: string; name: string } | null; updatedAt: string }>;
+    myActions: { totalItems: number; items: Array<{ id: string; ticketId: string; ticketNumber: string;
+      actionDateTime: string; actionDescription: string; followUpRequired: boolean; status: ActionStatus;
+      assignee: { id: string; name: string; role: AuthUser["role"]; isActive: boolean } }> };
+  };
+  meta: { generatedAt: string };
+}
+
+export async function getStaffDashboard(): Promise<StaffDashboardResponse> {
+  const res = await fetch("/api/staff/dashboard", { headers: { Accept: "application/json" }, cache: "no-store" });
+  if (!res.ok) throw await readApiError(res, "Unable to load the staff dashboard.");
   return res.json();
 }
