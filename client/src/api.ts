@@ -36,6 +36,7 @@ export interface ApiErrorEnvelope {
     correlationId?: string;
     details?: ApiErrorDetails[];
     fields?: Record<string, unknown>;
+    reasonCodes?: unknown;
   };
 }
 
@@ -45,13 +46,16 @@ export class ApiError extends Error {
   status: number;
   fields: Record<string, string>;
 
-  constructor(code: string, message: string, status: number, correlationId?: string, fields: Record<string, string> = {}) {
+  reasonCodes: ResolutionReason[];
+
+  constructor(code: string, message: string, status: number, correlationId?: string, fields: Record<string, string> = {}, reasonCodes: ResolutionReason[] = []) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
     this.correlationId = correlationId;
     this.fields = fields;
+    this.reasonCodes = reasonCodes;
   }
 }
 
@@ -151,7 +155,9 @@ async function readApiError(
       ? Object.fromEntries(Object.entries(errorData.error.fields ?? {}).filter(([key, value]) =>
           ["email", "password", "currentPassword", "newPassword", "confirmPassword"].includes(key) && typeof value === "string")) as Record<string, string>
       : Object.fromEntries(Object.entries(errorData?.error?.fields ?? {}).filter(([key, value]) =>
-          ["actionDescription", "actionResult", "followUpRequired", "followUpNote", "attachmentNotes", "assigneeId"].includes(key) && typeof value === "string")) as Record<string, string>
+          ["actionDescription", "actionResult", "followUpRequired", "followUpNote", "attachmentNotes", "assigneeId"].includes(key) && typeof value === "string")) as Record<string, string>,
+    Array.isArray(errorData?.error?.reasonCodes) ? errorData.error.reasonCodes.filter((code): code is ResolutionReason =>
+        typeof code === "string" && ["NO_COMPLETED_ACTIONS", "PENDING_ACTIONS", "FOLLOW_UP_REQUIRED"].includes(code)) : []
   );
 }
 
@@ -552,7 +558,11 @@ export const getComments = (id: string) => sessionRequest<PublicComment[]>("/api
 export const postComment = (id: string, content: string) => sessionRequest<PublicComment>("/api/tickets/"+encodeURIComponent(id)+"/comments", {content});
 export const indicateResolved = (id: string) => sessionRequest<{ticketId:string; problemAppearsResolvedAt:string}>("/api/tickets/"+encodeURIComponent(id)+"/problem-appears-resolved", {});
 
+export type ResolutionReason = "NO_COMPLETED_ACTIONS" | "PENDING_ACTIONS" | "FOLLOW_UP_REQUIRED";
 export interface StaffTicketDetail extends StaffTicketQueueItem {
+  workflowVersion: number;
+  actionsTakenSummary: { totalItems: number; pendingItems: number; completedItems: number; cancelledItems: number; followUpRequiredItems: number };
+  resolutionEligibility: { eligible: boolean; reasonCodes: ResolutionReason[] };
   description: string;
   ticketDate: string;
   relatedSystem: { id: string; name: string };
@@ -607,7 +617,7 @@ export const createAction = (ticketId: string, input: CreateActionInput) => muta
 export const updateAction = (ticketId: string, actionId: string, input: UpdateActionInput) => mutateAction(`${actionPath(ticketId, true)}/${encodeURIComponent(actionId)}`, "PATCH", input);
 export const updateStaffOwner = (id: string, ownerId: string | null) => staffRequest<{ owner: StaffTicketDetail["owner"] }>("/api/staff/tickets/" + encodeURIComponent(id) + "/owner", "PATCH", { ownerId });
 export const updateStaffPriority = (id: string, itPriority: StaffTicketPriority) => staffRequest<{ itPriority: StaffTicketPriority }>("/api/staff/tickets/" + encodeURIComponent(id) + "/priority", "PATCH", { itPriority });
-export const updateStaffStatus = (id: string, status: StaffTicketStatus) => staffRequest<{ status: StaffTicketStatus }>("/api/staff/tickets/" + encodeURIComponent(id) + "/status", "PATCH", { status });
+export const updateStaffStatus = (id: string, status: StaffTicketStatus, expectedWorkflowVersion: number) => staffRequest<{ status: StaffTicketStatus; workflowVersion: number }>("/api/staff/tickets/" + encodeURIComponent(id) + "/status", "PATCH", { status, expectedWorkflowVersion });
 export const postInternalNote = (id: string, content: string) => staffRequest<PublicComment>("/api/staff/tickets/" + encodeURIComponent(id) + "/notes", "POST", { content });
 
 

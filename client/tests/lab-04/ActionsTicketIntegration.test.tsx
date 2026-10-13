@@ -14,7 +14,7 @@ const ticket: api.StaffTicketDetail = {
   category: { id: 1, name: "Network" }, requester: { id: "requester", name: "Alice", email: "alice@example.com" },
   requestedPriority: "HIGH", itPriority: "MEDIUM", status: "OPEN", owner: null,
   relatedSystem: { id: "system", name: "Network" }, ticketDate: "2026-10-12T00:00:00.000Z",
-  createdAt: "2026-10-12T00:00:00.000Z", updatedAt: "2026-10-12T00:00:00.000Z", problemAppearsResolvedAt: null,
+  createdAt: "2026-10-12T00:00:00.000Z", updatedAt: "2026-10-12T00:00:00.000Z", workflowVersion: 0, actionsTakenSummary: { totalItems: 0, pendingItems: 0, completedItems: 0, cancelledItems: 0, followUpRequiredItems: 0 }, resolutionEligibility: { eligible: false, reasonCodes: ["NO_COMPLETED_ACTIONS"] }, problemAppearsResolvedAt: null,
   attachments: [], publicComments: [], internalNotes: [{ id: "note", ticketId: "30000000-0000-4000-8000-000000000001", content: "Protected internal observation", author: { id: staff.id, name: staff.name, role: staff.role }, createdAt: "2026-10-12T00:00:00.000Z" }],
 };
 const action: api.ActionTaken = {

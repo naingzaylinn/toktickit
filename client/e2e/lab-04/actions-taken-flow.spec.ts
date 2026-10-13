@@ -148,7 +148,7 @@ test("uncertain committed create survives parent refresh failure and inactive-as
     await actions.getByRole("button", { name: "Add Action" }).click();
     await actions.getByLabel("Action Description", { exact: false }).fill("Next work draft");
     await actions.getByLabel("Result", { exact: false }).fill("Retained next outcome");
-    expect((await adminPage.request.patch(`/api/staff/tickets/${ticketId}/status`, { data: { status: "CANCELLED" } })).status()).toBe(200);
+    expect((await adminPage.request.patch(`/api/staff/tickets/${ticketId}/status`, { data: { status: "CANCELLED", expectedWorkflowVersion: (await (await adminPage.request.get(`/api/staff/tickets/${ticketId}`)).json()).data.workflowVersion } })).status()).toBe(200);
     await actions.getByRole("button", { name: "Save Action" }).click();
     await expect(actions.getByText(/requires the Ticket to be reopened/)).toBeVisible();
     expect(writes).toHaveLength(3);

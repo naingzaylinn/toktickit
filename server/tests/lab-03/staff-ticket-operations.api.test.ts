@@ -23,6 +23,8 @@ beforeAll(async () => {
   await prisma.ticket.create({ data: { id: ticketId, ticketNumber: `OPS-${randomUUID()}`, clientRequestId: randomUUID(), requesterId, categoryId: category.id, relatedSystemId: system.id, summary: "Operations fixture", description: "Private requester description", requestedPriority: "High", itPriority: "High" } });
 });
 afterAll(async () => {
+  await prisma.actionTakenRevision.deleteMany({ where: { action: { ticketId } } });
+  await prisma.actionTaken.deleteMany({ where: { ticketId } });
   await prisma.internalNote.deleteMany({ where: { ticketId } });
   await prisma.publicComment.deleteMany({ where: { ticketId } });
   await prisma.ticket.deleteMany({ where: { id: ticketId } });
@@ -102,15 +104,18 @@ describe("staff ticket operations", () => {
     expect([ticket.itPriority, ticket.requestedPriority]).toEqual(["Low", "High"]);
   });
   it("enforces the documented transition matrix", async () => {
+    const action = await request(app).post(url + "/actions").set("Cookie", staff).send({ clientRequestId: randomUUID(), actionDescription: "Verified work", actionResult: "Resolved and tested", followUpRequired: false });
+    expect(action.status).toBe(201);
+    expect((await request(app).patch(url + "/actions/" + action.body.data.id).set("Cookie", staff).send({ expectedVersion: 1, status: "COMPLETED" })).status).toBe(200);
     const matrix: Record<string, string[]> = { NEW: ["OPEN", "IN_PROGRESS", "CANCELLED"], OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"], IN_PROGRESS: ["WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"], WAITING_FOR_REQUESTER: ["IN_PROGRESS", "RESOLVED", "CANCELLED"], RESOLVED: ["CLOSED", "REOPENED"], CLOSED: ["REOPENED"], REOPENED: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"], CANCELLED: ["REOPENED"] };
     const db: Record<string, string> = { NEW: "New", OPEN: "Open", IN_PROGRESS: "InProgress", WAITING_FOR_REQUESTER: "WaitingForRequester", RESOLVED: "Resolved", CLOSED: "Closed", REOPENED: "Reopened", CANCELLED: "Cancelled" };
     for (const [from, destinations] of Object.entries(matrix)) for (const to of Object.keys(matrix)) {
       await prisma.ticket.update({ where: { id: ticketId }, data: { currentStatus: db[from] as never } });
-      expect((await request(app).patch(url + "/status").set("Cookie", staff).send({ status: to })).status).toBe(destinations.includes(to) ? 200 : 409);
+      expect((await request(app).patch(url + "/status").set("Cookie", staff).send({ status: to, expectedWorkflowVersion: (await prisma.ticket.findUniqueOrThrow({ where: { id: ticketId } })).workflowVersion })).status).toBe(destinations.includes(to) ? 200 : 409);
     }
     await prisma.ticket.update({ where: { id: ticketId }, data: { currentStatus: "Closed" } });
-    expect((await request(app).patch(url + "/status").set("Cookie", staff).send({ status: "OPEN" })).status).toBe(409);
-    expect((await request(app).patch(url + "/status").set("Cookie", staff).send({ status: "BOGUS" })).status).toBe(400);
+    expect((await request(app).patch(url + "/status").set("Cookie", staff).send({ status: "OPEN", expectedWorkflowVersion: (await prisma.ticket.findUniqueOrThrow({ where: { id: ticketId } })).workflowVersion })).status).toBe(409);
+    expect((await request(app).patch(url + "/status").set("Cookie", staff).send({ status: "BOGUS", expectedWorkflowVersion: 0 })).status).toBe(400);
   });
   it("uses authenticated authors and never exposes notes to requesters", async () => {
     expect((await request(app).post(url + "/notes").set("Cookie", requester).send({ content: "private" })).status).toBe(403);
