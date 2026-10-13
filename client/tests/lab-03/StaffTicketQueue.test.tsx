@@ -70,6 +70,7 @@ function queueResponse(data = [ticket]) {
 describe("Lab 3 Staff Ticket Queue UI", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        window.history.replaceState({}, "", "/staff/tickets");
 
         vi.mocked(getStaffTickets).mockResolvedValue(
             queueResponse()

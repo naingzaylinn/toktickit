@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     getStaffTickets,
+    ApiError,
+    AuthUser,
     StaffTicketOrder,
     StaffTicketPriority,
     StaffTicketQueueItem,
@@ -16,6 +18,7 @@ import StatusBadge from "./common/StatusBadge.js";
 
 interface StaffTicketQueueScreenProps {
     onOpenTicket: (ticketId: string) => void;
+    currentUser?: AuthUser;
 }
 
 const DEFAULT_META: StaffTicketQueueMeta = {
@@ -111,36 +114,43 @@ function statusVariant(
 
 export const StaffTicketQueueScreen: React.FC<
     StaffTicketQueueScreenProps
-> = ({ onOpenTicket }) => {
+> = ({ onOpenTicket, currentUser }) => {
+    const initial = useRef(new URLSearchParams(window.location.search)).current;
     const [tickets, setTickets] = useState<StaffTicketQueueItem[]>([]);
     const [meta, setMeta] =
         useState<StaffTicketQueueMeta>(DEFAULT_META);
 
-    const [searchInput, setSearchInput] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [searchInput, setSearchInput] = useState(initial.get("search") ?? "");
+    const [debouncedSearch, setDebouncedSearch] = useState(initial.get("search") ?? "");
 
-    const [status, setStatus] = useState("");
-    const [requestedPriority, setRequestedPriority] = useState("");
-    const [itPriority, setItPriority] = useState("");
-    const [owner, setOwner] = useState("");
+    const [status, setStatus] = useState(initial.get("status") ?? "");
+    const [statusGroup, setStatusGroup] = useState(initial.get("statusGroup") ?? "");
+    const [requestedPriority, setRequestedPriority] = useState(initial.get("requestedPriority") ?? "");
+    const [itPriority, setItPriority] = useState(initial.get("itPriority") ?? "");
+    const [owner, setOwner] = useState(initial.get("owner") ?? "");
 
     const [sort, setSort] =
-        useState<StaffTicketSort>("updatedAt");
+        useState<StaffTicketSort>((initial.get("sort") as StaffTicketSort) || "updatedAt");
     const [order, setOrder] =
-        useState<StaffTicketOrder>("desc");
+        useState<StaffTicketOrder>((initial.get("order") as StaffTicketOrder) || "desc");
 
-    const [page, setPage] = useState(1);
+    const [page, setPage] = useState(Number(initial.get("page") ?? 1));
     const [pageSize, setPageSize] =
-        useState<10 | 20 | 50>(20);
+        useState<10 | 20 | 50>(Number(initial.get("pageSize") ?? 20) as 10 | 20 | 50);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const firstSearchRender = useRef(true);
+    const generation = useRef(0);
+    const skipUrlSync = useRef(true);
+    const ownNavigation = useRef(false);
+    const [denied, setDenied] = useState(false);
+    const [routeRevision, setRouteRevision] = useState(0);
 
     const hasActiveFilters =
         debouncedSearch.length > 0 ||
         status !== "" ||
+        statusGroup !== "" ||
         requestedPriority !== "" ||
         itPriority !== "" ||
         owner !== "";
@@ -150,6 +160,7 @@ export const StaffTicketQueueScreen: React.FC<
             search: debouncedSearch || undefined,
             status:
                 (status as StaffTicketStatus) || undefined,
+            statusGroup: (statusGroup as "active") || undefined,
             requestedPriority:
                 (requestedPriority as StaffTicketPriority) ||
                 undefined,
@@ -164,6 +175,7 @@ export const StaffTicketQueueScreen: React.FC<
         [
             debouncedSearch,
             status,
+            statusGroup,
             requestedPriority,
             itPriority,
             owner,
@@ -171,47 +183,82 @@ export const StaffTicketQueueScreen: React.FC<
             order,
             page,
             pageSize,
+            routeRevision,
         ]
     );
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
+            if (searchInput.trim() !== debouncedSearch) setPage(1);
             setDebouncedSearch(searchInput.trim());
         }, 300);
 
         return () => window.clearTimeout(timer);
-    }, [searchInput]);
-
-    useEffect(() => {
-        if (firstSearchRender.current) {
-            firstSearchRender.current = false;
-            return;
-        }
-
-        setPage(1);
-    }, [debouncedSearch]);
+    }, [searchInput, debouncedSearch]);
 
     const loadTickets = async () => {
+        const token = ++generation.current;
         setLoading(true);
         setError(null);
 
         try {
             const response = await getStaffTickets(query);
+            if (token !== generation.current) return;
             setTickets(response.data);
             setMeta(response.meta);
-        } catch {
+        } catch (cause) {
+            if (token !== generation.current) return;
             setTickets([]);
+            if (cause instanceof ApiError && [401, 403].includes(cause.status)) {
+                ++generation.current; setDenied(true); setLoading(false);
+                setError("The Ticket Queue is unavailable for your session or role."); return;
+            }
             setError(
                 "Unable to load the staff ticket queue right now. Please try again."
             );
         } finally {
-            setLoading(false);
+            if (token === generation.current) setLoading(false);
         }
     };
 
     useEffect(() => {
         loadTickets();
+        return () => { ++generation.current; };
     }, [query]);
+
+    useEffect(() => {
+        if (skipUrlSync.current) { skipUrlSync.current = false; return; }
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(query)) {
+            if (value === undefined || key === "page" && value === 1 || key === "pageSize" && value === 20 ||
+                key === "sort" && value === "updatedAt" || key === "order" && value === "desc") continue;
+            params.set(key, String(value));
+        }
+        const search = params.size ? "?" + params.toString() : "";
+        if (window.location.search !== search) {
+            ownNavigation.current = true;
+            window.history.pushState({}, "", window.location.pathname + search);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            ownNavigation.current = false;
+        }
+    }, [query]);
+    useEffect(() => {
+        const restore = () => {
+            if (ownNavigation.current || !["/staff/tickets", "/", "/login"].includes(window.location.pathname)) return;
+            const params = new URLSearchParams(window.location.search);
+            skipUrlSync.current = true; ++generation.current;
+            setRouteRevision(value => value + 1);
+            setSearchInput(params.get("search") ?? ""); setDebouncedSearch(params.get("search") ?? "");
+            setStatus(params.get("status") ?? ""); setStatusGroup(params.get("statusGroup") ?? "");
+            setRequestedPriority(params.get("requestedPriority") ?? ""); setItPriority(params.get("itPriority") ?? "");
+            setOwner(params.get("owner") ?? ""); setSort((params.get("sort") as StaffTicketSort) || "updatedAt");
+            setOrder((params.get("order") as StaffTicketOrder) || "desc"); setPage(Number(params.get("page") ?? 1));
+            setPageSize(Number(params.get("pageSize") ?? 20) as 10 | 20 | 50);
+        };
+        const clear = () => { ++generation.current; setTickets([]); setDenied(true); setLoading(false); };
+        window.addEventListener("popstate", restore); window.addEventListener("session-access-changed", clear);
+        return () => { ++generation.current; window.removeEventListener("popstate", restore); window.removeEventListener("session-access-changed", clear); };
+    }, []);
 
     const resetToPageOne = () => {
         setPage(1);
@@ -221,6 +268,7 @@ export const StaffTicketQueueScreen: React.FC<
         setSearchInput("");
         setDebouncedSearch("");
         setStatus("");
+        setStatusGroup("");
         setRequestedPriority("");
         setItPriority("");
         setOwner("");
@@ -240,6 +288,8 @@ export const StaffTicketQueueScreen: React.FC<
     const formatDateTime = (value: string) =>
         new Date(value).toLocaleString();
 
+    if (denied) return <p role="alert">The Ticket Queue is unavailable for your session or role.</p>;
+
     return (
         <div
             className="staff-ticket-queue-screen"
@@ -258,6 +308,11 @@ export const StaffTicketQueueScreen: React.FC<
 
             <div className="zen-card p-3 p-md-4 mb-4">
                 <div className="row g-3">
+                    <div className="col-12 col-md-6"><label htmlFor="staff-status-group" className="form-label fw-semibold">Status group</label>
+                        <select id="staff-status-group" className="form-select" value={statusGroup} onChange={e => { setStatusGroup(e.target.value); resetToPageOne(); }}>
+                            <option value="">All statuses</option><option value="active">Active Tickets</option>
+                        </select>
+                    </div>
                     <div className="col-12">
                         <label
                             htmlFor="staff-ticket-search"
@@ -392,6 +447,8 @@ export const StaffTicketQueueScreen: React.FC<
                             }}
                         >
                             <option value="">All Tickets</option>
+                            {currentUser && <option value={currentUser.id}>Owned by you</option>}
+                            {owner && !["assigned", "unassigned", currentUser?.id].includes(owner) && <option value={owner}>Owner: {owner}</option>}
                             <option value="assigned">
                                 Assigned
                             </option>
@@ -525,7 +582,7 @@ export const StaffTicketQueueScreen: React.FC<
 
             {loading ? (
                 <LoadingSpinner message="Loading ticket queue..." />
-            ) : tickets.length === 0 ? (
+            ) : error ? null : tickets.length === 0 ? (
                 hasActiveFilters ? (
                     <EmptyState
                         title="No Matching Tickets"

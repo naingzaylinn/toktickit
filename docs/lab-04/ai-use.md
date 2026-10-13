@@ -1,5 +1,51 @@
 # Lab 4 AI Use and Reflection Record
 
+## Issue #61 Phase 3 — two review findings, 2026-10-13
+
+The user explicitly authorized only the two independently reproduced Minor fixes,
+related regressions/documentation and complete verification. Codex verified the
+unchanged branch/HEAD, eleven tracked modifications, eighteen new files and empty
+index, then changed raw dashboard query validation and existing Retry focus intent.
+No sub-agents, extra KPI, routing framework or unrelated feature change was used.
+
+Eight backend, six component and two browser regression cases were added without
+weakening previous assertions. Actual focused results: server/client builds pass,
+18 authorization, 16 dashboard component and 3 accessibility browser cases pass.
+The initial build rejected an unsupported Vitest matcher; equivalent separate
+call-count/argument checks fixed it. Sandbox spawn EPERM required approved reruns
+using the same disposable-schema infrastructure. The implementation record keeps
+actual command totals and remaining manual limits. Human reflection/review is not
+fabricated. No developer data, references, staging/commit/push/PR or branch changes.
+
+Complete correction verification: server 545/0, client 262/0, browser 40/0;
+both builds and focused 18/16/3 checks passed. The final raw-query prefix parsing
+was rechecked at 18/0. Exact command evidence is in staff-dashboard.md. No
+screen-reader/formal contrast audit or human approval is claimed.
+
+## Issue #61 authorized implementation — 2026-10-13
+
+The user supplied the complete Phase 2 scope and explicitly authorized dashboard
+API/UI, Queue active filtering/URL navigation, isolated tests and documentation,
+while prohibiting staging, commits, pushes, PRs, reference edits and developer
+database changes. Codex verified branch/HEAD/empty tracked/index state first.
+
+Codex implemented exact approved original-performer metrics, RepeatableRead,
+narrow bounded DTOs, existing role/session gates, dashboard states and drilldowns,
+History API query/hash handling and superseded-response protection. It authored
+31 backend, 27 client and 9 browser cases plus the implementation record.
+No sub-agents, new KPI, requester dashboard, migration/index, Action lifecycle or
+Ticket workflow changes were introduced. Existing Queue assertions remain;
+their setup now resets URL between tests.
+
+Actual failures and corrections, final commands/counts, screenshot inspection
+and limits are recorded in [staff-dashboard.md](staff-dashboard.md): sandbox
+spawn EPERM required approved reruns; a test used the wrong comment endpoint;
+browser testing found and verified the fix for Refresh focus loss. Final builds
+and server 537/0, client 256/0, browser 38/0 passed. Only generated disposable
+schemas and temporary services/storage were used. No references, developer data,
+stage/commit/push/PR/branch switch or #62–#64 implementation. Human review and
+student reflection remain human responsibilities; neither is fabricated.
+
 Issue #56; draft created 2026-10-09, revised 2026-10-11 (Asia/Bangkok). Tool: **OpenAI Codex AI assistant** for specification/documentation. User reviewed the initial draft and requested revisions; design work is authorized, but no final revised-contract approval, peer approval, implementation, PR or passing feature tests is claimed.
 
 ## 1. Purpose and activities actually performed

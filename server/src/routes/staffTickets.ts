@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import { Prisma, RequestedPriority, TicketStatus } from "@prisma/client";
 import { getPrisma } from "../prisma.js";
+import { activeTicketStatuses } from "../services/ticketDashboardDefinitions.js";
 import { authError, authServerError } from "../services/authErrors.js";
 import { readAttachmentBinary } from "../services/attachmentStorage.js";
 import { transitionTicket, workflowSummary, WorkflowError } from "../services/ticketWorkflow.js";
@@ -208,6 +209,10 @@ staffTicketsRouter.get(
     async (req: Request, res: Response) => {
         const searchRaw = singleQueryValue(req.query.search);
         const statusRaw = singleQueryValue(req.query.status);
+        const statusGroupRaw = singleQueryValue(req.query.statusGroup);
+        if (statusGroupRaw === null || (statusGroupRaw !== undefined && statusGroupRaw !== "active")) {
+            return sendQueryError(res, "Invalid statusGroup. Use active.");
+        }
         const requestedPriorityRaw =
             singleQueryValue(req.query.requestedPriority);
         const itPriorityRaw =
@@ -328,6 +333,7 @@ if (
         }
 
         const where: Prisma.TicketWhereInput = {};
+        if (statusGroupRaw === "active") where.AND = [{ currentStatus: { in: activeTicketStatuses } }];
 
         if (search) {
             where.OR = [
