@@ -4,6 +4,7 @@ import { Prisma, RequestedPriority, TicketStatus } from "@prisma/client";
 import { getPrisma } from "../prisma.js";
 import { authError, authServerError } from "../services/authErrors.js";
 import { readAttachmentBinary } from "../services/attachmentStorage.js";
+import { transitionTicket, workflowSummary, WorkflowError } from "../services/ticketWorkflow.js";
 
 export const staffTicketsRouter = Router();
 
@@ -56,17 +57,6 @@ const STATUS_TO_API: Record<TicketStatus, string> = {
     Cancelled: "CANCELLED",
 };
 
-const TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
-    New: ["Open", "InProgress", "Cancelled"],
-    Open: ["InProgress", "WaitingForRequester", "Resolved", "Cancelled"],
-    InProgress: ["WaitingForRequester", "Resolved", "Cancelled"],
-    WaitingForRequester: ["InProgress", "Resolved", "Cancelled"],
-    Resolved: ["Closed", "Reopened"],
-    Closed: ["Reopened"],
-    Reopened: ["InProgress", "WaitingForRequester", "Resolved", "Cancelled"],
-    Cancelled: ["Reopened"],
-};
-
 const messageSelect = { id: true, ticketId: true, content: true, createdAt: true,
     author: { select: { id: true, name: true, role: true } } } as const;
 
@@ -79,18 +69,23 @@ staffTicketsRouter.get("/owners", async (_req, res) => {
 
 staffTicketsRouter.get("/:ticketId", async (req, res) => {
     try {
-        const ticket = await getPrisma().ticket.findUnique({ where: { id: req.params.ticketId }, select: {
-            id: true, ticketNumber: true, ticketDate: true, summary: true, description: true,
-            requestedPriority: true, itPriority: true, currentStatus: true, problemAppearsResolvedAt: true,
-            createdAt: true, updatedAt: true,
-            requester: { select: { id: true, name: true, email: true } },
-            owner: { select: { id: true, name: true, email: true } },
-            category: { select: { id: true, name: true } }, relatedSystem: { select: { id: true, name: true } },
-            attachments: { where: { isRemoved: false }, select: { id: true, originalFilename: true, mimeType: true, sizeBytes: true, createdAt: true }, orderBy: { createdAt: "asc" } },
-            publicComments: { select: messageSelect, orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
-            internalNotes: { select: messageSelect, orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
-        } });
-        if (!ticket) return authError(res, 404, "TICKET_NOT_FOUND", "The requested ticket was not found.");
+        const detail = await getPrisma().$transaction(async tx => {
+            const ticket = await tx.ticket.findUnique({ where: { id: req.params.ticketId }, select: {
+                id: true, ticketNumber: true, ticketDate: true, summary: true, description: true,
+                requestedPriority: true, itPriority: true, currentStatus: true, problemAppearsResolvedAt: true,
+                createdAt: true, updatedAt: true, workflowVersion: true,
+                requester: { select: { id: true, name: true, email: true } },
+                owner: { select: { id: true, name: true, email: true } },
+                category: { select: { id: true, name: true } }, relatedSystem: { select: { id: true, name: true } },
+                attachments: { where: { isRemoved: false }, select: { id: true, originalFilename: true, mimeType: true, sizeBytes: true, createdAt: true }, orderBy: { createdAt: "asc" } },
+                publicComments: { select: messageSelect, orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+                internalNotes: { select: messageSelect, orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+            } });
+            if (!ticket) return null;
+            return { ...ticket, ...await workflowSummary(tx, ticket.id) };
+        }, { isolationLevel: "RepeatableRead" });
+        if (!detail) return authError(res, 404, "TICKET_NOT_FOUND", "The requested ticket was not found.");
+        const ticket = detail;
         res.json({ data: { ...ticket, requestedPriority: PRIORITY_TO_API[ticket.requestedPriority], itPriority: PRIORITY_TO_API[ticket.itPriority], status: STATUS_TO_API[ticket.currentStatus], currentStatus: undefined } });
     } catch { authServerError(res); }
 });
@@ -143,17 +138,22 @@ staffTicketsRouter.patch("/:ticketId/priority", async (req, res) => {
 
 staffTicketsRouter.patch("/:ticketId/status", async (req, res) => {
     try {
-        const raw = req.body?.status;
-        if (typeof raw !== "string" || !Object.hasOwn(STATUS_FROM_API, raw)) return authError(res, 400, "VALIDATION_ERROR", "Invalid ticket status.");
-        const prisma = getPrisma();
-        const ticket = await prisma.ticket.findUnique({ where: { id: req.params.ticketId }, select: { currentStatus: true } });
-        if (!ticket) return authError(res, 404, "TICKET_NOT_FOUND", "The requested ticket was not found.");
-        const next = STATUS_FROM_API[raw];
-        if (!TRANSITIONS[ticket.currentStatus].includes(next)) return authError(res, 409, "CONFLICT", "This status transition is not permitted.");
-        const result = await prisma.ticket.updateMany({ where: { id: req.params.ticketId, currentStatus: ticket.currentStatus }, data: { currentStatus: next } });
-        if (!result.count) return authError(res, 409, "CONFLICT", "Ticket status changed. Reload and try again.");
-        res.json({ data: { status: raw } });
-    } catch { authServerError(res); }
+        const body = req.body;
+        const raw = body?.status;
+        const version = body?.expectedWorkflowVersion;
+        if (!body || typeof body !== "object" || Array.isArray(body) ||
+            Object.keys(body).some(key => !["status", "expectedWorkflowVersion"].includes(key)) ||
+            typeof raw !== "string" || !Object.hasOwn(STATUS_FROM_API, raw) ||
+            !Number.isSafeInteger(version) || version < 0 || version > 2147483647)
+            return authError(res, 400, "VALIDATION_ERROR", "A valid status and integer expectedWorkflowVersion >= 0 are required.");
+        const updated = await transitionTicket(req.params.ticketId, STATUS_FROM_API[raw], version);
+        res.json({ data: { status: raw, ...updated } });
+    } catch (error) {
+        if (error instanceof WorkflowError) return res.status(error.status).json({ error: { code: error.code, message: error.message, ...(error.reasonCodes ? { reasonCodes: error.reasonCodes } : {}) } });
+        if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2034", "P2028"].includes(error.code))
+            return authError(res, 409, "CONFLICT", "Ticket state changed. Reload and review before trying again.");
+        authServerError(res);
+    }
 });
 
 staffTicketsRouter.route("/:ticketId/notes").get(async (req, res) => {

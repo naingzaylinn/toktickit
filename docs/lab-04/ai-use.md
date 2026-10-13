@@ -55,3 +55,57 @@ C-01–C-03 record initial drafting corrections; C-04–C-06 record the actual u
 ## 5. My Reflection — student to complete
 
 No student reflection has been supplied for Sprint 4. Before final submission, write a brief first-person reflection on specification-agent vs coding-agent use, helpful/rejected outputs, how tests and human review exposed errors, and remaining limits of AI assistance. Include concrete events and evidence from the completed sprint rather than attributing AI-authored opinions to the student.
+
+
+## Issue #60 actual assistance ? 2026-10-13
+
+Tool: OpenAI Codex in the user's IDE/workspace. The user first requested a
+read-only investigation with exact source priority, branch/base checks and no
+implementation; Codex inspected contracts/code/tests and reported the gate,
+workflow-token, snapshot and UI gaps. GitHub CLI was unavailable and web Issue
+access failed; no live description or comments were invented. The user then
+supplied the actual Issue #60 objective/tasks/criteria, approved full scoped
+implementation and explicitly prohibited staging/commits/push/PRs.
+
+The Phase 2 prompt required unchanged eight statuses/edges, C>=1/P=0/F=0 gates,
+legacy close, parent locking/version checks, consistent detail summary, explicit
+UI review/recovery, preserved #59 drafts/replay, new workflow/API/component/browser
+tests, the exact verification commands and a review report. Codex implemented
+that scope and authored [ticket-workflow.md](ticket-workflow.md) with actual
+results. No sub-agents, new statuses/history fields/migrations, dashboard or
+release work were introduced. Student reflection and peer approval are not
+AI-authored or claimed.
+
+Corrections encountered: sandbox Vite/esbuild/Prisma process starts failed EPERM
+and approved reruns were used; a new test helper had a TypeScript-invalid role
+query option and was fixed; initial mobile browser setup expected collapsed
+navigation and was corrected to authenticate before resizing without removing
+workflow keyboard/reflow assertions. An unfinished confirmation-test refresh
+caused act warnings and was explicitly awaited. Exact outcomes, including
+intermediate failures and later passing verification, are in the implementation
+record. Tests use generated disposable schemas and temporary services/storage;
+no developer database or reference file changes. Human review and manual PR to
+lab4-staging remain pending. No commit/staging/push/PR or branch switch occurred.
+
+
+## Issue #60 targeted review corrections - 2026-10-13
+
+The user explicitly requested fixing exactly two independent-review Minor
+findings: parent controls enabled despite the refresh-time save guard, and
+missing machine-readable conflict assertions in deterministic race tests.
+Codex verified branch/HEAD/empty index and preserved the existing 19-file
+implementation. It added one shared parent disabled condition, five delayed-GET
+control/recovery/security cases, one actual mounted Action/key-preservation
+case, exact error/reason assertions in the existing race cases and closing gate
+fixture, and correction evidence in ticket-workflow.md/tests.md.
+
+No backend production change, unrelated refactor, new workflow rule or test
+weakening was needed. Existing sequential component assertions now wait for the
+next control to become usable. The original PostgreSQL blocking synchronization
+and both race orderings are preserved. Exact verification results (including
+sandbox client-build spawn EPERM and approved successful rerun) are in the
+correction record; no unexecuted check or additional backend case is claimed.
+Only generated disposable schemas/temporary browser services were used. No
+reference edit, developer-schema mutation, staging, commit, push, PR, branch
+switch or Issue #61-64 implementation. Human review and manual PR remain pending;
+no student reflection or peer approval is fabricated.

@@ -210,7 +210,7 @@ function ActionsTakenContent({ ticketId, ticketNumber, ticketStatus, currentUser
     finally { if (token === generation.current) setLoading(false); }
   };
   return <section className="zen-card p-4 mb-3" aria-labelledby="actions-title" aria-busy={loading || busy}>
-    <h2 id="actions-title" className="h5">Actions Taken</h2>
+    <h2 id="actions-title" tabIndex={-1} className="h5">Actions Taken</h2>
     <p>{staff ? "Actions Taken are visible to the Requester. Use Internal Notes for private staff information." : "Shared work records for your Ticket."}</p>
     {error && <ErrorAlert title="Actions Taken unavailable" message={error} onRetry={!denied && !conflict && !busy && !loading && failedHistory ? () => { if (failedHistory.ticketId === ticketId && failedHistory.staff === staff) void loadHistory(failedHistory.query); } : undefined} />}
     {success && <p role="status" className="alert alert-success">{success}</p>}

@@ -75,8 +75,8 @@ describe("cross-role API journeys in the disposable schema", { timeout: 30000 },
     expect((await request(app).get(`/api/staff/tickets/${ticketId}`).set("Cookie", staff)).status).toBe(200);
     expect((await request(app).patch(`/api/staff/tickets/${ticketId}/owner`).set("Cookie", staff).send({ ownerId: staffId })).status).toBe(200);
     expect((await request(app).patch(`/api/staff/tickets/${ticketId}/priority`).set("Cookie", staff).send({ itPriority: "URGENT" })).body.data).toMatchObject({ requestedPriority: "MEDIUM", itPriority: "URGENT" });
-    expect((await request(app).patch(`/api/staff/tickets/${ticketId}/status`).set("Cookie", staff).send({ status: "OPEN" })).status).toBe(200);
-    expect((await request(app).patch(`/api/staff/tickets/${ticketId}/status`).set("Cookie", staff).send({ status: "CLOSED" })).status).toBe(409);
+    expect((await request(app).patch(`/api/staff/tickets/${ticketId}/status`).set("Cookie", staff).send({ status: "OPEN", expectedWorkflowVersion: (await prisma.ticket.findUniqueOrThrow({ where: { id: ticketId } })).workflowVersion })).status).toBe(200);
+    expect((await request(app).patch(`/api/staff/tickets/${ticketId}/status`).set("Cookie", staff).send({ status: "CLOSED", expectedWorkflowVersion: (await prisma.ticket.findUniqueOrThrow({ where: { id: ticketId } })).workflowVersion })).status).toBe(409);
     const comment = await request(app).post(`/api/tickets/${ticketId}/comments`).set("Cookie", staff).send({ content: "We are investigating." });
     expect(comment.status).toBe(201);
     expect((await request(app).get(`/api/tickets/${ticketId}/comments`).set("Cookie", newRequester)).body.data.some((item: { id: string }) => item.id === comment.body.data.id)).toBe(true);

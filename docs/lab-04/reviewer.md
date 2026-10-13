@@ -2,6 +2,23 @@
 
 Issue #56 engineering contract; branch `feature/sprint4-engineering-contract`; integration target `lab4-staging`. Revised 2026-10-11 following user review. **Design revision authorized; concrete revised contract awaits review. No Sprint 4 PR, peer approval, merge, feature-test execution or release claimed.**
 
+## Issue #60 review preparation ? 2026-10-13
+
+The #56 drafting/approval/runner statements below are historical. The user now
+supplied the actual #60 objective/tasks/acceptance criteria and explicitly
+approved implementation on feature/sprint4-ticket-workflow at 18c161c.
+[Ticket workflow implementation](ticket-workflow.md) records gates, tokens,
+locks, preserved Action safeguards, real regression results and limits.
+Review the intentional token-only status compatibility change, all gate reasons,
+legacy close, both race orderings, snapshot consistency and retained drafts/keys.
+No peer review, PR, merge, Project status update or final-main evidence is claimed.
+Issue #60's PR review acceptance step remains for the human, targeting lab4-staging.
+
+Current Playwright testDir is `./e2e` (changed in #59), so both Lab 3 and Lab 4
+are discovered. The old lab-03-only warning in the #56 record is superseded.
+The existing disposable database/browser runners and all eleven migrations are
+reused; no new migration, developer-database mutation or runner change is needed.
+
 ## 1. Overview and review responsibilities
 
 Sprint 4 adds shared Actions Taken with edit/audit behavior, formal resolution rules, role dashboards and full regression/hardening. Review [specification](specification.md), [UI](ui-spec.md), [API](api-spec.md), [tests](tests.md) and [AI use](ai-use.md) as one contract against all 11 handout pages.

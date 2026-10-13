@@ -2,6 +2,22 @@
 
 Issue #56 revised draft, 2026-10-11. All tests are **Planned**, including regression reruns; no feature tests implemented/executed. [Specification](specification.md), [API](api-spec.md) and [UI](ui-spec.md) now define required assignment/lifecycle and immutable revisions; U-01/U-02 are resolved by user-directed project proposal. Historical [Lab 3 results](../lab-03/tests.md) are not current Lab 4 evidence.
 
+## Issue #60 implementation evidence ? 2026-10-13
+
+The introductory Planned state and original table are historical #56 planning.
+Actual #57?#59 evidence is in database.md/actions-backend.md/actions-ui.md.
+[Ticket workflow evidence](ticket-workflow.md) records #60 implementation and
+exact current commands/results. T-17?T-23/T-64/T-65 are implemented in
+`server/tests/lab-04/ticket-workflow.api.test.ts` (172 cases); T-34/T-66 in
+`client/tests/lab-04/TicketWorkflow.test.tsx` (24 cases) plus six real transport
+cases; T-47 and focused workflow keyboard/reflow checks in
+`client/e2e/lab-04/ticket-resolution.spec.ts` (six browser cases).
+These workflow entries passed focused verification. T-41/T-42 affected regression
+passed (506 backend / 223 client tests); no historical assertion was weakened.
+Full browser regression passed all 29 cases, including the 18 existing Lab 3
+cases, five #59 cases and six #60 cases; final scope evidence is recorded in the
+linked implementation record. Dashboard/final-release entries remain future scope.
+
 ## 1. TDD and environment plan
 
 For each later feature: approve the contract, add a meaningful failing test against the real rule, implement the minimum change, run focused checks, refactor, then run affected regression. Never remove/weaken existing coverage to obtain a pass. Existing valid-resolution fixtures will need recorded actions and workflow tokens after P-04/P-05 approval; retain matrix coverage and add explicit gate/stale negative cases. Preserve historical timestamps/fields in migration assertions.
@@ -162,3 +178,26 @@ COMMIT;
 3. Compare every previously captured revision by ID and **all columns**, including editorId, createdAt, status, assigneeId and text/flags. They must be identical; exactly one new full snapshot/version appears per successful mutation. Revision versions are contiguous 1…action.version, with unique row IDs and one parent-version increment. Counts alone do not prove immutability.
 4. Identify the first revision whose state changes PENDING→COMPLETED/CANCELLED. Its editorId is the actual operator, regardless of assignee/original performer; subsequent correction editors must not change that row. For follow-up clearing, prove the previous planning note remains and the clearing revision contains false plus the new explanation.
 5. Repeat snapshots around stale/invalid/forbidden writes, missing/unchanged clearing explanations, forced transactional failure, matching-version content no-op and exact create replay: no projection/version/timestamp/revision change. Also verify no supported API permits revision update/delete. Save before/after outputs and comparison assertions for review; this proves application write behavior, not immunity to a privileged database administrator.
+
+
+## Issue #60 Phase 3 correction evidence - 2026-10-13
+
+[Correction record](ticket-workflow.md#phase-3---two-critical-review-corrections-2026-10-13)
+records the two Minor review findings and exact current commands/results.
+Five new `client/tests/lab-03/StaffTicketDetail.test.tsx` cases prove delayed-GET
+disabling, zero refresh-time writes, explicit priority/owner/communication
+recovery, recoverable failure and access-loss clearing. One new
+`client/tests/lab-04/TicketWorkflow.test.tsx` case proves the mounted uncertain
+Action editor and original create request survive the unresolved parent GET.
+Focused component result: 39 passed (14 Staff detail + 25 workflow). Full client:
+229 passed. The earlier 223/24-case evidence is historical Phase 2.
+
+The existing 172-case backend workflow suite now verifies exact CONFLICT,
+RESOLUTION_REQUIREMENTS_NOT_MET and TICKET_WORKFLOW_CONFLICT classification in
+both deterministic race orderings. Actual gate rejections assert exact pending
+reasons; the existing closing fixture asserts NO_COMPLETED_ACTIONS plus
+PENDING_ACTIONS. All original synchronization/state/version/revision assertions
+remain. Focused backend 172 and full backend 506 passed; stronger assertions do
+not inflate the case count. Lab 4 browser regression passed 11 cases and full browser regression passed 29; final safety results
+are in the linked correction record. Production backend,
+API contracts, migrations and deferred dashboard/release scope are unchanged.
