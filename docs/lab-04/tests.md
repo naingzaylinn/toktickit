@@ -1,5 +1,16 @@
 # Lab 4 Test DD and Requirement Traceability
 
+## Issue #63 Phase 3D — R-02 confirmed-stage recovery
+
+Phase 3C confirmed original R-01 isolation but returned REQUEST CHANGES for blind attachment retry after failed logout. CreateTicketHardening now has 46 cases, including actual App late success/partial/failure/uncertain upload recovery, identity replacement, synchronous retry protection and explicit fresh intent. Red request-count evidence, harness corrections, final commands and limitations are retained in [final-hardening.md](final-hardening.md). No existing regression assertions or skip annotations were weakened.
+
+Current Issue #63 implementation, regression results and retained failures are in
+[final-hardening.md](final-hardening.md). Earlier evidence below remains historical.
+
+## Issue #63 Phase 3B — R-01 submission isolation
+
+Independent review returned REQUEST CHANGES despite independently passing 627 backend, 376 frontend and 58 browser tests. The expanded CreateTicketHardening transport/App regressions exercise A submit → logout → B login → late response, upload lifetime, delayed parsing, role/access replacement, overlapping generations, current denials and preserved uncertain retry identity. Original F-01/F-07 coverage remains. Actual failures, corrections and final results are in [final-hardening.md](final-hardening.md); independent re-review is pending.
+
 ## Phase 3B - targeted independent-review corrections (2026-10-14)
 
 The independent review returned REQUEST CHANGES: R1 Major, R2-R4 Minor,
@@ -312,3 +323,7 @@ remain. Focused backend 172 and full backend 506 passed; stronger assertions do
 not inflate the case count. Lab 4 browser regression passed 11 cases and full browser regression passed 29; final safety results
 are in the linked correction record. Production backend,
 API contracts, migrations and deferred dashboard/release scope are unchanged.
+
+## Issue #63 targeted hardening — 2026-10-14
+
+The user authorized F-01–F-10 and bounded observation regressions. [final-hardening.md](final-hardening.md) records the preserved reproductions, actual red/intermediate/final runs, concurrency protocols, migration isolation and remaining manual limits. New suites are StaffReadContext, CreateTicketHardening, ProtectedReadContext, attachment-hardening, ticket-creation-hardening, release-validation, product-performance-smoke and product-hardening.spec.ts. Original payload/filter/page/lifecycle assertions remain; optional read-context arguments are additionally checked. Historical evidence below is retained.

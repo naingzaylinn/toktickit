@@ -41,6 +41,7 @@ export interface ApiErrorEnvelope {
 }
 
 export class ApiError extends Error {
+  attachmentResult?: AttachmentUploadResult;
   code: string;
   correlationId?: string;
   status: number;
@@ -212,10 +213,12 @@ export async function getRelatedSystems(
 }
 
 export async function createTicket(
-  input: CreateTicketInput
+  input: CreateTicketInput,
+  context?: ApiReadContext
 ): Promise<CreatedTicket> {
   const res = await fetch(`${API_URL}/api/tickets`, {
     method: "POST",
+    ...(context ? { signal: context.signal } : {}),
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -226,7 +229,7 @@ export async function createTicket(
   if (!res.ok) {
     throw await readApiError(
       res,
-      "Unable to create ticket."
+      "Unable to create ticket.", false, context
     );
   }
 
@@ -418,11 +421,13 @@ export interface TicketDetail {
 }
 
 export async function getTicketDetail(
-  ticketId: string
+  ticketId: string,
+  context?: ApiReadContext
 ): Promise<TicketDetail> {
   const res = await fetch(
     `${API_URL}/api/tickets/${encodeURIComponent(ticketId)}`,
     {
+      ...(context ? { signal: context.signal } : {}),
       headers: {
         Accept: "application/json",
       },
@@ -432,7 +437,7 @@ export async function getTicketDetail(
   if (!res.ok) {
     throw await readApiError(
       res,
-      "Failed to load ticket details."
+      "Failed to load ticket details.", false, context
     );
   }
 
@@ -442,7 +447,8 @@ export async function getTicketDetail(
 
 export async function uploadTicketAttachments(
   ticketId: string,
-  files: File[]
+  files: File[],
+  context?: ApiReadContext
 ): Promise<AttachmentUploadResult> {
   const formData = new FormData();
 
@@ -454,6 +460,7 @@ export async function uploadTicketAttachments(
     `${API_URL}/api/tickets/${encodeURIComponent(ticketId)}/attachments`,
     {
       method: "POST",
+      ...(context ? { signal: context.signal } : {}),
       headers: {
       },
       body: formData,
@@ -461,10 +468,13 @@ export async function uploadTicketAttachments(
   );
 
   if (!res.ok) {
-    throw await readApiError(
+    const body = await res.clone().json().catch(() => null);
+    const error = await readApiError(
       res,
-      "Unable to upload attachments."
+      "Unable to upload attachments.", false, context
     );
+    if (Array.isArray(body?.data?.accepted) && Array.isArray(body?.data?.rejected)) error.attachmentResult = body.data;
+    throw error;
   }
 
   const body = await res.json();
@@ -487,7 +497,8 @@ export function getAttachmentContentUrl(
 export async function getAttachmentContent(
   ticketId: string,
   attachmentId: string,
-  inline = false
+  inline = false,
+  context?: ApiReadContext
 ): Promise<Blob> {
   const res = await fetch(
     getAttachmentContentUrl(
@@ -496,6 +507,7 @@ export async function getAttachmentContent(
       inline
     ),
     {
+      ...(context ? { signal: context.signal } : {}),
       headers: {
       },
     }
@@ -504,7 +516,7 @@ export async function getAttachmentContent(
   if (!res.ok) {
     throw await readApiError(
       res,
-      "Unable to load attachment."
+      "Unable to load attachment.", false, context
     );
   }
 
@@ -548,9 +560,9 @@ export interface AuthUser extends RequesterIdentity {
   isActive: boolean;
   mustChangePassword: boolean;
 }
-export async function sessionRequest<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, { method: body === undefined ? "GET" : "POST", headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-  if (!res.ok) throw await readApiError(res, "Unable to complete the request.", path.startsWith("/api/auth/"));
+export async function sessionRequest<T>(path: string, body?: unknown, context?: ApiReadContext): Promise<T> {
+  const res = await fetch(path, { ...(context ? { signal: context.signal } : {}), method: body === undefined ? "GET" : "POST", headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  if (!res.ok) throw await readApiError(res, "Unable to complete the request.", path.startsWith("/api/auth/"), context);
   return (await res.json()).data;
 }
 export const getCurrentUser = () => sessionRequest<AuthUser>("/api/auth/me");
@@ -560,17 +572,17 @@ export const changePassword = (currentPassword: string, newPassword: string, con
 export type UserRole = AuthUser["role"];
 export type ManagedUser = AuthUser;
 export type UserDraft = Pick<ManagedUser, "name" | "email" | "role" | "isActive">;
-async function adminRequest<T>(path: string, method: "GET" | "POST" | "PATCH" = "GET", body?: unknown): Promise<T> {
-  const res = await fetch(path, { method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-  if (!res.ok) throw await readApiError(res, "Unable to manage users.");
+async function adminRequest<T>(path: string, method: "GET" | "POST" | "PATCH" = "GET", body?: unknown, context?: ApiReadContext): Promise<T> {
+  const res = await fetch(path, { ...(context ? { signal: context.signal } : {}), method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  if (!res.ok) throw await readApiError(res, "Unable to manage users.", false, context);
   return (await res.json()).data;
 }
-export const getManagedUsers = (search = "", role = "") => adminRequest<ManagedUser[]>("/api/admin/users?" + new URLSearchParams({ search, ...(role ? { role } : {}) }));
+export const getManagedUsers = (search = "", role = "", context?: ApiReadContext) => adminRequest<ManagedUser[]>("/api/admin/users?" + new URLSearchParams({ search, ...(role ? { role } : {}) }), "GET", undefined, context);
 export const createManagedUser = (input: UserDraft & { initialPassword: string }) => adminRequest<ManagedUser>("/api/admin/users", "POST", input);
 export const updateManagedUser = (id: string, input: UserDraft) => adminRequest<ManagedUser>("/api/admin/users/" + encodeURIComponent(id), "PATCH", input);
 export const setManagedInitialPassword = (id: string, initialPassword: string) => adminRequest<ManagedUser>("/api/admin/users/" + encodeURIComponent(id) + "/initial-password", "POST", { initialPassword });
 export interface PublicComment { id: string; ticketId: string; content: string; author: {id: string; name: string; role: string}; createdAt: string; }
-export const getComments = (id: string) => sessionRequest<PublicComment[]>("/api/tickets/"+encodeURIComponent(id)+"/comments");
+export const getComments = (id: string, context?: ApiReadContext) => sessionRequest<PublicComment[]>("/api/tickets/"+encodeURIComponent(id)+"/comments", undefined, context);
 export const postComment = (id: string, content: string) => sessionRequest<PublicComment>("/api/tickets/"+encodeURIComponent(id)+"/comments", {content});
 export const indicateResolved = (id: string) => sessionRequest<{ticketId:string; problemAppearsResolvedAt:string}>("/api/tickets/"+encodeURIComponent(id)+"/problem-appears-resolved", {});
 
@@ -588,13 +600,13 @@ export interface StaffTicketDetail extends StaffTicketQueueItem {
   internalNotes: PublicComment[];
 }
 export interface EligibleOwner { id: string; name: string; role: "IT_STAFF" | "ADMINISTRATOR" }
-async function staffRequest<T>(path: string, method: "GET" | "PATCH" | "POST" = "GET", body?: unknown): Promise<T> {
-  const res = await fetch(path, { method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-  if (!res.ok) throw await readApiError(res, "Unable to complete the request.");
+async function staffRequest<T>(path: string, method: "GET" | "PATCH" | "POST" = "GET", body?: unknown, context?: ApiReadContext): Promise<T> {
+  const res = await fetch(path, { ...(context ? { signal: context.signal } : {}), method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  if (!res.ok) throw await readApiError(res, "Unable to complete the request.", false, context);
   return (await res.json()).data;
 }
-export const getStaffTicket = (id: string) => staffRequest<StaffTicketDetail>("/api/staff/tickets/" + encodeURIComponent(id));
-export const getEligibleOwners = () => staffRequest<EligibleOwner[]>("/api/staff/tickets/owners");
+export const getStaffTicket = (id: string, context?: ApiReadContext) => staffRequest<StaffTicketDetail>("/api/staff/tickets/" + encodeURIComponent(id), "GET", undefined, context);
+export const getEligibleOwners = (context?: ApiReadContext) => staffRequest<EligibleOwner[]>("/api/staff/tickets/owners", "GET", undefined, context);
 
 export type ActionStatus = "PENDING" | "COMPLETED" | "CANCELLED";
 export interface ActionContent {
@@ -618,10 +630,10 @@ export interface ActionMutation { data: ActionTaken; meta: { workflowVersion: nu
 export type CreateActionInput = ActionContent & { assigneeId: string; clientRequestId: string };
 export type UpdateActionInput = Partial<ActionContent> & { expectedVersion: number; assigneeId?: string; status?: ActionStatus };
 const actionPath = (ticketId: string, staff: boolean) => `/api/${staff ? "staff/" : ""}tickets/${encodeURIComponent(ticketId)}/actions`;
-export async function getActions(ticketId: string, staff: boolean, query: { page?: number; pageSize?: 10 | 20 | 50; focusActionId?: string } = {}): Promise<ActionHistory> {
+export async function getActions(ticketId: string, staff: boolean, query: { page?: number; pageSize?: 10 | 20 | 50; focusActionId?: string } = {}, context?: ApiReadContext): Promise<ActionHistory> {
   const params = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
-  const res = await fetch(`${actionPath(ticketId, staff)}?${params}`, { headers: { Accept: "application/json" } });
-  if (!res.ok) throw await readApiError(res, "Unable to load Actions Taken.");
+  const res = await fetch(`${actionPath(ticketId, staff)}?${params}`, { ...(context ? { signal: context.signal } : {}), headers: { Accept: "application/json" } });
+  if (!res.ok) throw await readApiError(res, "Unable to load Actions Taken.", false, context);
   return res.json();
 }
 async function mutateAction(path: string, method: "POST" | "PATCH", input: CreateActionInput | UpdateActionInput): Promise<ActionMutation> {
@@ -723,7 +735,8 @@ export interface StaffTicketQueueQuery {
 }
 
 export async function getStaffTickets(
-  query: StaffTicketQueueQuery = {}
+  query: StaffTicketQueueQuery = {},
+  context?: ApiReadContext
 ): Promise<StaffTicketQueueResponse> {
   const params = new URLSearchParams();
 
@@ -769,6 +782,7 @@ export async function getStaffTickets(
   const res = await fetch(
     `/api/staff/tickets${queryString ? `?${queryString}` : ""}`,
     {
+      ...(context ? { signal: context.signal } : {}),
       headers: {
         Accept: "application/json",
       },
@@ -778,7 +792,7 @@ export async function getStaffTickets(
   if (!res.ok) {
     throw await readApiError(
       res,
-      "Unable to load the staff ticket queue."
+      "Unable to load the staff ticket queue.", false, context
     );
   }
 
@@ -799,9 +813,9 @@ export interface StaffDashboardResponse {
   meta: { generatedAt: string };
 }
 
-export async function getStaffDashboard(): Promise<StaffDashboardResponse> {
-  const res = await fetch("/api/staff/dashboard", { headers: { Accept: "application/json" }, cache: "no-store" });
-  if (!res.ok) throw await readApiError(res, "Unable to load the staff dashboard.");
+export async function getStaffDashboard(context?: ApiReadContext): Promise<StaffDashboardResponse> {
+  const res = await fetch("/api/staff/dashboard", { ...(context ? { signal: context.signal } : {}), headers: { Accept: "application/json" }, cache: "no-store" });
+  if (!res.ok) throw await readApiError(res, "Unable to load the staff dashboard.", false, context);
   return res.json();
 }
 

@@ -2,6 +2,9 @@ import { PrismaClient } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 // Existing Lab 2 tests delete fixtures. Always give them a fresh schema instead
 // of running them against the developer's working tickets and attachments.
@@ -12,7 +15,8 @@ const schema = `issue2_test_${randomUUID().replaceAll("-", "")}`;
 const url = new URL(databaseUrl);
 url.searchParams.set("schema", schema);
 const admin = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
-const env = { ...process.env, DATABASE_URL: url.toString(), NODE_ENV: "test" };
+const storage = await mkdtemp(path.join(tmpdir(), "toktickit-isolated-"));
+const env = { ...process.env, DATABASE_URL: url.toString(), NODE_ENV: "test", ATTACHMENT_STORAGE_DIRECTORY: storage };
 function run(args: string[]) {
   const result = spawnSync(process.execPath, args, { env, stdio: "inherit" });
   if (result.error || result.status !== 0) throw new Error(`Verification command failed: ${args.join(" ")}`);
@@ -44,4 +48,6 @@ try {
   if (!/^issue2_test_[a-f0-9]{32}$/.test(schema)) throw new Error("Invalid test schema.");
   if (schemaCreated) await admin.$executeRawUnsafe(`DROP SCHEMA "${schema}" CASCADE`);
   await admin.$disconnect();
+  if (path.dirname(path.resolve(storage)) !== path.resolve(tmpdir()) || !path.basename(storage).startsWith("toktickit-isolated-")) throw new Error("Invalid test storage location.");
+  await rm(storage, { recursive: true, force: true });
 }

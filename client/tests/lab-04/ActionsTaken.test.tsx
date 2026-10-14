@@ -36,7 +36,7 @@ describe("Actions Taken", () => {
     expect(screen.getByText("Original recorder")).toBeInTheDocument();
     expect(screen.getByText("Screenshot.png")).toBeInTheDocument();
     expect(document.querySelector("time")).toHaveAttribute("datetime", action.createdAt);
-    expect(api.getActions).toHaveBeenCalledWith(action.ticketId, true, { page: 1, pageSize: 20 });
+    expect(api.getActions).toHaveBeenCalledWith(action.ticketId, true, { page: 1, pageSize: 20 }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
   });
   it("shows empty history and eligible assignees defaulting to current staff", async () => {
     vi.mocked(api.getActions).mockResolvedValue(page([])); setup();
@@ -151,14 +151,14 @@ describe("Actions Taken", () => {
   });
   it("loads bounded next pages and permitted page sizes", async () => {
     vi.mocked(api.getActions).mockResolvedValue(page([action], 1, 21)); setup(); await screen.findByText(action.actionDescription);
-    fireEvent.click(screen.getByText("Next Actions")); await waitFor(() => expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { page: 2, pageSize: 20 }));
+    fireEvent.click(screen.getByText("Next Actions")); await waitFor(() => expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { page: 2, pageSize: 20 }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })));
     fireEvent.change(screen.getByLabelText("Actions per page"), { target: { value: "50" } });
-    await waitFor(() => expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { page: 1, pageSize: 50 }));
+    await waitFor(() => expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { page: 1, pageSize: 50 }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })));
   });
   it("uses the ownership endpoint for read-only requester history with every state", async () => {
     vi.mocked(api.getActions).mockResolvedValue(page([action, { ...action, id: "completed", status: "COMPLETED" }, { ...action, id: "cancelled", status: "CANCELLED" }]));
     render(<ActionsTaken ticketId={action.ticketId}/>); await screen.findAllByText(action.actionDescription);
-    expect(api.getActions).toHaveBeenCalledWith(action.ticketId, false, { page: 1, pageSize: 20 });
+    expect(api.getActions).toHaveBeenCalledWith(action.ticketId, false, { page: 1, pageSize: 20 }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
     for (const name of [/Add Action/, /Edit Action/, /Complete action/, /Cancel action/]) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
     expect(screen.getByText("COMPLETED")).toBeInTheDocument(); expect(screen.getByText("CANCELLED")).toBeInTheDocument(); expect(api.getEligibleOwners).not.toHaveBeenCalled();
   });
@@ -175,7 +175,7 @@ describe("Actions Taken", () => {
   });
   it("focuses a bounded staff action deep link", async () => {
     window.history.replaceState({}, "", "/#action-" + action.id); setup(); await screen.findByText(action.actionDescription);
-    expect(api.getActions).toHaveBeenCalledWith(action.ticketId, true, { pageSize: 20, focusActionId: action.id });
+    expect(api.getActions).toHaveBeenCalledWith(action.ticketId, true, { pageSize: 20, focusActionId: action.id }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
     expect(document.getElementById("action-" + action.id)).toHaveFocus();
   });
   it("ignores superseded history after unmount", async () => {
@@ -254,7 +254,7 @@ describe("Actions Taken", () => {
     setup(); await screen.findByText(action.actionDescription); fireEvent.click(screen.getByText("Next Actions"));
     await screen.findByText(/Check your connection/); fireEvent.click(screen.getByRole("button", { name: /Retry: Actions/ }));
     await screen.findByText("Only on page two");
-    expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { page: 2, pageSize: 20 });
+    expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { page: 2, pageSize: 20 }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
     expect(screen.getByText("Page 2 of 2 (21 Actions)")).toBeInTheDocument();
     expect(screen.queryByText(action.actionDescription)).not.toBeInTheDocument();
   });
@@ -263,8 +263,9 @@ describe("Actions Taken", () => {
     vi.mocked(api.getActions).mockRejectedValueOnce(new TypeError("Offline")).mockResolvedValueOnce(page());
     setup(); await screen.findByText(/Check your connection/); fireEvent.click(screen.getByRole("button", { name: /Retry: Actions/ }));
     await screen.findByText(action.actionDescription);
-    expect(vi.mocked(api.getActions).mock.calls[1]).toEqual(vi.mocked(api.getActions).mock.calls[0]);
-    expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { pageSize: 20, focusActionId: action.id });
+    expect(vi.mocked(api.getActions).mock.calls[1].slice(0, 3)).toEqual(vi.mocked(api.getActions).mock.calls[0].slice(0, 3));
+    expect(vi.mocked(api.getActions).mock.calls[0][3]?.signal?.aborted).toBe(true);
+    expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { pageSize: 20, focusActionId: action.id }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
   });
   it("resets a failed pagination query on page-size change", async () => {
     vi.mocked(api.getActions).mockResolvedValueOnce(page([action], 1, 21)).mockRejectedValueOnce(new TypeError("Offline")).mockRejectedValueOnce(new TypeError("Still offline"))
@@ -273,7 +274,7 @@ describe("Actions Taken", () => {
     fireEvent.change(screen.getByLabelText("Actions per page"), { target: { value: "50" } }); await screen.findByText(/Check your connection/);
     fireEvent.click(screen.getByRole("button", { name: /Retry: Actions/ }));
     await waitFor(() => expect(api.getActions).toHaveBeenCalledTimes(4));
-    expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { page: 1, pageSize: 50 });
+    expect(api.getActions).toHaveBeenLastCalledWith(action.ticketId, true, { page: 1, pageSize: 50 }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
   });
   it("ignores older history responses within the same mounted component", async () => {
     const old = deferred<api.ActionHistory>(); vi.mocked(api.getActions).mockImplementationOnce(() => old.promise);
@@ -330,7 +331,7 @@ describe("Actions Taken", () => {
     await screen.findByText("New identity history"); await openNew();
     await act(async () => old.resolve([{ id: staff.id, name: "Obsolete identity staff", role: "IT_STAFF" }]));
     expect(screen.queryByRole("option", { name: /Obsolete identity staff/ })).not.toBeInTheDocument();
-    expect(api.getActions).toHaveBeenLastCalledWith(id, true, { page: 1, pageSize: 20 });
+    expect(api.getActions).toHaveBeenLastCalledWith(id, true, { page: 1, pageSize: 20 }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
     expect(screen.queryByRole("button", { name: /Retry: Actions/ })).not.toBeInTheDocument();
   });
 });

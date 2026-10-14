@@ -47,17 +47,22 @@ function StaffTicketDetailContent({ ticketId, currentUser, onBack }: DetailProps
   const [note, setNote] = useState("");
   const confirmedTicket = useRef<StaffTicketDetail | null>(null);
   const generation = useRef(0);
+  const readPending = useRef<AbortController | null>(null);
   const clearAccess = useCallback(() => {
+    readPending.current?.abort();
     ++generation.current; ++lifetime.current; confirmedTicket.current = null;
     setTicket(null); setOwners([]); setComment(""); setNote(""); setSuccess(""); setFieldErrors({});
     setOwnerId(""); setStatus(""); setLoading(false); pending.current = false; setBusy(false);
     setError("You are not permitted to view this ticket. Your session or access changed.");
   }, []);
   const load = useCallback(async (): Promise<boolean> => {
+    readPending.current?.abort();
+    const controller = new AbortController(); readPending.current = controller;
     const token = ++generation.current;
     setLoading(true); setError("");
     try {
-      const [detail, eligible] = await Promise.all([getStaffTicket(ticketId), getEligibleOwners()]);
+      const context = { signal: controller.signal, isCurrent: () => token === generation.current };
+      const [detail, eligible] = await Promise.all([getStaffTicket(ticketId, context), getEligibleOwners(context)]);
       if (token !== generation.current) return false;
       confirmedTicket.current = detail;
       setTicket(detail); setOwners(eligible); setOwnerId(detail.owner?.id ?? ""); setPriority(detail.itPriority); setStatus(""); setWorkflowReview(false); setGateReasons([]);
@@ -77,7 +82,7 @@ function StaffTicketDetailContent({ ticketId, currentUser, onBack }: DetailProps
     }
     finally { if (token === generation.current) setLoading(false); }
   }, [ticketId]);
-  useEffect(() => { void load(); return () => { ++generation.current; ++lifetime.current; }; }, [load]);
+  useEffect(() => { void load(); return () => { readPending.current?.abort(); ++generation.current; ++lifetime.current; }; }, [load]);
   const save = async (action: () => Promise<unknown>, message: string, workflow = false) => {
     if (pending.current || loading || (workflow && workflowReview)) return;
     pending.current = true;

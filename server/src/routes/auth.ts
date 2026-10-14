@@ -12,7 +12,7 @@ authRouter.use((_req, res, next) => { res.setHeader("Cache-Control", "no-store")
 authRouter.post("/login", async (req, res) => {
   const { email, password } = req.body ?? {};
   const fields: Record<string, string> = {};
-  if (typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+  if (typeof email !== "string" || email.includes("\u0000") || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     fields.email = "A valid email address is required.";
   }
   if (typeof password !== "string" || password.length === 0) fields.password = "Password is required.";

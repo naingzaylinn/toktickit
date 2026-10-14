@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     ApiError,
+    AuthUser,
     createTicket,
     CreatedTicket,
     RequesterIdentity,
@@ -16,7 +17,8 @@ import LoadingSpinner from "./common/LoadingSpinner.js";
 import ErrorAlert from "./common/ErrorAlert.js";
 
 interface CreateTicketScreenProps {
-    currentRequester: RequesterIdentity;
+    currentRequester: RequesterIdentity & Partial<Pick<AuthUser, "role" | "isActive" | "mustChangePassword">>;
+    isSessionCurrent?: () => boolean;
     onCreated: (ticket: CreatedTicket) => void;
     onCancel: () => void;
 }
@@ -29,10 +31,22 @@ type FieldErrors = {
     description?: string;
 };
 
+type UploadFeedback = { ticket: CreatedTicket; accepted: string[]; rejected: Array<{ filename: string; reason: string }>; uncertain: boolean };
+type ConfirmedSubmission = {
+    accessKey: string;
+    fingerprint: string;
+    clientRequestId: string;
+    ticket: CreatedTicket;
+    originSessionCheck: () => boolean;
+    uploadStage: "not-started" | "in-progress" | "complete" | "partial" | "uncertain";
+    outcome: UploadFeedback;
+};
+
 export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
     currentRequester,
     onCreated,
     onCancel,
+    isSessionCurrent = () => true,
 }) => {
     const [categories, setCategories] = useState<TicketReferenceCategory[]>([]);
     const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
@@ -54,6 +68,65 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
     const [referenceError, setReferenceError] = useState<string | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const pending = useRef(false);
+    const requestIntent = useRef<{ fingerprint: string; clientRequestId: string; uncertain: boolean } | null>(null);
+    const [uploadOutcome, setUploadOutcome] = useState<UploadFeedback | null>(null);
+    // The ref is the synchronous retry boundary; state only renders recovery.
+    const confirmedCreation = useRef<ConfirmedSubmission | null>(null);
+    const [confirmedView, setConfirmedView] = useState<ConfirmedSubmission | null>(null);
+    const rememberConfirmed = (record: ConfirmedSubmission) => {
+        confirmedCreation.current = record;
+        setConfirmedView(record);
+    };
+    const outcomeHeading = useRef<HTMLHeadingElement>(null);
+    const formHeading = useRef<HTMLHeadingElement>(null);
+    const startingNew = useRef(false);
+    const referenceGeneration = useRef(0);
+    const referencePending = useRef<AbortController | null>(null);
+    const accessKey = JSON.stringify([currentRequester.id, currentRequester.role ?? "REQUESTER", currentRequester.isActive ?? true, currentRequester.mustChangePassword ?? false]);
+    const accessAllowed = (currentRequester.role ?? "REQUESTER") === "REQUESTER" && currentRequester.isActive !== false && !currentRequester.mustChangePassword;
+    const currentAccess = useRef(accessKey);
+    currentAccess.current = accessKey;
+    const sessionCheck = useRef(isSessionCurrent);
+    sessionCheck.current = isSessionCurrent;
+    const lifetime = useRef({ active: false, accessKey });
+    const [renderAccess, setRenderAccess] = useState(accessKey);
+    const submissionGeneration = useRef(0);
+    const submissionPending = useRef<AbortController | null>(null);
+    const [accessLost, setAccessLost] = useState(false);
+    useEffect(() => {
+        const changed = lifetime.current.accessKey !== accessKey;
+        lifetime.current = { active: accessAllowed, accessKey };
+        setRenderAccess(accessKey);
+        setAccessLost(false);
+        const invalidate = () => {
+            lifetime.current.active = false;
+            ++submissionGeneration.current;
+            submissionPending.current?.abort();
+        };
+        const clear = () => {
+            pending.current = false; requestIntent.current = null;
+            confirmedCreation.current = null; setConfirmedView(null);
+            setSubmitting(false); setUploadOutcome(null); setSubmitError(null);
+            setSummary(""); setDescription(""); setCategoryId(""); setRelatedSystemId("");
+            setRequestedPriority("Medium");
+            setStagedAttachments([]); setFieldErrors({}); setAttachmentError(null);
+        };
+        if (changed) clear();
+        const loseAccess = () => { invalidate(); clear(); setAccessLost(true); };
+        window.addEventListener("session-access-changed", loseAccess);
+        return () => { invalidate(); window.removeEventListener("session-access-changed", loseAccess); };
+    }, [accessKey, accessAllowed]);
+
+    // A failed logout renders with a fresh current revision, while the original
+    // upload stays invalid. Recovery is a new explicit user action, not revival
+    // of that obsolete continuation. Never infer that an in-flight batch failed.
+    const recoveryOutcome = uploadOutcome ?? (confirmedView?.accessKey === accessKey &&
+        !confirmedView.originSessionCheck() && sessionCheck.current() ? confirmedView.outcome : null);
+    useEffect(() => {
+        if (recoveryOutcome) outcomeHeading.current?.focus();
+        else if (startingNew.current) { startingNew.current = false; formHeading.current?.focus(); }
+    }, [recoveryOutcome]);
 
     const summaryCount = summary.length;
     const descriptionCount = description.length;
@@ -64,28 +137,35 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
     );
 
     const loadReferenceData = async () => {
+        referencePending.current?.abort();
+        const controller = new AbortController(); referencePending.current = controller;
+        const token = ++referenceGeneration.current;
+        const context = { signal: controller.signal, isCurrent: () => token === referenceGeneration.current };
         setLoadingReferenceData(true);
         setReferenceError(null);
 
         try {
             const [categoryData, systemData] = await Promise.all([
-                getTicketCategories(),
-                getRelatedSystems(),
+                getTicketCategories(context),
+                getRelatedSystems(context),
             ]);
 
+            if (token !== referenceGeneration.current) return;
             setCategories(categoryData);
             setRelatedSystems(systemData);
         } catch {
+            if (token !== referenceGeneration.current) return;
             setReferenceError(
                 "Unable to load ticket reference data. Please try again."
             );
         } finally {
-            setLoadingReferenceData(false);
+            if (token === referenceGeneration.current) setLoadingReferenceData(false);
         }
     };
 
     useEffect(() => {
         loadReferenceData();
+        return () => { referencePending.current?.abort(); ++referenceGeneration.current; };
     }, [currentRequester.id]);
 
     const validate = (): FieldErrors => {
@@ -176,6 +256,13 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
+        if (!lifetime.current.active || currentAccess.current !== lifetime.current.accessKey || !sessionCheck.current()) return;
+        const confirmed = confirmedCreation.current;
+        if (confirmed?.accessKey === accessKey) {
+            if (!pending.current || !confirmed.originSessionCheck()) setUploadOutcome(confirmed.outcome);
+            return;
+        }
+        if (pending.current || uploadOutcome) return;
 
         const errors = validate();
         setFieldErrors(errors);
@@ -185,32 +272,66 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
             return;
         }
 
+        const intent = { categoryId: Number(categoryId), relatedSystemId, requestedPriority, summary: summary.trim(), description: description.trim() };
+        const fingerprint = JSON.stringify(intent);
+        if (requestIntent.current?.uncertain && requestIntent.current.fingerprint !== fingerprint &&
+            !window.confirm("The earlier Ticket may already exist. Changed information starts a new Ticket. Continue?")) return;
+        if (!requestIntent.current || requestIntent.current.fingerprint !== fingerprint) requestIntent.current = { fingerprint, clientRequestId: crypto.randomUUID(), uncertain: true };
+        requestIntent.current.uncertain = true;
+        pending.current = true;
+        submissionPending.current?.abort();
+        const controller = new AbortController(); submissionPending.current = controller;
+        const token = ++submissionGeneration.current;
+        const originSessionCheck = sessionCheck.current;
+        const isCurrent = () => lifetime.current.active && currentAccess.current === accessKey && token === submissionGeneration.current && !controller.signal.aborted && originSessionCheck();
+        const context = { signal: controller.signal, isCurrent };
         setSubmitting(true);
 
         try {
+            if (!isCurrent()) return;
             const ticket = await createTicket({
-                categoryId: Number(categoryId),
-                relatedSystemId,
-                requestedPriority,
-                summary: summary.trim(),
-                description: description.trim(),
-                clientRequestId: crypto.randomUUID(),
-            });
+                ...intent,
+                clientRequestId: requestIntent.current.clientRequestId,
+            }, context);
+
+            if (!isCurrent()) return;
+
+            if (!ticket || typeof ticket.id !== "string" || !ticket.id || typeof ticket.ticketNumber !== "string" || !ticket.ticketNumber) throw new Error("Invalid creation response.");
+            const confirmed: ConfirmedSubmission = {
+                accessKey, fingerprint, clientRequestId: requestIntent.current!.clientRequestId,
+                ticket, originSessionCheck, uploadStage: "not-started",
+                outcome: { ticket, accepted: [], rejected: [], uncertain: stagedAttachments.length > 0 },
+            };
+            rememberConfirmed(confirmed);
 
             if (stagedAttachments.length > 0) {
+                rememberConfirmed({ ...confirmed, uploadStage: "in-progress" });
                 try {
-                    await uploadTicketAttachments(
+                    const result = await uploadTicketAttachments(
                         ticket.id,
-                        stagedAttachments
+                        stagedAttachments, context
                     );
-                } catch {
-                    // The ticket has already been created successfully.
-                    // Attachment failure must not roll back ticket creation.
+                    if (!isCurrent()) return;
+                    const outcome: UploadFeedback = { ticket, accepted: result.accepted.map(file => file.originalFilename), rejected: result.rejected, uncertain: false };
+                    rememberConfirmed({ ...confirmed, uploadStage: result.rejected.length ? "partial" : "complete", outcome });
+                    if (result.rejected.length) {
+                        setUploadOutcome(outcome);
+                        return;
+                    }
+                } catch (error) {
+                    if (!isCurrent()) return;
+                    const result = error instanceof ApiError ? error.attachmentResult : undefined;
+                    const outcome: UploadFeedback = { ticket, accepted: result?.accepted.map(file => file.originalFilename) ?? [], rejected: result?.rejected ?? [], uncertain: !result };
+                    rememberConfirmed({ ...confirmed, uploadStage: result ? "partial" : "uncertain", outcome });
+                    setUploadOutcome(outcome);
+                    return;
                 }
             }
 
-            onCreated(ticket);
+            if (isCurrent()) onCreated(ticket);
         } catch (err) {
+            if (!isCurrent()) return;
+            if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429 && err.code !== "IDEMPOTENCY_CONFLICT") requestIntent.current = null;
             if (err instanceof ApiError && err.code === "VALIDATION_ERROR") {
                 setSubmitError(
                     "Some ticket information is invalid. Please review the form and try again."
@@ -231,14 +352,37 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
                 );
             }
         } finally {
-            setSubmitting(false);
+            // Only this still-mounted generation may release its pending guard.
+            // A failed logout can leave the same form mounted, with an uncertain
+            // key that must remain available for an explicit retry.
+            if (lifetime.current.active && currentAccess.current === accessKey && token === submissionGeneration.current) { pending.current = false; setSubmitting(false); }
         }
     };
+
+    if (!accessAllowed || accessLost || renderAccess !== accessKey) return <p role="alert">Ticket creation is unavailable for your session or role.</p>;
+    if (recoveryOutcome) return <section className="create-ticket-screen zen-card p-4" aria-label="Ticket created with attachment feedback">
+        <h1 ref={outcomeHeading} tabIndex={-1} className="h3">Ticket {recoveryOutcome.ticket.ticketNumber} created</h1>
+        <p role="status">Ticket created successfully. {recoveryOutcome.uncertain ? "Attachment results could not be confirmed." : `${recoveryOutcome.accepted.length} attachment(s) uploaded; ${recoveryOutcome.rejected.length} failed.`}</p>
+        {recoveryOutcome.accepted.length > 0 && <><h2 className="h5">Uploaded files</h2><ul>{recoveryOutcome.accepted.map((name, index) => <li key={index}>{name}</li>)}</ul></>}
+        {recoveryOutcome.rejected.length > 0 && <><h2 className="h5">Failed files</h2><ul>{recoveryOutcome.rejected.map((file, index) => <li key={index}>{file.filename}: {file.reason}</li>)}</ul></>}
+        <p>{recoveryOutcome.uncertain ? "Review existing attachments before selecting files again; some uploads may already have succeeded. The original upload may still finish." : "Retry only failed files on this existing Ticket. Keep successfully uploaded files."}</p>
+        <button className="btn btn-primary-green" onClick={() => { if (lifetime.current.active && currentAccess.current === accessKey && sessionCheck.current()) onCreated(recoveryOutcome.ticket); }}>Open Ticket to review and retry attachments</button>
+        <button className="btn btn-outline-secondary ms-2" onClick={() => {
+            if (!lifetime.current.active || currentAccess.current !== accessKey || !sessionCheck.current() ||
+                !window.confirm("Keep this created Ticket. Review its attachments before retrying files. Clear this draft and start a separate new Ticket?")) return;
+            ++submissionGeneration.current; submissionPending.current?.abort(); pending.current = false;
+            startingNew.current = true;
+            confirmedCreation.current = null; setConfirmedView(null); requestIntent.current = null;
+            setUploadOutcome(null); setSubmitting(false); setSubmitError(null); setFieldErrors({});
+            setSummary(""); setDescription(""); setCategoryId(""); setRelatedSystemId(""); setRequestedPriority("Medium");
+            setStagedAttachments([]); setAttachmentError(null);
+        }}>Start a new Ticket</button>
+    </section>;
 
     return (
         <div className="create-ticket-screen">
             <div className="mb-4">
-                <h1 className="h3 fw-bold text-primary-green mb-1">
+                <h1 ref={formHeading} tabIndex={-1} className="h3 fw-bold text-primary-green mb-1">
                     Create Ticket
                 </h1>
                 <p className="text-secondary mb-0">

@@ -1,5 +1,16 @@
 # Lab 4 AI Use and Reflection Record
 
+## Issue #63 Phase 3D — authorized R-02 correction
+
+The user authorized R-02 only with tests/evidence and full verification. Codex added red actual-App transport regressions, retained confirmed creation before uploading, blocked blind replay synchronously and provided explicit existing-Ticket recovery/new-intent actions while preserving R-01 contexts. Phase 3C evidence, failed runs and harness/warning corrections are retained in [final-hardening.md](final-hardening.md). No delegated agents, backend/schema changes, publication, developer-database mutations, excluded-reference inspection or Issue #64 implementation occurred. Independent re-review remains pending.
+
+Current Issue #63 authorized assistance and actual evidence are in
+[final-hardening.md](final-hardening.md). Historical records below are retained.
+
+## Issue #63 Phase 3B — authorized R-01 correction
+
+The user supplied the independent REQUEST CHANGES verdict and authorized correction of R-01 only, with deterministic transport/App regressions, evidence updates and complete verification. Codex reused optional request contexts and the existing App session revision, guarded submission lifetime/identity/access/generation, and preserved current denials, idempotent retry and attachment feedback. Harness failures and subsequent results are recorded in [final-hardening.md](final-hardening.md). No delegated agents, publication, developer-database mutation, excluded-reference access or Issue #64 work occurred. Independent re-review remains pending.
+
 ## Phase 3B - targeted independent-review corrections (2026-10-14)
 
 The independent review returned REQUEST CHANGES: R1 Major, R2-R4 Minor,
@@ -238,3 +249,7 @@ Only generated disposable schemas/temporary browser services were used. No
 reference edit, developer-schema mutation, staging, commit, push, PR, branch
 switch or Issue #61-64 implementation. Human review and manual PR remain pending;
 no student reflection or peer approval is fabricated.
+
+## Issue #63 authorized assistance — 2026-10-14
+
+The user supplied the comprehensive Phase 1 checklist, approved its targeted-hardening verdict, then explicitly authorized F-01–F-10, deterministic tests, narrow observation corrections and README/evidence updates. Codex implemented the bounded changes, preserved red/intermediate failures, used real disposable PostgreSQL interleavings and deferred frontend transport, checked migration/seed compatibility, and prepared independent review. [final-hardening.md](final-hardening.md) records actual commands, harness/type corrections and limitations. No sub-agents, Git publication, developer-schema changes, excluded reference access or Issue #64 implementation. Human independent critical review and release approval remain outstanding.
