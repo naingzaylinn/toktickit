@@ -467,7 +467,8 @@ describe("Feature-D: Create Ticket UI", () => {
                 uploadTicketAttachments
             ).toHaveBeenCalledWith(
                 createdTicket.id,
-                [file]
+                [file],
+                expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })
             );
         });
 
@@ -592,6 +593,9 @@ describe("Feature-D: Create Ticket UI", () => {
                 uploadTicketAttachments
             ).toHaveBeenCalledTimes(1);
         });
+
+        // Creation succeeded; review truthful upload feedback before opening it.
+        fireEvent.click(await screen.findByRole("button", { name: "Open Ticket to review and retry attachments" }));
 
         expect(onCreated).toHaveBeenCalledWith(
             expect.objectContaining({

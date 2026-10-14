@@ -127,6 +127,7 @@ export interface UploadedAttachmentFile {
 export function validateAttachmentFile(
     file: UploadedAttachmentFile
 ): AttachmentValidationResult {
+    if (file.originalname.includes("\u0000")) return { valid: false, reason: "Filename must not contain NUL characters." };
     const extension =
         getExtension(file.originalname);
 

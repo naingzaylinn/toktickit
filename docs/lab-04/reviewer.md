@@ -1,5 +1,16 @@
 # Lab 4 Review and Integration Plan
 
+## Issue #63 Phase 3D — response to R-02 REQUEST CHANGES
+
+Re-review the confirmed-creation ref recorded before upload, same-identity failed-logout recovery without create/upload replay, conservative uncertainty, guarded existing-Ticket navigation, record clearing on identity/access replacement, and explicit new-Ticket generation/key clearing. Check that retained metadata cannot revive old callbacks or be shown to B. Original R-01 and Phase 3C REQUEST CHANGES evidence remain in [final-hardening.md](final-hardening.md). This is correction preparation, not independent approval or publication readiness.
+
+Current Issue #63 self-review preparation and verification are in
+[final-hardening.md](final-hardening.md). Independent re-review remains pending.
+
+## Issue #63 Phase 3B — response to REQUEST CHANGES
+
+Phase 3A confirmed Major R-01: obsolete creation/upload work survived unmount/session replacement. Phase 3B adds component lifetime/identity/access/generation checks and scoped mutation error contexts, using App's existing session revision at logout start. Re-review the originating revision capture, post-body dispatch checks, generation-owned finally, same-identity uncertain key preservation, current-denial handling and real App logout/login tests. See [final-hardening.md](final-hardening.md) for independent and corrective evidence. No independent approval or Git publication is claimed; earlier review records remain historical.
+
 ## Phase 3B - targeted independent-review corrections (2026-10-14)
 
 The independent review returned REQUEST CHANGES: R1 Major, R2-R4 Minor,
@@ -235,3 +246,7 @@ Add real entries for #57–#64 and final integration when they occur. Record exp
 ## 7. Risks and unresolved decisions
 
 U-01/U-02 are resolved by required lifecycle/immutable revision design; U-03 is resolved by the exact user-supplied existing issue plan. Routine date/limits/metric/terminal choices are explicit project decisions P-01–P-10, not missing handout requirements. Revised design still awaits user review; future peer reviewer identity and actual release evidence remain unrecorded facts. Technical risks: ordered Ticket/Action/User locks and deactivation race, original-assignee replay comparison, terminal gate guard, FK fixtures/migration indexes, E2E discovery, mixed enum/envelope formats, action pagination and stale-user UI. No GitHub changes or #57 implementation in this task.
+
+## Issue #63 independent critical-review preparation — 2026-10-14
+
+Review [final-hardening.md](final-hardening.md), all production diffs and new tests. Check parent-before-child locks, capacity/metadata atomicity, immutable single removal event, rollback and binary compensation, relevant P2002 classification/fresh replay after rollback, normalized frontend intent/confirmation, current-read checks after body parsing, caller invalidation, attachment outcome handoff and narrow console allowances. Confirm unchanged schema/seeds/role/workflow/dashboard/session policy, disposable migration evidence, README start path and manual limitations. This is self-review preparation, not an independent verdict, approval, PR or merge.

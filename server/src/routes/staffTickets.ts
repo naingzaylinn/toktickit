@@ -171,7 +171,7 @@ staffTicketsRouter.route("/:ticketId/notes").get(async (req, res) => {
         const ticket = await prisma.ticket.findUnique({ where: { id: req.params.ticketId }, select: { id: true } });
         if (!ticket) return authError(res, 404, "TICKET_NOT_FOUND", "The requested ticket was not found.");
         const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
-        if (!content || content.length > 2000) return authError(res, 400, "VALIDATION_ERROR", "Note must contain 1 to 2000 characters after trimming.");
+        if (!content || content.length > 2000 || content.includes("\u0000")) return authError(res, 400, "VALIDATION_ERROR", "Note must contain 1 to 2000 characters after trimming and no NUL characters.");
         const note = await prisma.internalNote.create({ data: { ticketId: ticket.id, authorId: req.auth!.user.id, content }, select: messageSelect });
         res.status(201).json({ data: note });
     } catch { authServerError(res); }

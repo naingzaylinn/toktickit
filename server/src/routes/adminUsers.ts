@@ -7,11 +7,11 @@ import { hashPassword, passwordValidationError } from "../services/passwords.js"
 export const adminUsersRouter = Router();
 const roles: Role[] = ["REQUESTER", "IT_STAFF", "ADMINISTRATOR"];
 const select = { id: true, name: true, email: true, role: true, isActive: true, mustChangePassword: true } as const;
-const emailValid = (value: unknown) => typeof value === "string" && value.trim().length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+const emailValid = (value: unknown) => typeof value === "string" && !value.includes("\u0000") && value.trim().length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 const normalizedEmail = (value: string) => value.trim().toLowerCase();
 const plainObject = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 const permitted = (body: Record<string, unknown>, fields: string[]) => Object.keys(body).every(key => fields.includes(key));
-const validName = (value: unknown) => typeof value === "string" && value.trim().length > 0;
+const validName = (value: unknown) => typeof value === "string" && !value.includes("\u0000") && value.trim().length > 0;
 const validRole = (value: unknown): value is Role => typeof value === "string" && roles.includes(value as Role);
 const conflict = (error: unknown) => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 const invalid = (res: Parameters<typeof authError>[0]) => authError(res, 400, "VALIDATION_ERROR", "One or more fields are invalid.");

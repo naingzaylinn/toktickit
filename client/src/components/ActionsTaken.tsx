@@ -50,6 +50,8 @@ function ActionsTakenContent({ ticketId, ticketNumber, ticketStatus, currentUser
   const requestKey = useRef<{ fingerprint: string; input: CreateActionInput; uncertain: boolean } | null>(null);
   const generation = useRef(0);
   const ownerGeneration = useRef(0);
+  const historyPending = useRef<AbortController | null>(null);
+  const ownerPending = useRef<AbortController | null>(null);
   const lifetime = useRef(0);
   const form = useRef<HTMLFormElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
@@ -81,10 +83,12 @@ function ActionsTakenContent({ ticketId, ticketNumber, ticketStatus, currentUser
     return loadHistory({ pageSize, ...(focus ? { focusActionId: focus } : { page: page ?? 1 }) });
   }, [pageSize, ticketId, staff, fail]);
   async function loadHistory(query: HistoryQuery): Promise<boolean> {
+    historyPending.current?.abort();
+    const controller = new AbortController(); historyPending.current = controller;
     const token = ++generation.current;
     setLoading(true); setError(""); setFailedHistory(null);
     try {
-      const result = await getActions(ticketId, staff, query);
+      const result = await getActions(ticketId, staff, query, { signal: controller.signal, isCurrent: () => mounted.current && token === generation.current });
       if (token !== generation.current) return false;
       setHistory(result); return true;
     } catch (cause) {
@@ -97,15 +101,17 @@ function ActionsTakenContent({ ticketId, ticketNumber, ticketStatus, currentUser
     finally { if (token === generation.current) setLoading(false); }
   }
   const loadOwners = useCallback(async () => {
+    ownerPending.current?.abort();
+    const controller = new AbortController(); ownerPending.current = controller;
     const token = ++ownerGeneration.current;
     setOwnerLoading(true); setOwnerError(false);
-    try { const result = await getEligibleOwners(); if (mounted.current && token === ownerGeneration.current) setOwners(result); }
+    try { const result = await getEligibleOwners({ signal: controller.signal, isCurrent: () => mounted.current && token === ownerGeneration.current }); if (mounted.current && token === ownerGeneration.current) setOwners(result); }
     catch (cause) { if (!mounted.current || token !== ownerGeneration.current) return; setOwnerError(true); if (cause instanceof ApiError && [401, 403].includes(cause.status)) fail(cause); }
     finally { if (mounted.current && token === ownerGeneration.current) setOwnerLoading(false); }
   }, [fail]);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; ++generation.current; ++ownerGeneration.current; ++lifetime.current; };
+    return () => { historyPending.current?.abort(); ownerPending.current?.abort(); mounted.current = false; ++generation.current; ++ownerGeneration.current; ++lifetime.current; };
   }, []);
   useEffect(() => {
     void load(undefined, focusId);

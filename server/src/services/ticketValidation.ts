@@ -23,6 +23,8 @@ export function validateSummary(value: unknown): ValidationDetail | null {
 
     const trimmed = value.trim();
 
+    if (trimmed.includes("\u0000")) return { field: "summary", message: "Summary must not contain NUL characters." };
+
     if (trimmed.length < 5 || trimmed.length > 120) {
         return {
             field: "summary",
@@ -42,6 +44,8 @@ export function validateDescription(value: unknown): ValidationDetail | null {
     }
 
     const trimmed = value.trim();
+
+    if (trimmed.includes("\u0000")) return { field: "description", message: "Description must not contain NUL characters." };
 
     if (trimmed.length < 10 || trimmed.length > 2000) {
         return {

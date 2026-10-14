@@ -92,13 +92,17 @@ export default function App() {
         setError("");
         navigate(next.role === "REQUESTER" ? "/tickets" : "/staff/tickets");
     };
+    // Snapshot the existing session revision; logout invalidates it synchronously,
+    // even before its response causes the protected component to unmount.
+    const submissionRevision = sessionRevision.current;
+    const isSubmissionSessionCurrent = () => submissionRevision === sessionRevision.current;
     return <>{error && <div role="alert" className="alert alert-danger">{error}</div>}
  {loading ? <div role="status">Loading TokTickIT...</div> : !user || user.mustChangePassword ? <AuthScreen user={user} onAuthenticated={onAuthenticated} onLogout={signOut}/> :
             <AppShell currentUser={user} onLogout={signOut} activePath={path}>
  {user.role === "REQUESTER" ? <>
  {path === "/dashboard" && <RequesterDashboardScreen key={identity} currentUser={user} onNavigate={navigate}/> }
  {(path === "/tickets" || path === "/" || path === "/login") && <MyTicketsScreen key={identity} currentRequester={user} onCreateTicket={() => navigate("/tickets/new")} onOpenTicket={openRequesterTicket}/>}
- {path === "/tickets/new" && <CreateTicketScreen key={identity} currentRequester={user} onCreated={ticket => navigate("/tickets/" + ticket.id)} onCancel={() => navigate("/tickets")}/>}
+ {path === "/tickets/new" && <CreateTicketScreen key={identity} currentRequester={user} isSessionCurrent={isSubmissionSessionCurrent} onCreated={ticket => navigate("/tickets/" + ticket.id)} onCancel={() => navigate("/tickets")}/>}
  {path.startsWith("/tickets/") && path !== "/tickets/new" && <TicketDetailScreen key={identity + path} currentRequester={user} ticketId={path.slice(9)} onBack={requesterBack}/>}
  {!path.startsWith("/tickets") && path !== "/" && path !== "/login" && path !== "/dashboard" && <p role="alert">This page is not available for your role.</p>}
  </> : <>

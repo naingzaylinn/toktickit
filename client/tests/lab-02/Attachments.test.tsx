@@ -328,7 +328,8 @@ describe("Feature-G: Attachment Management UI", () => {
             ).toHaveBeenCalledWith(
                 baseTicket.id,
                 imageAttachment.id,
-                true
+                true,
+                expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })
             );
         });
 
@@ -411,7 +412,8 @@ describe("Feature-G: Attachment Management UI", () => {
             ).toHaveBeenCalledWith(
                 baseTicket.id,
                 pdfAttachment.id,
-                true
+                true,
+                expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })
             );
         });
 

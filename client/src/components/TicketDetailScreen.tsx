@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     ApiError,
     RequesterIdentity,
@@ -41,24 +41,35 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
         useState<TicketAttachment | null>(null);
     const [previewUrl, setPreviewUrl] =
         useState<string | null>(null);
+    useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
     const [removingAttachment, setRemovingAttachment] =
         useState<TicketAttachment | null>(null);
     const [removalReason, setRemovalReason] = useState("");
     const [removing, setRemoving] = useState(false);
+    const generation = useRef(0);
+    const mounted = useRef(true);
+    const pendingRead = useRef<AbortController | null>(null);
+    const contentGeneration = useRef(0);
+    const contentPending = useRef<AbortController | null>(null);
 
     const loadTicket = async () => {
+        if (!mounted.current) return;
+        pendingRead.current?.abort(); const controller = new AbortController(); pendingRead.current = controller;
+        const token = ++generation.current;
         setLoading(true);
         setNotFound(false);
         setError(null);
 
         try {
             const data = await getTicketDetail(
-                ticketId
+                ticketId, { signal: controller.signal, isCurrent: () => mounted.current && token === generation.current }
             );
 
+            if (token !== generation.current) return;
             setTicket(data);
         } catch (err) {
+            if (token !== generation.current) return;
             if (
                 err instanceof ApiError &&
                 err.status === 404 &&
@@ -73,12 +84,14 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                 );
             }
         } finally {
-            setLoading(false);
+            if (token === generation.current) setLoading(false);
         }
     };
 
     useEffect(() => {
+        mounted.current = true;
         loadTicket();
+        return () => { mounted.current = false; pendingRead.current?.abort(); contentPending.current?.abort(); ++generation.current; ++contentGeneration.current; };
     }, [currentRequester.id, ticketId]);
 
     useEffect(() => {
@@ -135,11 +148,14 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
     };
 
     const refreshTicket = async () => {
+        if (!mounted.current) return;
+        pendingRead.current?.abort(); const controller = new AbortController(); pendingRead.current = controller;
+        const token = ++generation.current;
         const data = await getTicketDetail(
-            ticketId
+            ticketId, { signal: controller.signal, isCurrent: () => mounted.current && token === generation.current }
         );
 
-        setTicket(data);
+        if (mounted.current && token === generation.current) setTicket(data);
     };
 
     const handleUpload = async (
@@ -201,22 +217,22 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
         attachment: TicketAttachment,
         inline: boolean
     ) => {
+        if (!mounted.current) return;
+        contentPending.current?.abort(); const controller = new AbortController(); contentPending.current = controller;
+        const token = ++contentGeneration.current;
         setAttachmentError(null);
 
         try {
             const blob = await getAttachmentContent(
                 ticketId,
                 attachment.id,
-                inline
+                inline, { signal: controller.signal, isCurrent: () => mounted.current && token === contentGeneration.current }
             );
 
+            if (!mounted.current || token !== contentGeneration.current) return;
             const url = URL.createObjectURL(blob);
 
             if (inline && attachment.mimeType.startsWith("image/")) {
-                if (previewUrl) {
-                    URL.revokeObjectURL(previewUrl);
-                }
-
                 setPreviewAttachment(attachment);
                 setPreviewUrl(url);
                 return;
@@ -237,6 +253,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                 URL.revokeObjectURL(url);
             }, 1000);
         } catch (err) {
+            if (!mounted.current || token !== contentGeneration.current) return;
             if (err instanceof ApiError) {
                 setAttachmentError(err.message);
             } else {
@@ -248,10 +265,6 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
     };
 
     const closePreview = () => {
-        if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-        }
-
         setPreviewUrl(null);
         setPreviewAttachment(null);
     };

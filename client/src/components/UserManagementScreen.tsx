@@ -40,14 +40,15 @@ export default function UserManagementScreen({ currentUser }: { currentUser: Aut
   useEffect(() => {
     if (currentUser.role !== "ADMINISTRATOR") { setForbidden(true); setLoading(false); return; }
     let active = true;
+    const controller = new AbortController();
     setLoading(true);
-    const timer = setTimeout(() => getManagedUsers(search, role).then(data => {
+    const timer = setTimeout(() => getManagedUsers(search, role, { signal: controller.signal, isCurrent: () => active }).then(data => {
       if (active) { setUsers(data); setError(""); setListFailed(false); setForbidden(false); }
     }).catch(err => {
       if (active) { setUsers([]); setMessage(""); setListFailed(true); setForbidden(err instanceof ApiError && err.status === 403); setError("Unable to load users. Please retry."); }
     }).finally(() => { if (active) setLoading(false); }), search ? 250 : 0);
-    return () => { active = false; clearTimeout(timer); };
-  }, [currentUser.role, search, role, revision]);
+    return () => { active = false; controller.abort(); clearTimeout(timer); };
+  }, [currentUser.id, currentUser.role, search, role, revision]);
 
   const openEdit = (user: ManagedUser | "new") => {
     setFormActivation(value => value + 1);

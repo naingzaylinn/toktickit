@@ -142,6 +142,7 @@ export const StaffTicketQueueScreen: React.FC<
     const [error, setError] = useState<string | null>(null);
 
     const generation = useRef(0);
+    const pendingRead = useRef<AbortController | null>(null);
     const skipUrlSync = useRef(true);
     const ownNavigation = useRef(false);
     const [denied, setDenied] = useState(false);
@@ -197,12 +198,14 @@ export const StaffTicketQueueScreen: React.FC<
     }, [searchInput, debouncedSearch]);
 
     const loadTickets = async () => {
+        pendingRead.current?.abort();
+        const controller = new AbortController(); pendingRead.current = controller;
         const token = ++generation.current;
         setLoading(true);
         setError(null);
 
         try {
-            const response = await getStaffTickets(query);
+            const response = await getStaffTickets(query, { signal: controller.signal, isCurrent: () => token === generation.current });
             if (token !== generation.current) return;
             setTickets(response.data);
             setMeta(response.meta);
@@ -223,8 +226,8 @@ export const StaffTicketQueueScreen: React.FC<
 
     useEffect(() => {
         loadTickets();
-        return () => { ++generation.current; };
-    }, [query]);
+        return () => { pendingRead.current?.abort(); ++generation.current; };
+    }, [query, currentUser?.id, currentUser?.role]);
 
     useEffect(() => {
         if (skipUrlSync.current) { skipUrlSync.current = false; return; }

@@ -7,23 +7,31 @@ import StatusBadge from "./common/StatusBadge.js";
 const label = (value: string) => value.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());
 export default function StaffDashboardScreen({ currentUser, onNavigate }: { currentUser: AuthUser; onNavigate: (url: string) => void }) {
   const identity = currentUser.id + ":" + currentUser.role;
+  const accessAllowed = ["IT_STAFF", "ADMINISTRATOR"].includes(currentUser.role) && currentUser.isActive && !currentUser.mustChangePassword;
   const [result, setResult] = useState<{ identity: string; response: StaffDashboardResponse } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [denied, setDenied] = useState(false);
   const generation = useRef(0);
+  const pending = useRef<AbortController | null>(null);
+  const currentAccess = useRef({ identity, accessAllowed });
+  currentAccess.current = { identity, accessAllowed };
   const refreshButton = useRef<HTMLButtonElement>(null);
   const errorRegion = useRef<HTMLDivElement>(null);
   const dashboardHeading = useRef<HTMLHeadingElement>(null);
   const restoreRefreshFocus = useRef(false);
-  const response = result?.identity === identity ? result.response : null;
+  const response = accessAllowed && result?.identity === identity ? result.response : null;
   const load = async () => {
+    pending.current?.abort();
+    const controller = new AbortController();
+    pending.current = controller;
     const token = ++generation.current;
+    if (!accessAllowed) { setResult(null); setDenied(true); setLoading(false); setError("The dashboard is unavailable for your session or role."); return; }
     restoreRefreshFocus.current = document.activeElement === refreshButton.current ||
       !!errorRegion.current?.contains(document.activeElement);
     setLoading(true); setError("");
     try {
-      const next = await getStaffDashboard();
+      const next = await getStaffDashboard({ signal: controller.signal, isCurrent: () => token === generation.current && currentAccess.current.identity === identity && currentAccess.current.accessAllowed });
       if (token === generation.current) setResult({ identity, response: next });
     } catch (cause) {
       if (token !== generation.current) return;
@@ -36,10 +44,10 @@ export default function StaffDashboardScreen({ currentUser, onNavigate }: { curr
   useEffect(() => {
     setResult(null); setDenied(false);
     void load();
-    const clear = () => { ++generation.current; setResult(null); setDenied(true); setLoading(false); setError("The dashboard is unavailable for your session or role."); };
+    const clear = () => { pending.current?.abort(); ++generation.current; setResult(null); setDenied(true); setLoading(false); setError("The dashboard is unavailable for your session or role."); };
     window.addEventListener("session-access-changed", clear);
-    return () => { ++generation.current; window.removeEventListener("session-access-changed", clear); };
-  }, [identity]);
+    return () => { pending.current?.abort(); ++generation.current; window.removeEventListener("session-access-changed", clear); };
+  }, [identity, accessAllowed]);
   useEffect(() => {
     // Refresh is disabled while busy; keep focus on the stable heading until
     // the request settles, unless the user has moved to another control.

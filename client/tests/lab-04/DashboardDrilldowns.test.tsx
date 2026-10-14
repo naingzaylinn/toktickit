@@ -28,7 +28,7 @@ it.each(["IT_STAFF", "ADMINISTRATOR", "REQUESTER"] as const)("shell role %s has 
 it("initializes every Queue filter, sort and page from URL", async () => {
   window.history.replaceState({}, "", "/staff/tickets?statusGroup=active&owner=staff-1&status=OPEN&itPriority=URGENT&requestedPriority=HIGH&search=router&sort=ticketNumber&order=asc&page=2&pageSize=10");
   render(<StaffTicketQueueScreen currentUser={dashboardUser} onOpenTicket={vi.fn()}/>);
-  await waitFor(() => expect(getStaffTickets).toHaveBeenCalledWith({ statusGroup: "active", owner: "staff-1", status: "OPEN", itPriority: "URGENT", requestedPriority: "HIGH", search: "router", sort: "ticketNumber", order: "asc", page: 2, pageSize: 10 }));
+  await waitFor(() => expect(getStaffTickets).toHaveBeenCalledWith({ statusGroup: "active", owner: "staff-1", status: "OPEN", itPriority: "URGENT", requestedPriority: "HIGH", search: "router", sort: "ticketNumber", order: "asc", page: 2, pageSize: 10 }, expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })));
   expect(screen.getByLabelText("Ownership")).toHaveValue("staff-1"); expect(screen.getByLabelText("Status group")).toHaveValue("active");
 });
 it("pagination preserves predicates and reset clears the URL", async () => {
@@ -41,7 +41,7 @@ it("pagination preserves predicates and reset clears the URL", async () => {
 it("popstate restores controls/results and does not overwrite restored page", async () => {
   render(<StaffTicketQueueScreen currentUser={dashboardUser} onOpenTicket={vi.fn()}/>); await screen.findByRole("button", { name: "Next" });
   act(() => { window.history.pushState({}, "", "/staff/tickets?status=CLOSED&search=old&page=2"); window.dispatchEvent(new PopStateEvent("popstate")); });
-  await waitFor(() => expect(getStaffTickets).toHaveBeenLastCalledWith(expect.objectContaining({ status: "CLOSED", search: "old", page: 2 })));
+  await waitFor(() => expect(getStaffTickets).toHaveBeenLastCalledWith(expect.objectContaining({ status: "CLOSED", search: "old", page: 2 }), expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })));
   expect(screen.getByLabelText("Status")).toHaveValue("CLOSED"); expect(window.location.search).toContain("page=2");
 });
 it("superseded Queue response cannot replace newer filtered results", async () => {
@@ -53,5 +53,5 @@ it("App navigates dashboard to filtered Queue using pathname and search separate
   window.history.replaceState({}, "", "/staff/dashboard"); render(<App/>); await screen.findByRole("link", { name: "Unassigned Active Tickets 11" });
   fireEvent.click(screen.getByRole("link", { name: "Unassigned Active Tickets 11" })); await screen.findByRole("heading", { name: "Ticket Queue" });
   expect(window.location.pathname).toBe("/staff/tickets"); expect(screen.getByLabelText("Ownership")).toHaveValue("unassigned");
-  await waitFor(() => expect(getStaffTickets).toHaveBeenCalledWith(expect.objectContaining({ statusGroup: "active", owner: "unassigned", page: 1 })));
+  await waitFor(() => expect(getStaffTickets).toHaveBeenCalledWith(expect.objectContaining({ statusGroup: "active", owner: "unassigned", page: 1 }), expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })));
 });
