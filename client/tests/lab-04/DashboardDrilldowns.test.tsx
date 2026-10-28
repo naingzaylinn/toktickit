@@ -1,16 +1,28 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, afterEach, it, expect, vi } from "vitest";
-import { getStaffDashboard, getStaffTickets, getCurrentUser } from "../../src/api.js";
+import { getStaffDashboard, getStaffTickets, getCurrentUser, getStaffTicket, getEligibleOwners, getActions } from "../../src/api.js";
 import StaffDashboardScreen from "../../src/components/StaffDashboardScreen.js";
 import StaffTicketQueueScreen from "../../src/components/StaffTicketQueueScreen.js";
 import AppShell from "../../src/components/AppShell.js";
 import App from "../../src/App.js";
 import { dashboardResponse, dashboardUser } from "./dashboardFixture.js";
-vi.mock("../../src/api.js", async () => ({ ...await vi.importActual("../../src/api.js"), getStaffDashboard: vi.fn(), getStaffTickets: vi.fn(), getCurrentUser: vi.fn() }));
+vi.mock("../../src/api.js", async () => ({ ...await vi.importActual("../../src/api.js"), getStaffDashboard: vi.fn(), getStaffTickets: vi.fn(), getCurrentUser: vi.fn(), getStaffTicket: vi.fn(), getEligibleOwners: vi.fn(), getActions: vi.fn() }));
 vi.mock("../../src/components/SystemDiagnostic.js", () => ({ default: () => null }));
 const queue = (total = 40, page = 1) => ({ data: [{ id: "ticket-1", ticketNumber: "TKT-1", summary: "Queue result", status: "OPEN" as const, requestedPriority: "HIGH" as const, itPriority: "URGENT" as const,
   owner: null, requester: { id: "requester", name: "Requester", email: "r@test" }, category: { id: 1, name: "Network" }, createdAt: "2020-01-01", updatedAt: "2020-01-01" }], meta: { page, pageSize: 20, totalItems: total, totalPages: 2 } });
-beforeEach(() => { vi.clearAllMocks(); window.history.replaceState({}, "", "/staff/tickets"); vi.mocked(getStaffDashboard).mockResolvedValue(dashboardResponse()); vi.mocked(getStaffTickets).mockResolvedValue(queue()); vi.mocked(getCurrentUser).mockResolvedValue(dashboardUser); });
+const staffTicket = () => ({ ...queue(1).data[0], workflowVersion: 1, actionsTakenSummary: { totalItems: 0, pendingItems: 0, completedItems: 0, cancelledItems: 0, followUpRequiredItems: 0 }, resolutionEligibility: { eligible: false, reasonCodes: [] }, description: "Fixture", ticketDate: "2020-01-01", relatedSystem: { id: "system", name: "Wi-Fi" }, problemAppearsResolvedAt: null, attachments: [], publicComments: [], internalNotes: [] });
+const openActiveQueueTicket = async () => {
+  render(<App/>); await screen.findByRole("link", { name: "Active Tickets 30" });
+  fireEvent.click(screen.getByRole("link", { name: "Active Tickets 30" })); await screen.findByRole("heading", { name: "Ticket Queue" });
+  expect(screen.getByLabelText("Status group")).toHaveValue("active");
+  fireEvent.click(screen.getByRole("button", { name: "Open", exact: true })); await screen.findByRole("heading", { name: /Queue result/ });
+};
+beforeEach(() => {
+  vi.clearAllMocks(); window.history.replaceState({}, "", "/staff/tickets");
+  vi.mocked(getStaffDashboard).mockResolvedValue(dashboardResponse()); vi.mocked(getStaffTickets).mockResolvedValue(queue()); vi.mocked(getCurrentUser).mockResolvedValue(dashboardUser);
+  vi.mocked(getStaffTicket).mockResolvedValue(staffTicket()); vi.mocked(getEligibleOwners).mockResolvedValue([]);
+  vi.mocked(getActions).mockResolvedValue({ data: [], meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } });
+});
 afterEach(() => { window.history.replaceState({}, "", "/"); });
 it("every card and row uses the exact approved destination", async () => {
   render(<StaffDashboardScreen currentUser={dashboardUser} onNavigate={vi.fn()}/>); await screen.findByRole("link", { name: "Total Tickets 42" });
@@ -54,4 +66,24 @@ it("App navigates dashboard to filtered Queue using pathname and search separate
   fireEvent.click(screen.getByRole("link", { name: "Unassigned Active Tickets 11" })); await screen.findByRole("heading", { name: "Ticket Queue" });
   expect(window.location.pathname).toBe("/staff/tickets"); expect(screen.getByLabelText("Ownership")).toHaveValue("unassigned");
   await waitFor(() => expect(getStaffTickets).toHaveBeenCalledWith(expect.objectContaining({ statusGroup: "active", owner: "unassigned", page: 1 }), expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })));
+});
+it("App restores the dashboard queue filter after opening and returning from a Ticket", async () => {
+  window.history.replaceState({}, "", "/staff/dashboard"); await openActiveQueueTicket();
+  fireEvent.click(screen.getByRole("button", { name: "Back to Ticket Queue" })); await screen.findByRole("heading", { name: "Ticket Queue" });
+  expect(window.location.pathname + window.location.search).toBe("/staff/tickets?statusGroup=active");
+  expect(screen.getByLabelText("Status group")).toHaveValue("active");
+});
+it("direct staff Ticket entry falls back to the unfiltered Queue", async () => {
+  window.history.replaceState({}, "", "/staff/tickets/direct-id"); render(<App/>);
+  await screen.findByRole("heading", { name: /Queue result/ });
+  fireEvent.click(screen.getByRole("button", { name: "Back to Ticket Queue" })); await screen.findByRole("heading", { name: "Ticket Queue" });
+  expect(window.location.pathname + window.location.search).toBe("/staff/tickets");
+});
+it("staff queue return context is cleared when authenticated identity changes", async () => {
+  window.history.replaceState({}, "", "/staff/dashboard"); await openActiveQueueTicket();
+  vi.mocked(getCurrentUser).mockResolvedValueOnce({ ...dashboardUser, id: "staff-2", name: "Other Staff" });
+  act(() => { window.dispatchEvent(new Event("session-access-changed")); });
+  await waitFor(() => expect(screen.getByTestId("requester-badge")).toHaveTextContent("Other Staff"));
+  fireEvent.click(screen.getByRole("button", { name: "Back to Ticket Queue" })); await screen.findByRole("heading", { name: "Ticket Queue" });
+  expect(window.location.pathname + window.location.search).toBe("/staff/tickets");
 });

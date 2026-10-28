@@ -1,5 +1,18 @@
 # Lab 4 UI Specification
 
+## Current implementation evidence — Issue #64 Phase 2
+
+The Issue #56 contract below is historical design evidence; screens are now
+implemented. The user reports #63 independently approved and merged through
+PR #72. [Zen Green Release evidence](zen-green-release.md) records focused styling,
+accessibility/feedback and reproduced responsive/session corrections on the
+uncommitted #64 working tree. This is implementation evidence, not a fabricated
+approval of the original draft. The approved design/workflows remain preserved.
+
+VIS-01–VIS-08 in [tests.md](tests.md) are not completed by automated subsets.
+Manual visual/screen-reader review, actual browser zoom, independent approval and
+verified staging/main release evidence remain separate gates.
+
 Issue #56 revised draft, 2026-10-11; project design follows [specification.md](specification.md) and [api-spec.md](api-spec.md). User review requires action assignment/lifecycle and approves designing the resolution gate. U-01/U-02 are resolved through this proposal, still awaiting review of the concrete documents. No screens are implemented here.
 
 ## 1. Architecture and role navigation

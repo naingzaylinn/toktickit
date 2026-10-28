@@ -23,6 +23,10 @@ async function setup(post:(input:any)=>Promise<Response>,upload?:()=>Promise<Res
  return {created,inputs,submit,view,uploads:()=>uploads};
 }
 afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();});
+it('AX-05: local validation focuses first invalid field without creating a retry intent',async()=>{
+ const f=await setup(()=>Promise.resolve(json({data:ticket})));fireEvent.change(screen.getByLabelText(/Category/),{target:{value:''}});f.submit();
+ const category=screen.getByLabelText(/Category/);await waitFor(()=>expect(category).toHaveFocus());expect(category).toHaveAttribute('aria-invalid','true');expect(f.inputs).toHaveLength(0);
+});
 async function fillCreation(container: HTMLElement) {
  await screen.findByRole('option',{name:'System'});
  for(const [label,value] of [[/Category/,'1'],[/Related System/,'system'],[/Ticket Summary/,'Original summary'],[/^Description/,'Original description']] as const) fireEvent.change(screen.getByLabelText(label),{target:{value}});

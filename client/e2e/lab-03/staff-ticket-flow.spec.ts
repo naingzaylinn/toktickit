@@ -14,7 +14,7 @@ test("E2E-06–12: staff queue, claim, priority, status, public and private comm
   await expect(page.getByRole("heading", { name: /Wi-Fi disconnects during lectures/ })).toBeVisible();
   const ticketId = new URL(page.url()).pathname.split("/").at(-1)!;
   await page.getByRole("button", { name: "Claim Ticket" }).click();
-  await expect(page.getByText("Current owner:")).toContainText("IT Staff One");
+  await expect(page.getByText("Primary Ticket Owner:", { exact: false }).filter({ has: page.locator("strong") })).toContainText("IT Staff One");
   await page.getByLabel("IT Priority").selectOption("URGENT");
   await page.getByRole("button", { name: "Save IT Priority" }).click();
   await expect(page.getByText("IT Priority updated.")).toBeVisible();

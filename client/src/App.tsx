@@ -23,8 +23,9 @@ export default function App() {
     // Only an opaque entry key enters History state; protected return metadata
     // stays in this session-owned map and is invalidated on identity/access changes.
     const requesterReturns = useRef(new Map<string, { identity: string; url: string; ticketId: string }>());
+    const staffQueueReturns = useRef(new Map<string, { identity: string; url: string; ticketPath: string }>());
     const identity = user ? user.id + ":" + user.role : "";
-    useEffect(() => { requesterReturns.current.clear(); }, [identity]);
+    useEffect(() => { requesterReturns.current.clear(); staffQueueReturns.current.clear(); }, [identity]);
     const navigate = (next: string, state: object = {}) => {
         window.history.pushState(state, "", next);
         window.dispatchEvent(new PopStateEvent("popstate"));
@@ -37,6 +38,17 @@ export default function App() {
     const requesterBack = () => {
         const entry = requesterReturns.current.get(window.history.state?.requesterDetailEntry);
         navigate(entry?.identity === identity && entry.ticketId === path.slice(9) ? entry.url : "/tickets");
+    };
+    const openStaffTicket = (id: string) => {
+        const entry = crypto.randomUUID();
+        const ticketPath = "/staff/tickets/" + encodeURIComponent(id);
+        const url = window.location.pathname === "/staff/tickets" ? window.location.pathname + window.location.search : "/staff/tickets";
+        staffQueueReturns.current.set(entry, { identity, url, ticketPath });
+        navigate(ticketPath, { staffQueueEntry: entry });
+    };
+    const staffQueueBack = () => {
+        const entry = staffQueueReturns.current.get(window.history.state?.staffQueueEntry);
+        navigate(entry?.identity === identity && entry.ticketPath === path ? entry.url : "/staff/tickets");
     };
     useEffect(() => {
         const onPop = () => setLocation({ pathname: window.location.pathname, search: window.location.search, hash: window.location.hash });
@@ -60,6 +72,7 @@ export default function App() {
         const reset = () => {
             // Remove protected content immediately when an API rejects session access.
             requesterReturns.current.clear();
+            staffQueueReturns.current.clear();
             setUser(null);
             const revision = ++sessionRevision.current;
             getCurrentUser().then(next => {
@@ -79,6 +92,7 @@ export default function App() {
             // Also invalidate any refresh started while logout was in flight.
             ++sessionRevision.current;
             requesterReturns.current.clear();
+            staffQueueReturns.current.clear();
             setUser(null);
             setError("");
             navigate("/login");
@@ -103,7 +117,7 @@ export default function App() {
  {path === "/dashboard" && <RequesterDashboardScreen key={identity} currentUser={user} onNavigate={navigate}/> }
  {(path === "/tickets" || path === "/" || path === "/login") && <MyTicketsScreen key={identity} currentRequester={user} onCreateTicket={() => navigate("/tickets/new")} onOpenTicket={openRequesterTicket}/>}
  {path === "/tickets/new" && <CreateTicketScreen key={identity} currentRequester={user} isSessionCurrent={isSubmissionSessionCurrent} onCreated={ticket => navigate("/tickets/" + ticket.id)} onCancel={() => navigate("/tickets")}/>}
- {path.startsWith("/tickets/") && path !== "/tickets/new" && <TicketDetailScreen key={identity + path} currentRequester={user} ticketId={path.slice(9)} onBack={requesterBack}/>}
+ {path.startsWith("/tickets/") && path !== "/tickets/new" && <TicketDetailScreen key={identity + path} currentRequester={user} isSessionCurrent={isSubmissionSessionCurrent} ticketId={path.slice(9)} onBack={requesterBack}/>}
  {!path.startsWith("/tickets") && path !== "/" && path !== "/login" && path !== "/dashboard" && <p role="alert">This page is not available for your role.</p>}
  </> : <>
     {path === "/staff/dashboard" && <StaffDashboardScreen key={user.id + user.role} currentUser={user} onNavigate={navigate}/>}
@@ -113,14 +127,12 @@ export default function App() {
         <StaffTicketQueueScreen
             key={user.id + user.role}
             currentUser={user}
-            onOpenTicket={(id) =>
-                navigate("/staff/tickets/" + id)
-            }
+            onOpenTicket={openStaffTicket}
         />
     )}
 
     {path.startsWith("/staff/tickets/") && (
-        <StaffTicketDetailScreen key={user.id + path} ticketId={path.slice("/staff/tickets/".length)} currentUser={user} onBack={() => navigate("/staff/tickets")} />
+        <StaffTicketDetailScreen key={user.id + path} ticketId={path.slice("/staff/tickets/".length)} currentUser={user} onBack={staffQueueBack} />
     )}
 
     {path === "/admin/users" &&

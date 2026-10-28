@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
     ApiError,
     RequesterIdentity,
@@ -14,17 +14,22 @@ import ActionsTaken from "./ActionsTaken.js";
 import ErrorAlert from "./common/ErrorAlert.js";
 import LoadingSpinner from "./common/LoadingSpinner.js";
 import StatusBadge from "./common/StatusBadge.js";
+import FormField from "./common/FormField.js";
+import { useDialogFocus } from "./common/useDialogFocus.js";
+import { useMutationContext } from "./common/useMutationContext.js";
 
 interface TicketDetailScreenProps {
     currentRequester: RequesterIdentity;
     ticketId: string;
     onBack: () => void;
+    isSessionCurrent?: () => boolean;
 }
 
 export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
     currentRequester,
     ticketId,
     onBack,
+    isSessionCurrent = () => true,
 }) => {
     const [ticket, setTicket] = useState<TicketDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -47,6 +52,41 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
         useState<TicketAttachment | null>(null);
     const [removalReason, setRemovalReason] = useState("");
     const [removing, setRemoving] = useState(false);
+    const [removalError, setRemovalError] = useState<string | null>(null);
+    const [attachmentReview, setAttachmentReview] = useState(false);
+    const [refreshingAttachments, setRefreshingAttachments] = useState(false);
+    const [attachmentRefreshError, setAttachmentRefreshError] = useState<string | null>(null);
+    const beginMutation = useMutationContext(currentRequester.id + ":" + ticketId, isSessionCurrent);
+    const mutation = useRef<ReturnType<typeof beginMutation> | null>(null);
+    const attachmentRefresh = useRef<ReturnType<typeof beginMutation> | null>(null);
+    const previewDialog = useRef<HTMLDivElement>(null);
+    const removalDialog = useRef<HTMLDivElement>(null);
+    const previewTrigger = useRef<HTMLElement | null>(null);
+    const removalTrigger = useRef<HTMLElement | null>(null);
+    const attachmentsHeading = useRef<HTMLHeadingElement>(null);
+    const focusLifetime = useRef(false);
+    useLayoutEffect(() => { focusLifetime.current = true; return () => { focusLifetime.current = false; }; }, []);
+    const sessionCheck = useRef(isSessionCurrent);
+    sessionCheck.current = isSessionCurrent;
+    useDialogFocus({ open: !!previewAttachment && !!previewUrl, dialog: previewDialog, trigger: previewTrigger,
+        initial: () => previewDialog.current?.querySelector<HTMLElement>("button") ?? null,
+        fallback: () => attachmentsHeading.current, onEscape: () => { setPreviewUrl(null); setPreviewAttachment(null); },
+        canRestore: () => focusLifetime.current && sessionCheck.current() });
+    useDialogFocus({ open: !!removingAttachment, dialog: removalDialog, trigger: removalTrigger,
+        initial: () => removalDialog.current?.querySelector<HTMLElement>("textarea") ?? null,
+        fallback: () => attachmentsHeading.current, onEscape: () => { if (!removing) { setRemovingAttachment(null); setRemovalReason(""); setRemovalError(null); } },
+        canRestore: () => focusLifetime.current && sessionCheck.current() });
+    useEffect(() => {
+        if (attachmentRefresh.current && !attachmentRefresh.current.context.isCurrent()) {
+            attachmentRefresh.current.finish(); attachmentRefresh.current = null; setRefreshingAttachments(false);
+        }
+        if (mutation.current && !mutation.current.context.isCurrent()) {
+            mutation.current.finish(); mutation.current = null;
+            setUploading(false); setRemoving(false); setRemovingAttachment(null);
+            setAttachmentReview(true); setAttachmentMessage(null);
+            setAttachmentError("The earlier attachment request may still finish. Refresh and review existing attachments before selecting files or removing again.");
+        }
+    }, [isSessionCurrent]);
     const generation = useRef(0);
     const mounted = useRef(true);
     const pendingRead = useRef<AbortController | null>(null);
@@ -94,37 +134,6 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
         return () => { mounted.current = false; pendingRead.current?.abort(); contentPending.current?.abort(); ++generation.current; ++contentGeneration.current; };
     }, [currentRequester.id, ticketId]);
 
-    useEffect(() => {
-        const handleEscape = (event: KeyboardEvent) => {
-            if (event.key !== "Escape") {
-                return;
-            }
-
-            if (previewAttachment) {
-                closePreview();
-            }
-
-            if (removingAttachment && !removing) {
-                setRemovingAttachment(null);
-                setRemovalReason("");
-            }
-        };
-
-        document.addEventListener("keydown", handleEscape);
-
-        return () => {
-            document.removeEventListener(
-                "keydown",
-                handleEscape
-            );
-        };
-    }, [
-        previewAttachment,
-        previewUrl,
-        removingAttachment,
-        removing,
-    ]);
-
     const formatDateTime = (value: string) => {
         return new Date(value).toLocaleString(undefined, {
             year: "numeric",
@@ -147,35 +156,73 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
-    const refreshTicket = async () => {
+    const refreshTicket = async (isCurrent = () => mounted.current && sessionCheck.current()) => {
         if (!mounted.current) return;
         pendingRead.current?.abort(); const controller = new AbortController(); pendingRead.current = controller;
         const token = ++generation.current;
         const data = await getTicketDetail(
-            ticketId, { signal: controller.signal, isCurrent: () => mounted.current && token === generation.current }
+            ticketId, { signal: controller.signal, isCurrent: () => mounted.current && token === generation.current && isCurrent() }
         );
 
-        if (mounted.current && token === generation.current) setTicket(data);
+        if (mounted.current && token === generation.current && isCurrent()) setTicket(data);
+    };
+
+    const accessFailure = (cause: unknown) => {
+        if (!(cause instanceof ApiError) || ![401, 403, 404].includes(cause.status)) return false;
+        setTicket(null); setPreviewAttachment(null); setPreviewUrl(null); setRemovingAttachment(null);
+        setRemovalReason(""); setRemovalError(null); setAttachmentMessage(null); setAttachmentError(null);
+        setError("This ticket is unavailable for your session or role.");
+        return true;
+    };
+    const refreshAttachments = async () => {
+        if (attachmentRefresh.current || !sessionCheck.current()) return;
+        const request = beginMutation();
+        attachmentRefresh.current = request;
+        setRefreshingAttachments(true); setAttachmentRefreshError(null);
+        try {
+            await refreshTicket(request.context.isCurrent);
+            if (!request.context.isCurrent()) return;
+            setAttachmentReview(false); setAttachmentError(null);
+            attachmentsHeading.current?.focus();
+        } catch (cause) {
+            if (request.context.isCurrent() && !accessFailure(cause)) setAttachmentRefreshError("Unable to refresh attachments. Retry the refresh; do not repeat the original write.");
+        } finally {
+            request.finish();
+            if (request.context.isCurrent() && attachmentRefresh.current === request) { attachmentRefresh.current = null; setRefreshingAttachments(false); }
+        }
+    };
+    const refreshAfterWrite = async (request: ReturnType<typeof beginMutation>) => {
+        try { await refreshTicket(request.context.isCurrent); }
+        catch (cause) {
+            if (request.context.isCurrent() && !accessFailure(cause)) {
+                setAttachmentReview(true);
+                setAttachmentRefreshError("The attachment write succeeded, but refresh failed. Refresh attachments to review the confirmed change.");
+            }
+        }
     };
 
     const handleUpload = async (
         event: React.ChangeEvent<HTMLInputElement>
     ) => {
         const files = Array.from(event.target.files ?? []);
+        const input = event.target;
 
-        if (files.length === 0) {
+        if (files.length === 0 || mutation.current || attachmentReview || !sessionCheck.current()) {
             return;
         }
 
         setUploading(true);
         setAttachmentMessage(null);
         setAttachmentError(null);
+        setAttachmentRefreshError(null);
+        const request = beginMutation(); mutation.current = request;
 
         try {
             const result = await uploadTicketAttachments(
                 ticketId,
-                files
+                files, request.context
             );
+            if (!request.context.isCurrent()) return;
 
             const acceptedCount = result.accepted.length;
             const rejectedCount = result.rejected.length;
@@ -198,18 +245,22 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                 );
             }
 
-            await refreshTicket();
+            await refreshAfterWrite(request);
         } catch (err) {
+            if (!request.context.isCurrent() || accessFailure(err)) return;
             if (err instanceof ApiError) {
-                setAttachmentError(err.message);
+                if (err.attachmentResult) {
+                    const result = err.attachmentResult;
+                    setAttachmentMessage(`${result.accepted.length} uploaded. ${result.rejected.length} rejected. ${result.rejected.map(item => `${item.filename}: ${item.reason}`).join(" ")}`);
+                    await refreshAfterWrite(request);
+                } else if (err.status < 500) setAttachmentError(err.message);
+                else { setAttachmentReview(true); setAttachmentError("Upload outcome could not be confirmed. Refresh and inspect existing attachments before selecting files again."); }
             } else {
-                setAttachmentError(
-                    "Unable to upload attachments."
-                );
+                setAttachmentReview(true); setAttachmentError("Upload outcome could not be confirmed. Refresh and inspect existing attachments before selecting files again.");
             }
         } finally {
-            setUploading(false);
-            event.target.value = "";
+            request.finish();
+            if (request.context.isCurrent()) { mutation.current = null; setUploading(false); input.value = ""; }
         }
     };
 
@@ -270,7 +321,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
     };
 
     const confirmRemoval = async () => {
-        if (!removingAttachment) {
+        if (!removingAttachment || mutation.current || attachmentReview || !sessionCheck.current()) {
             return;
         }
 
@@ -280,21 +331,29 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
             trimmedReason.length < 1 ||
             trimmedReason.length > 200
         ) {
-            setAttachmentError(
+            setRemovalError(
                 "Removal reason must be between 1 and 200 characters."
             );
+            document.getElementById("attachment-removal-reason")?.focus();
             return;
         }
 
         setRemoving(true);
         setAttachmentError(null);
+        setRemovalError(null); setAttachmentRefreshError(null);
+        const request = beginMutation(); mutation.current = request;
 
         try {
-            await removeTicketAttachment(
+            const removed = await removeTicketAttachment(
                 ticketId,
                 removingAttachment.id,
-                trimmedReason
+                trimmedReason, request.context
             );
+            if (!request.context.isCurrent()) return;
+
+            // A confirmed removal is already authoritative. Remove its trigger
+            // before dialog cleanup so focus falls back to the stable heading.
+            setTicket(previous => previous ? { ...previous, activeAttachments: previous.activeAttachments.filter(item => item.id !== removingAttachment.id), removedAttachments: [...previous.removedAttachments.filter(item => item.id !== removed.id), removed] } : previous);
 
             setRemovingAttachment(null);
             setRemovalReason("");
@@ -302,17 +361,21 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                 "Attachment removed successfully."
             );
 
-            await refreshTicket();
+            await refreshAfterWrite(request);
         } catch (err) {
-            if (err instanceof ApiError) {
-                setAttachmentError(err.message);
+            if (!request.context.isCurrent() || accessFailure(err)) return;
+            if (err instanceof ApiError && err.status < 500) {
+                setRemovalError(err.message);
+                if (err.status === 400 && err.code === "VALIDATION_ERROR") requestAnimationFrame(() => {
+                    if (request.context.isCurrent()) removalDialog.current?.querySelector<HTMLElement>("textarea")?.focus();
+                });
             } else {
-                setAttachmentError(
-                    "Unable to remove attachment."
-                );
+                setAttachmentReview(true);
+                setRemovingAttachment(null);
+                setAttachmentError("Removal outcome could not be confirmed. Refresh and inspect existing attachments before removing again.");
             }
         } finally {
-            setRemoving(false);
+            request.finish(); if (request.context.isCurrent()) { mutation.current = null; setRemoving(false); }
         }
     };
 
@@ -522,6 +585,8 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                     <div>
                         <h2
                             id="attachments-heading"
+                            ref={attachmentsHeading}
+                            tabIndex={-1}
                             className="h5 fw-bold mb-1"
                         >
                             Attachments
@@ -535,7 +600,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
 
                     <div>
                         <label
-                            className={`btn btn-primary-green ${uploading ? "disabled" : ""
+                            className={`btn btn-primary-green attachment-upload ${uploading || removing || attachmentReview || refreshingAttachments ? "disabled" : ""
                                 }`}
                         >
                             {uploading
@@ -547,7 +612,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                                 className="visually-hidden"
                                 multiple
                                 accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
-                                disabled={uploading}
+                                disabled={uploading || removing || attachmentReview || refreshingAttachments}
                                 onChange={handleUpload}
                             />
                         </label>
@@ -573,6 +638,11 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                         title="Attachment Error"
                     />
                 )}
+                {(attachmentReview || attachmentRefreshError) && <div className="mb-3">
+                    {attachmentRefreshError && <p role="alert">{attachmentRefreshError}</p>}
+                    <button className="btn btn-outline-primary-green" disabled={refreshingAttachments} onClick={() => void refreshAttachments()}>{refreshingAttachments ? "Refreshing attachments..." : "Refresh attachments for review"}</button>
+                    {refreshingAttachments && <p role="status">Refreshing existing attachments; the original write is not repeated.</p>}
+                </div>}
 
                 <div className="mb-4">
                     <h3 className="h6 fw-bold mb-3">
@@ -615,12 +685,13 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                                                         <button
                                                             type="button"
                                                             className="btn btn-sm btn-outline-secondary"
-                                                            onClick={() =>
-                                                                openAttachment(
+                                                            onClick={event => {
+                                                                previewTrigger.current = event.currentTarget;
+                                                                void openAttachment(
                                                                     attachment,
                                                                     true
-                                                                )
-                                                            }
+                                                                );
+                                                            }}
                                                         >
                                                             Preview
                                                         </button>
@@ -644,7 +715,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
 
                                                 <button
                                                     type="button"
-                                                    className="btn btn-sm btn-outline-primary"
+                                                    className="btn btn-sm btn-outline-primary-green"
                                                     onClick={() =>
                                                         openAttachment(
                                                             attachment,
@@ -658,12 +729,15 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                                                 <button
                                                     type="button"
                                                     className="btn btn-sm btn-outline-danger"
-                                                    onClick={() => {
+                                                    disabled={uploading || removing || attachmentReview || refreshingAttachments}
+                                                    onClick={event => {
+                                                        removalTrigger.current = event.currentTarget;
                                                         setRemovingAttachment(
                                                             attachment
                                                         );
                                                         setRemovalReason("");
                                                         setAttachmentError(null);
+                                                        setRemovalError(null);
                                                     }}
                                                 >
                                                     Remove
@@ -724,15 +798,17 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                 </div>
 
                 <ActionsTaken key={currentRequester.id + ticket.id} ticketId={ticket.id}/>
-                <RequesterDiscussion key={ticket.id} ticketId={ticket.id} resolvedAt={ticket.problemAppearsResolvedAt}/>
+                <RequesterDiscussion key={ticket.id} ticketId={ticket.id} resolvedAt={ticket.problemAppearsResolvedAt} isSessionCurrent={isSessionCurrent}/>
 
             {previewAttachment && previewUrl && (
                     <div
                         className="modal d-block"
                         tabIndex={-1}
                         role="dialog"
+                        ref={previewDialog}
                         aria-modal="true"
                         aria-labelledby="attachment-preview-title"
+                        aria-describedby="attachment-preview-description"
                         style={{
                             backgroundColor:
                                 "rgba(0, 0, 0, 0.5)",
@@ -757,6 +833,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                                 </div>
 
                                 <div className="modal-body text-center">
+                                    <p id="attachment-preview-description" className="visually-hidden">Image attachment preview. Close preview to return to attachments.</p>
                                     <img
                                         src={previewUrl}
                                         alt={
@@ -775,8 +852,11 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                         className="modal d-block"
                         tabIndex={-1}
                         role="dialog"
+                        ref={removalDialog}
                         aria-modal="true"
                         aria-labelledby="remove-attachment-title"
+                        aria-describedby="remove-attachment-description"
+                        aria-busy={removing}
                         style={{
                             backgroundColor:
                                 "rgba(0, 0, 0, 0.5)",
@@ -805,7 +885,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                                 </div>
 
                                 <div className="modal-body">
-                                    <p>
+                                    <p id="remove-attachment-description">
                                         Remove{" "}
                                         <strong>
                                             {
@@ -815,30 +895,23 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                                         ?
                                     </p>
 
-                                    <label
-                                        htmlFor="attachment-removal-reason"
-                                        className="form-label fw-semibold"
-                                    >
-                                        Removal reason
-                                    </label>
-
+                                    <FormField id="attachment-removal-reason" label="Removal reason" error={removalError ?? undefined} helperText={`${removalReason.length} / 200`}>
                                     <textarea
                                         id="attachment-removal-reason"
                                         className="form-control"
                                         maxLength={200}
                                         rows={3}
+                                        required
                                         value={removalReason}
                                         disabled={removing}
-                                        onChange={(event) =>
+                                        onChange={(event) => {
+                                            setRemovalError(null);
                                             setRemovalReason(
                                                 event.target.value
-                                            )
-                                        }
+                                            );
+                                        }}
                                     />
-
-                                    <div className="form-text">
-                                        {removalReason.length} / 200
-                                    </div>
+                                    </FormField>
                                 </div>
 
                                 <div className="modal-footer">
@@ -858,7 +931,7 @@ export const TicketDetailScreen: React.FC<TicketDetailScreenProps> = ({
                                         type="button"
                                         className="btn btn-danger"
                                         disabled={
-                                            removing ||
+                                                removing || attachmentReview ||
                                             removalReason.trim().length === 0
                                         }
                                         onClick={confirmRemoval}
