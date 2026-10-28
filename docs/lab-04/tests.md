@@ -1,5 +1,23 @@
 # Lab 4 Test DD and Requirement Traceability
 
+## Issue #64 Phase 2 — focused release UI implementation
+
+[zen-green-release.md](zen-green-release.md) records red responsive/O-01 evidence,
+corrections, actual verification commands/results and capture provenance. Existing
+component suites gained dialog/validation/focus, table-link and attachment outcome
+assertions. RequesterMutationContext adds actual App/API obsolete mutation and
+current-denial cases. Zen Green browser checks cover five widths, control bounds,
+overlap and modal keyboard operation. Responsive dashboard coverage adds 320/1440;
+real-service Actions evidence covers 375/768/1440. Old #56 Planned rows below are
+historical plans; current results live in the implementation record.
+
+Full client: 459 passed / 30 files. Isolated server: 627 passed / 39 files.
+Full browser: 72 passed; both builds passed. Relative to #63, 48 client and 14
+browser cases were added; no backend cases changed.
+Final browser/build results are recorded in the linked implementation evidence.
+No previous cases/assertions were removed. VIS-01–VIS-08 remain pending complete
+manual/final evidence; screenshots and automated checks alone are not approval.
+
 ## Issue #63 Phase 3D — R-02 confirmed-stage recovery
 
 Phase 3C confirmed original R-01 isolation but returned REQUEST CHANGES for blind attachment retry after failed logout. CreateTicketHardening now has 46 cases, including actual App late success/partial/failure/uncertain upload recovery, identity replacement, synchronous retry protection and explicit fresh intent. Red request-count evidence, harness corrections, final commands and limitations are retained in [final-hardening.md](final-hardening.md). No existing regression assertions or skip annotations were weakened.

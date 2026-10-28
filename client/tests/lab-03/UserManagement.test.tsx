@@ -23,6 +23,32 @@ afterEach(() => {
 });
 
 describe("User Management", () => {
+  it.each(["Create User", "Edit", "Set initial password"])("AX-04: Cancel restores %s trigger", async action => {
+    const user = userEvent.setup(); render(<UserManagementScreen currentUser={admin} />); await screen.findByText("Alice");
+    const trigger = screen.getByRole("button", { name: action }); await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: "Cancel" })); await waitFor(() => expect(trigger).toHaveFocus());
+  });
+  it("AX-04: successful edit restores the replacement trigger after list refresh", async () => {
+    const user = userEvent.setup(); render(<UserManagementScreen currentUser={admin} />); await screen.findByText("Alice");
+    await user.click(screen.getByRole("button", { name: "Edit" })); await user.click(screen.getByRole("button", { name: "Save User" }));
+    await screen.findByText("User updated."); await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toHaveFocus());
+  });
+  it("AX-04: disappearing trigger falls back to screen heading", async () => {
+    render(<UserManagementScreen currentUser={admin} />); await screen.findByText("Alice");
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fetchMock.mockResolvedValue(ok([])); fireEvent.change(screen.getAllByLabelText("Role")[0], { target: { value: "IT_STAFF" } });
+    await screen.findByText("No users match your search or filter."); fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "User Management" })).toHaveFocus());
+  });
+  it("AX-04: late save from a replaced identity cannot restore old focus", async () => {
+    const user = userEvent.setup(); const view = render(<UserManagementScreen currentUser={admin} />); await screen.findByText("Alice");
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    let resolve!: (value: ReturnType<typeof ok>) => void; fetchMock.mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+    await user.click(screen.getByRole("button", { name: "Save User" }));
+    view.rerender(<UserManagementScreen currentUser={{ ...admin, id: "other-admin" }} />);
+    const search = screen.getByLabelText("Search by name or email"); search.focus();
+    resolve(ok(alice)); await waitFor(() => expect(screen.getByRole("button", { name: "Save User" })).toBeEnabled()); expect(search).toHaveFocus();
+  });
   it("renders list, search, role filter, and no-results state", async () => {
     render(<UserManagementScreen currentUser={admin} />);
     expect(await screen.findByText("Alice")).toBeInTheDocument();
@@ -201,6 +227,7 @@ describe("Administrator form activation", () => {
       fireEvent.change(screen.getByLabelText(field), { target: { value: "Unsaved123" } });
       await user.click(screen.getByRole("button", { name: "Cancel" }));
       expect(screen.queryByRole("heading", { name: heading })).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
       expect(scrollIntoView).toHaveBeenCalledTimes(1);
       expect(fetchMock.mock.calls.filter(([, options]) => options?.method === "POST" || options?.method === "PATCH")).toHaveLength(0);
       await user.click(trigger);

@@ -17,6 +17,7 @@ export default function AuthScreen({ user, onAuthenticated, onLogout }: {
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     async function submit(event: FormEvent) {
         event.preventDefault();
+        const submittedForm = event.currentTarget;
         if (busy)
             return;
         setError("");
@@ -27,7 +28,11 @@ export default function AuthScreen({ user, onAuthenticated, onLogout }: {
             if ([...next].length < 8 || [...next].length > 72 || !/\p{L}/u.test(next) || !/[0-9]/.test(next)) fields.newPassword = passwordGuidance;
             if (!confirm || next !== confirm) fields.confirmPassword = "Password confirmation must match the new password.";
             setFieldErrors(fields);
-            if (Object.keys(fields).length) return;
+            if (Object.keys(fields).length) {
+                const target = event.currentTarget;
+                requestAnimationFrame(() => { if (target.isConnected) target.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); });
+                return;
+            }
         }
         setBusy(true);
         try {
@@ -55,6 +60,7 @@ export default function AuthScreen({ user, onAuthenticated, onLogout }: {
                     ? err instanceof ApiError ? err.message : "Unable to change your password. Please try again."
                     : err instanceof Error ? err.message : "Unable to sign in.");
             }
+            requestAnimationFrame(() => { if (submittedForm.isConnected) submittedForm.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); });
         }
         finally {
             setBusy(false);

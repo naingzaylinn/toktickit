@@ -130,7 +130,7 @@ interface CreateTicketResponse {
   data: CreatedTicket;
 }
 
-// Read owners invalidate this context on supersession, access loss and unmount.
+// Request owners invalidate this context on supersession, access loss and unmount.
 // Check it after parsing the error body, immediately before the global side effect.
 export interface ApiReadContext {
   signal?: AbortSignal;
@@ -526,7 +526,8 @@ export async function getAttachmentContent(
 export async function removeTicketAttachment(
   ticketId: string,
   attachmentId: string,
-  reason: string
+  reason: string,
+  context?: ApiReadContext
 ): Promise<TicketAttachment> {
   const res = await fetch(
     `${API_URL}/api/tickets/` +
@@ -534,6 +535,7 @@ export async function removeTicketAttachment(
     `${encodeURIComponent(attachmentId)}`,
     {
       method: "DELETE",
+      ...(context ? { signal: context.signal } : {}),
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -547,7 +549,7 @@ export async function removeTicketAttachment(
   if (!res.ok) {
     throw await readApiError(
       res,
-      "Unable to remove attachment."
+      "Unable to remove attachment.", false, context
     );
   }
 
@@ -583,8 +585,8 @@ export const updateManagedUser = (id: string, input: UserDraft) => adminRequest<
 export const setManagedInitialPassword = (id: string, initialPassword: string) => adminRequest<ManagedUser>("/api/admin/users/" + encodeURIComponent(id) + "/initial-password", "POST", { initialPassword });
 export interface PublicComment { id: string; ticketId: string; content: string; author: {id: string; name: string; role: string}; createdAt: string; }
 export const getComments = (id: string, context?: ApiReadContext) => sessionRequest<PublicComment[]>("/api/tickets/"+encodeURIComponent(id)+"/comments", undefined, context);
-export const postComment = (id: string, content: string) => sessionRequest<PublicComment>("/api/tickets/"+encodeURIComponent(id)+"/comments", {content});
-export const indicateResolved = (id: string) => sessionRequest<{ticketId:string; problemAppearsResolvedAt:string}>("/api/tickets/"+encodeURIComponent(id)+"/problem-appears-resolved", {});
+export const postComment = (id: string, content: string, context?: ApiReadContext) => sessionRequest<PublicComment>("/api/tickets/"+encodeURIComponent(id)+"/comments", {content}, context);
+export const indicateResolved = (id: string, context?: ApiReadContext) => sessionRequest<{ticketId:string; problemAppearsResolvedAt:string}>("/api/tickets/"+encodeURIComponent(id)+"/problem-appears-resolved", {}, context);
 
 export type ResolutionReason = "NO_COMPLETED_ACTIONS" | "PENDING_ACTIONS" | "FOLLOW_UP_REQUIRED";
 export interface StaffTicketDetail extends StaffTicketQueueItem {

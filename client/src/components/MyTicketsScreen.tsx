@@ -514,24 +514,16 @@ const MyTicketsContent: React.FC<MyTicketsScreenProps> = ({
                                     {tickets.map((ticket) => (
                                         <tr
                                             key={ticket.id}
-                                            tabIndex={0}
-                                            role="button"
                                             style={{ cursor: "pointer" }}
-                                            onClick={() =>
-                                                onOpenTicket(ticket.id)
-                                            }
-                                            onKeyDown={(event) => {
-                                                if (
-                                                    event.key === "Enter" ||
-                                                    event.key === " "
-                                                ) {
-                                                    event.preventDefault();
-                                                    onOpenTicket(ticket.id);
-                                                }
+                                            onClick={event => {
+                                                if (!(event.target as HTMLElement).closest("a, button, input, select, textarea")) onOpenTicket(ticket.id);
                                             }}
                                         >
                                             <td className="fw-semibold text-primary-green">
-                                                {ticket.ticketNumber}
+                                                <a href={"/tickets/" + encodeURIComponent(ticket.id)} onClick={event => {
+                                                    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                                                    event.preventDefault(); onOpenTicket(ticket.id);
+                                                }}>{ticket.ticketNumber}</a>
                                             </td>
 
                                             <td>{ticket.summary}</td>

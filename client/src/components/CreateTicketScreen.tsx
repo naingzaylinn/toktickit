@@ -269,6 +269,8 @@ export const CreateTicketScreen: React.FC<CreateTicketScreenProps> = ({
         setSubmitError(null);
 
         if (Object.keys(errors).length > 0) {
+            const targetForm = event.currentTarget;
+            requestAnimationFrame(() => { if (lifetime.current.active && sessionCheck.current()) targetForm.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); });
             return;
         }
 

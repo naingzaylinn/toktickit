@@ -246,7 +246,7 @@ function ActionsTakenContent({ ticketId, ticketNumber, ticketStatus, currentUser
         {staff && <button className="btn btn-outline-primary-green mt-2" disabled={busy || !!editing} onClick={() => open(action)} aria-label={`Edit Action: ${action.actionDescription}`}>Edit Action</button>}
       </article>)}
       {history && <nav aria-label="Actions Taken pagination" className="d-flex gap-2 flex-wrap align-items-center mb-3">
-        <label htmlFor="actions-page-size">Actions per page</label><select id="actions-page-size" value={pageSize} disabled={loading || busy} onChange={e => setPageSize(Number(e.target.value) as 10 | 20 | 50)}>{[10, 20, 50].map(n => <option key={n}>{n}</option>)}</select>
+        <label htmlFor="actions-page-size">Actions per page</label><select id="actions-page-size" className="form-select w-auto" value={pageSize} disabled={loading || busy} onChange={e => setPageSize(Number(e.target.value) as 10 | 20 | 50)}>{[10, 20, 50].map(n => <option key={n}>{n}</option>)}</select>
         <span>{history.meta.totalPages ? `Page ${history.meta.page} of ${history.meta.totalPages} (${history.meta.totalItems} Actions)` : "0 Actions"}</span>
         <button className="btn btn-outline-primary-green" disabled={loading || busy || history.meta.page <= 1} onClick={() => void load(history.meta.page - 1)}>Previous Actions</button>
         <button className="btn btn-outline-primary-green" disabled={loading || busy || history.meta.page >= history.meta.totalPages} onClick={() => void load(history.meta.page + 1)}>Next Actions</button>

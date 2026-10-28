@@ -1,4 +1,8 @@
 :root {
+  --bs-link-color: #0B7A46;
+  --bs-link-color-rgb: 11, 122, 70;
+  --bs-link-hover-color: #006B3C;
+  --bs-link-hover-color-rgb: 0, 107, 60;
   --color-primary-green: #006B3C;
   --color-secondary-green: #0B7A46;
   --color-pale-green: #EAF6EF;
@@ -96,11 +100,19 @@ body {
 
 /* Card styling */
 .zen-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
   background-color: #FFFFFF;
   border: 1px solid #E0E6E2;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 107, 60, 0.05);
 }
+
+a:not(.btn):not(.nav-link):not(.navbar-brand):visited { color: var(--color-primary-green); }
+.btn-link { --bs-btn-color: var(--color-secondary-green); --bs-btn-hover-color: var(--color-primary-green); --bs-btn-active-color: var(--color-primary-green); --bs-btn-disabled-color: var(--color-secondary-green); }
+.modal-content { min-width: 0; overflow-wrap: anywhere; }
+.modal-title { min-width: 0; }
+.attachment-upload:focus-within { outline: 2px solid var(--color-secondary-green); outline-offset: 2px; }
 
 /* Accessible focus ring */
 a:focus-visible,

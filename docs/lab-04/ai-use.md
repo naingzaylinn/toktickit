@@ -1,5 +1,18 @@
 # Lab 4 AI Use and Reflection Record
 
+## Issue #64 Phase 2 — authorized focused release UI corrections
+
+The user first requested a read-only audit, then explicitly authorized the bounded
+ZG/AX/FB corrections, responsive/O-01 reproductions, regression verification,
+documentation and genuine disposable-environment screenshots. Codex retained the
+approved theme and #63 creation/recovery semantics, recorded failing actual-App
+denial and Edge containment cases before fixing them, reused optional transport
+contexts and small focus hooks, and expanded existing tests. Exact outcomes,
+harness/build corrections and limitations are in [zen-green-release.md](zen-green-release.md).
+No delegated agents, developer-data mutation, excluded-reference access, Git
+publication or main integration. Automated evidence is not manual screen-reader,
+actual browser zoom, peer approval or student-authored reflection.
+
 ## Issue #63 Phase 3D — authorized R-02 correction
 
 The user authorized R-02 only with tests/evidence and full verification. Codex added red actual-App transport regressions, retained confirmed creation before uploading, blocked blind replay synchronously and provided explicit existing-Ticket recovery/new-intent actions while preserving R-01 contexts. Phase 3C evidence, failed runs and harness/warning corrections are retained in [final-hardening.md](final-hardening.md). No delegated agents, backend/schema changes, publication, developer-database mutations, excluded-reference inspection or Issue #64 implementation occurred. Independent re-review remains pending.

@@ -73,7 +73,7 @@ export default function RequesterDashboardScreen({ currentUser, onNavigate }: { 
     {loading && <LoadingSpinner message={response ? "Refreshing dashboard..." : "Loading dashboard..."}/>}
     {response && !denied && <>
       {error && <p role="status">Showing previously loaded data from the last successful refresh.</p>}
-      <p className="text-secondary">Only your Tickets. Active means New, Open, In Progress, Waiting for Requester and Reopened.</p>
+      <p className="text-primary-green">Only your Tickets. Active means New, Open, In Progress, Waiting for Requester and Reopened.</p>
       <div className="row g-3 mb-4">
         {metric("Total My Tickets", response.data.totalTickets, "/tickets")}
         {metric("Active Tickets", response.data.activeTickets, "/tickets?statusGroup=active")}

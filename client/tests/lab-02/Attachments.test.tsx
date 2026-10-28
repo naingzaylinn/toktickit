@@ -1,5 +1,6 @@
 import React from "react";
 import {
+    act,
     fireEvent,
     render,
     screen,
@@ -23,6 +24,8 @@ import {
 } from "../../src/api.js";
 
 import TicketDetailScreen from "../../src/components/TicketDetailScreen.js";
+import userEvent from "@testing-library/user-event";
+import { ApiError } from "../../src/api.js";
 
 vi.mock("../../src/api.js", async () => {
     const actual =
@@ -108,6 +111,86 @@ const baseTicket: TicketDetail = {
 };
 
 describe("Feature-G: Attachment Management UI", () => {
+    it("FB-01: rapid attachment-review clicks start one GET and never repeat the write", async () => {
+        const view = await showImage(); vi.mocked(uploadTicketAttachments).mockRejectedValue(new Error("response lost"));
+        fireEvent.change(view.container.querySelector('input[type=file]')!, { target: { files: [new File(["ok"], "new.png", { type: "image/png" })] } });
+        const retry = await screen.findByRole("button", { name: "Refresh attachments for review" });
+        let finish!: (value: TicketDetail) => void; vi.mocked(getTicketDetail).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+        act(() => { fireEvent.click(retry); fireEvent.click(retry); });
+        expect(getTicketDetail).toHaveBeenCalledTimes(2);
+        await act(async () => finish({ ...baseTicket, activeAttachments: [imageAttachment] }));
+        expect(uploadTicketAttachments).toHaveBeenCalledTimes(1);
+    });
+    it("AX-02: server reason validation retains the dialog/draft and focuses its field", async () => {
+        await showImage(); vi.mocked(removeTicketAttachment).mockRejectedValue(new ApiError("VALIDATION_ERROR", "Reason cannot contain a null character.", 400));
+        const user = userEvent.setup(); await user.click(screen.getByRole("button", { name: "Remove" }));
+        const reason = screen.getByLabelText("Removal reason"); await user.type(reason, "Retained reason"); await user.click(screen.getByRole("button", { name: "Remove Attachment" }));
+        await waitFor(() => expect(reason).toHaveFocus()); expect(reason).toHaveAccessibleDescription(/null character/); expect(reason).toHaveValue("Retained reason"); expect(screen.getByRole("dialog")).toContainElement(screen.getByRole("alert"));
+    });
+    const showImage = async () => {
+        vi.mocked(getTicketDetail).mockResolvedValue({ ...baseTicket, activeAttachments: [imageAttachment] });
+        const view = render(<TicketDetailScreen currentRequester={requester} ticketId={baseTicket.id} onBack={vi.fn()} />);
+        await screen.findByText("screenshot.png"); return view;
+    };
+    it("AX-01: preview traps both Tab directions and restores its trigger on Escape", async () => {
+        await showImage(); const user = userEvent.setup(); const trigger = screen.getByRole("button", { name: "Preview" }); await user.click(trigger);
+        const close = await screen.findByRole("button", { name: "Close preview" }); expect(close).toHaveFocus();
+        await user.tab(); expect(close).toHaveFocus(); await user.tab({ shift: true }); expect(close).toHaveFocus();
+        expect(screen.getByRole("dialog")).toHaveAccessibleName("screenshot.png");
+        await user.keyboard("{Escape}"); expect(trigger).toHaveFocus();
+    });
+    it("AX-01/02: removal links validation inside the dialog and restores Cancel", async () => {
+        await showImage(); const user = userEvent.setup(); const trigger = screen.getByRole("button", { name: "Remove" }); await user.click(trigger);
+        const reason = screen.getByLabelText("Removal reason"); expect(reason).toHaveFocus();
+        fireEvent.change(reason, { target: { value: "x".repeat(201) } });
+        await user.click(screen.getByRole("button", { name: "Remove Attachment" }));
+        expect(reason).toHaveAttribute("aria-invalid", "true"); expect(reason).toHaveAccessibleDescription(/1 and 200/); expect(reason).toHaveFocus();
+        expect(screen.getByRole("dialog")).toContainElement(screen.getByRole("alert"));
+        await user.click(screen.getByRole("button", { name: "Cancel" })); expect(trigger).toHaveFocus();
+    });
+    it("AX-01: removal restores stable heading when its trigger disappears", async () => {
+        await showImage(); vi.mocked(removeTicketAttachment).mockResolvedValue(removedAttachment);
+        vi.mocked(getTicketDetail).mockResolvedValue({ ...baseTicket, removedAttachments: [removedAttachment] });
+        const user = userEvent.setup(); await user.click(screen.getByRole("button", { name: "Remove" }));
+        await user.type(screen.getByLabelText("Removal reason"), "Wrong file"); await user.click(screen.getByRole("button", { name: "Remove Attachment" }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(screen.getByRole("heading", { name: "Attachments" })).toHaveFocus();
+    });
+    it("AX-01: Escape cannot dismiss busy removal; all-disabled Tab stays in the dialog", async () => {
+        await showImage(); let finish!: (value: TicketAttachment) => void; vi.mocked(removeTicketAttachment).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+        const user = userEvent.setup(); await user.click(screen.getByRole("button", { name: "Remove" })); await user.type(screen.getByLabelText("Removal reason"), "Wrong file");
+        await user.click(screen.getByRole("button", { name: "Remove Attachment" })); await user.keyboard("{Escape}"); expect(screen.getByRole("dialog")).toHaveAttribute("aria-busy", "true");
+        await user.tab(); expect(screen.getByRole("dialog")).toHaveFocus();
+        finish(removedAttachment); await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    });
+    it.each(["upload", "removal"])("FB-01: confirmed %s survives failed refresh and Retry sends only GET", async operation => {
+        const view = await showImage(); vi.mocked(getTicketDetail).mockRejectedValueOnce(new Error("GET failed"));
+        vi.mocked(uploadTicketAttachments).mockResolvedValue({ accepted: [imageAttachment], rejected: [], activeAttachmentCount: 1 }); vi.mocked(removeTicketAttachment).mockResolvedValue(removedAttachment);
+        if (operation === "upload") fireEvent.change(view.container.querySelector('input[type=file]')!, { target: { files: [new File(["ok"], "new.png", { type: "image/png" })] } });
+        else { fireEvent.click(screen.getByRole("button", { name: "Remove" })); fireEvent.change(screen.getByLabelText("Removal reason"), { target: { value: "Wrong file" } }); fireEvent.click(screen.getByRole("button", { name: "Remove Attachment" })); }
+        expect(await screen.findByText(/write succeeded, but refresh failed/)).toHaveAttribute("role", "alert");
+        expect(screen.getByRole("status")).toHaveTextContent(operation === "upload" ? "uploaded successfully" : "removed successfully");
+        fireEvent.click(screen.getByRole("button", { name: "Refresh attachments for review" }));
+        await waitFor(() => expect(screen.queryByText(/write succeeded, but refresh failed/)).not.toBeInTheDocument());
+        expect(operation === "upload" ? uploadTicketAttachments : removeTicketAttachment).toHaveBeenCalledTimes(1);
+    });
+    it.each(["upload", "removal"])("FB-01: uncertain %s blocks blind retries until explicit GET review", async operation => {
+        const view = await showImage(); vi.mocked(uploadTicketAttachments).mockRejectedValue(new Error("response lost")); vi.mocked(removeTicketAttachment).mockRejectedValue(new Error("response lost"));
+        const input = view.container.querySelector('input[type=file]')!;
+        if (operation === "upload") fireEvent.change(input, { target: { files: [new File(["ok"], "new.png", { type: "image/png" })] } });
+        else { fireEvent.click(screen.getByRole("button", { name: "Remove" })); fireEvent.change(screen.getByLabelText("Removal reason"), { target: { value: "Wrong file" } }); fireEvent.click(screen.getByRole("button", { name: "Remove Attachment" })); }
+        expect(await screen.findByText(/outcome could not be confirmed/)).toBeInTheDocument();
+        expect(input).toBeDisabled(); expect(screen.getByRole("button", { name: "Remove" })).toBeDisabled();
+        fireEvent.change(input, { target: { files: [new File(["ok"], "new.png", { type: "image/png" })] } });
+        expect(operation === "upload" ? uploadTicketAttachments : removeTicketAttachment).toHaveBeenCalledTimes(1);
+        fireEvent.click(screen.getByRole("button", { name: "Refresh attachments for review" })); await waitFor(() => expect(input).not.toBeDisabled());
+        expect(operation === "upload" ? uploadTicketAttachments : removeTicketAttachment).toHaveBeenCalledTimes(1);
+    });
+    it("FB-01: definitive upload rejection reports failure without fabricated success", async () => {
+        const view = await showImage(); vi.mocked(uploadTicketAttachments).mockRejectedValue(new ApiError("VALIDATION_ERROR", "Invalid file.", 400));
+        fireEvent.change(view.container.querySelector('input[type=file]')!, { target: { files: [new File(["bad"], "bad.png", { type: "image/png" })] } });
+        expect(await screen.findByRole("alert")).toHaveTextContent("Invalid file."); expect(screen.queryByText(/uploaded successfully/)).not.toBeInTheDocument(); expect(getTicketDetail).toHaveBeenCalledTimes(1);
+    });
     beforeEach(() => {
         vi.clearAllMocks();
 
@@ -275,7 +358,8 @@ describe("Feature-G: Attachment Management UI", () => {
                 uploadTicketAttachments
             ).toHaveBeenCalledWith(
                 baseTicket.id,
-                [validFile, invalidFile]
+                [validFile, invalidFile],
+                expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })
             );
         });
 
@@ -580,7 +664,8 @@ describe("Feature-G: Attachment Management UI", () => {
             ).toHaveBeenCalledWith(
                 baseTicket.id,
                 imageAttachment.id,
-                "Uploaded the wrong screenshot"
+                "Uploaded the wrong screenshot",
+                expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) })
             );
         });
 

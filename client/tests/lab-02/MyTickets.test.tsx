@@ -22,6 +22,7 @@ import {
 } from "../../src/api.js";
 
 import MyTicketsScreen from "../../src/components/MyTicketsScreen.js";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("../../src/api.js", async () => {
     const actual =
@@ -152,6 +153,14 @@ describe("Feature-E: My Tickets UI", () => {
                 })
             ).toBeInTheDocument();
         }
+    });
+
+    it("AX-03: desktop table keeps native rows with one keyboard detail link", async () => {
+        const open = vi.fn(); render(<MyTicketsScreen currentRequester={requester} onCreateTicket={vi.fn()} onOpenTicket={open} />);
+        const link = await screen.findByRole("link", { name: ticket.ticketNumber });
+        expect(link).toHaveAttribute("href", "/tickets/ticket-1"); expect(link.closest("tr")).not.toHaveAttribute("role"); expect(link.closest("tr")).not.toHaveAttribute("tabindex");
+        link.focus(); await userEvent.keyboard("{Enter}"); expect(open).toHaveBeenCalledTimes(1); expect(open).toHaveBeenCalledWith(ticket.id);
+        fireEvent.click(link.closest("tr")!.querySelectorAll("td")[1]); expect(open).toHaveBeenCalledTimes(2);
     });
 
     it("UI-024: renders true empty state with Create Ticket CTA", async () => {
