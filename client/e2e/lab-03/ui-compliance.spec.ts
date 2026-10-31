@@ -11,7 +11,7 @@ const ticket = {
   category: { id: 1, name: "Network" }, relatedSystem: { id: "sys", name: "Campus Wi-Fi" },
   requester: managedUser, requestedPriority: "HIGH", itPriority: "MEDIUM", status: "NEW", owner: null,
   ticketDate: "2026-09-19T00:00:00Z", createdAt: "2026-09-19T00:00:00Z", updatedAt: "2026-09-19T00:00:00Z",
-  problemAppearsResolvedAt: null, attachments: [], publicComments: [], internalNotes: [],
+  workflowVersion: 0, actionsTakenSummary: { totalItems: 0, pendingItems: 0, completedItems: 0, cancelledItems: 0, followUpRequiredItems: 0 }, resolutionEligibility: { eligible: false, reasonCodes: ["NO_COMPLETED_ACTIONS"] }, problemAppearsResolvedAt: null, attachments: [], publicComments: [], internalNotes: [],
 };
 
 async function mockApi(page: Page, initial: AuthUser | null) {
@@ -32,6 +32,7 @@ async function mockApi(page: Page, initial: AuthUser | null) {
     if (path === "/api/admin/users" && method === "GET") return data([managedUser]);
     if (path === "/api/staff/tickets/owners") return data([{ id: "user", name: "Staff", role: "IT_STAFF" }]);
     if (path === "/api/staff/tickets/ticket-1" && method === "GET") return data(ticket);
+    if (path === "/api/staff/tickets/ticket-1/actions" && method === "GET") return route.fulfill({ json: { data: [], meta: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 } } });
     // Never allow unhandled API traffic through to Vite's backend proxy.
     unexpected.push(`${method} ${path}`);
     return route.abort();

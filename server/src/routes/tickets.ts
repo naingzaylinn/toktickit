@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import { Prisma, type Ticket } from "@prisma/client";
 import { getPrisma } from "../prisma.js";
 import { requireRequester } from "../middleware/requesterContext.js";
 import {
@@ -13,6 +13,7 @@ import {
     ValidationDetail,
 } from "../services/ticketValidation.js";
 import { generateTicketNumber } from "../services/ticketNumber.js";
+import { activeTicketStatuses, statusToApi } from "../services/ticketDashboardDefinitions.js";
 
 export const ticketsRouter = Router();
 
@@ -24,6 +25,22 @@ const ALLOWED_SORTS = [
 ] as const;
 
 const ALLOWED_PAGE_SIZES = [10, 20, 50] as const;
+
+function sendReplay(res: Response, ticket: Ticket, intent: Pick<Ticket, "categoryId" | "relatedSystemId" | "requestedPriority" | "summary" | "description">) {
+    if (Object.keys(intent).some(key => ticket[key as keyof typeof intent] !== intent[key as keyof typeof intent])) {
+        return res.status(409).json({ error: { code: "IDEMPOTENCY_CONFLICT", message: "This clientRequestId was already used with different ticket data.", correlationId: randomUUID() } });
+    }
+    res.setHeader("Idempotent-Replay", "true");
+    const { id, ticketNumber, ticketDate, currentStatus, requestedPriority, summary, description, requesterId, categoryId, relatedSystemId } = ticket;
+    return res.status(200).json({ data: { id, ticketNumber, ticketDate, currentStatus, requestedPriority, summary, description, requesterId, categoryId, relatedSystemId } });
+}
+
+function requestKeyCollision(error: unknown) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") return false;
+    if (error.meta?.modelName && error.meta.modelName !== "Ticket") return false;
+    const target = error.meta?.target;
+    return (Array.isArray(target) && target.length === 2 && target.includes("requesterId") && target.includes("clientRequestId")) || target === "Ticket_requesterId_clientRequestId_key";
+}
 
 function sendValidationError(
     res: Response,
@@ -60,6 +77,14 @@ ticketsRouter.get(
     requireRequester,
     async (req: Request, res: Response) => {
         const requester = req.auth?.user;
+
+        // Supported list filters are scalar values, including encoded names.
+        // Unknown TEXT system IDs remain legitimate nonmatching predicates.
+        const queryStart = req.originalUrl.indexOf("?");
+        const supplied = new URLSearchParams(queryStart < 0 ? "" : req.originalUrl.slice(queryStart));
+        for (const key of ["q", "categoryId", "relatedSystemId", "requestedPriority", "currentStatus", "statusGroup", "sortBy", "page", "pageSize"]) {
+            if (supplied.getAll(key).length > 1 || [...supplied.keys()].some(name => name.startsWith(key + "["))) return sendQueryError(res, "Query filters must contain a single scalar value.");
+        }
 
         if (!requester) {
             return res.status(401).json({
@@ -174,10 +199,15 @@ ticketsRouter.get(
             );
         }
 
-        if (
-            currentStatus !== undefined &&
-            currentStatus !== "New"
-        ) {
+        const rawQuery = new URLSearchParams(req.originalUrl.slice(req.originalUrl.indexOf("?") < 0 ? req.originalUrl.length : req.originalUrl.indexOf("?")));
+        for (const key of ["currentStatus", "statusGroup"]) {
+            const values = rawQuery.getAll(key);
+            if (values.length > 1 || values.some(value => !value) || [...rawQuery.keys()].some(name => name.startsWith(key + "[")))
+                return sendQueryError(res, "Status filter is invalid.");
+        }
+        const statusGroup = rawQuery.get("statusGroup");
+        if (statusGroup !== null && statusGroup !== "active") return sendQueryError(res, "Status group is invalid.");
+        if (currentStatus !== undefined && !Object.hasOwn(statusToApi, currentStatus)) {
             return sendQueryError(
                 res,
                 "Current Status filter is invalid."
@@ -229,8 +259,9 @@ ticketsRouter.get(
         }
 
         if (currentStatus !== undefined) {
-            where.currentStatus = "New";
+            where.currentStatus = currentStatus as keyof typeof statusToApi;
         }
+        if (statusGroup === "active") where.AND = [{ currentStatus: { in: activeTicketStatuses } }];
 
         let orderBy: Prisma.TicketOrderByWithRelationInput[];
 
@@ -275,6 +306,7 @@ ticketsRouter.get(
                         select: {
                             id: true,
                             ticketNumber: true,
+                            _count: { select: { attachments: { where: { isRemoved: false } } } },
                             ticketDate: true,
                             currentStatus: true,
                             problemAppearsResolvedAt: true,
@@ -325,8 +357,7 @@ ticketsRouter.get(
                     category: ticket.category,
                     relatedSystem: ticket.relatedSystem,
 
-                    // Feature-G attachments are not implemented yet.
-                    activeAttachmentCount: 0,
+                    activeAttachmentCount: ticket._count.attachments,
 
                     createdAt: ticket.createdAt,
                     updatedAt: ticket.updatedAt,
@@ -689,66 +720,14 @@ ticketsRouter.post(
                     },
                 });
 
-            if (existing) {
-                const exactReplay =
-                    existing.categoryId ===
-                    categoryId &&
-                    existing.relatedSystemId ===
-                    relatedSystemId &&
-                    existing.requestedPriority ===
-                    validPriority &&
-                    existing.summary ===
-                    trimmedSummary &&
-                    existing.description ===
-                    trimmedDescription;
-
-                if (!exactReplay) {
-                    return res.status(409).json({
-                        error: {
-                            code:
-                                "IDEMPOTENCY_CONFLICT",
-                            message:
-                                "This clientRequestId was already used with different ticket data.",
-                            correlationId:
-                                randomUUID(),
-                        },
-                    });
-                }
-
-                res.setHeader(
-                    "Idempotent-Replay",
-                    "true"
-                );
-
-                return res.status(200).json({
-                    data: {
-                        id: existing.id,
-                        ticketNumber:
-                            existing.ticketNumber,
-                        ticketDate:
-                            existing.ticketDate,
-                        currentStatus:
-                            existing.currentStatus,
-                        requestedPriority:
-                            existing.requestedPriority,
-                        summary: existing.summary,
-                        description:
-                            existing.description,
-                        requesterId:
-                            existing.requesterId,
-                        categoryId:
-                            existing.categoryId,
-                        relatedSystemId:
-                            existing.relatedSystemId,
-                    },
-                });
-            }
+            if (existing) return sendReplay(res, existing, { categoryId, relatedSystemId, requestedPriority: validPriority, summary: trimmedSummary, description: trimmedDescription });
 
             const now = new Date();
             const year = now.getUTCFullYear();
 
-            const created =
-                await prisma.$transaction(
+            let created: Ticket;
+            try {
+                created = await prisma.$transaction(
                     async (tx) => {
                         const ticketNumber =
                             await generateTicketNumber(
@@ -777,6 +756,14 @@ ticketsRouter.post(
                         });
                     }
                 );
+            } catch (error) {
+                if (!requestKeyCollision(error)) throw error;
+                // The failed PostgreSQL transaction has rolled back, including
+                // its sequence increment. Read replay through a fresh connection.
+                const winner = await prisma.ticket.findUnique({ where: { requesterId_clientRequestId: { requesterId: requester.id, clientRequestId } } });
+                if (!winner) throw error;
+                return sendReplay(res, winner, { categoryId, relatedSystemId, requestedPriority: validPriority, summary: trimmedSummary, description: trimmedDescription });
+            }
 
             return res.status(201).json({
                 data: {

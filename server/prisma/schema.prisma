@@ -186,6 +186,7 @@ model User {
 }
 
 // Local seed metadata binds an immutable fixture key to an existing User ID.
+// Adoption preserves legacy UUIDs; subsequent seeds never match mutable email.
 model SeedUserIdentity {
   seedKey String @id
   userId  String @unique
@@ -198,6 +199,8 @@ enum ActionStatus {
   CANCELLED
 }
 
+// Current projection. Services must preserve performer/date and atomically append
+// revisions; foreign keys and unique keys alone do not enforce audit immutability.
 model ActionTaken {
   id                String       @id @default(uuid())
   ticketId          String

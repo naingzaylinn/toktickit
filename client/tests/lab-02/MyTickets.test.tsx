@@ -22,6 +22,7 @@ import {
 } from "../../src/api.js";
 
 import MyTicketsScreen from "../../src/components/MyTicketsScreen.js";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("../../src/api.js", async () => {
     const actual =
@@ -101,6 +102,7 @@ function ticketResponse(data = [ticket]) {
 
 describe("Feature-E: My Tickets UI", () => {
     beforeEach(() => {
+    window.history.replaceState({}, "", "/tickets");
         vi.clearAllMocks();
 
         vi.mocked(getTicketCategories).mockResolvedValue(
@@ -151,6 +153,14 @@ describe("Feature-E: My Tickets UI", () => {
                 })
             ).toBeInTheDocument();
         }
+    });
+
+    it("AX-03: desktop table keeps native rows with one keyboard detail link", async () => {
+        const open = vi.fn(); render(<MyTicketsScreen currentRequester={requester} onCreateTicket={vi.fn()} onOpenTicket={open} />);
+        const link = await screen.findByRole("link", { name: ticket.ticketNumber });
+        expect(link).toHaveAttribute("href", "/tickets/ticket-1"); expect(link.closest("tr")).not.toHaveAttribute("role"); expect(link.closest("tr")).not.toHaveAttribute("tabindex");
+        link.focus(); await userEvent.keyboard("{Enter}"); expect(open).toHaveBeenCalledTimes(1); expect(open).toHaveBeenCalledWith(ticket.id);
+        fireEvent.click(link.closest("tr")!.querySelectorAll("td")[1]); expect(open).toHaveBeenCalledTimes(2);
     });
 
     it("UI-024: renders true empty state with Create Ticket CTA", async () => {
@@ -295,7 +305,7 @@ describe("Feature-E: My Tickets UI", () => {
                 expect.objectContaining({
                     categoryId: 2,
                     page: 1,
-                })
+                }), expect.objectContaining({ isCurrent: expect.any(Function) })
             );
         });
     });
@@ -344,7 +354,21 @@ describe("Feature-E: My Tickets UI", () => {
             expect.objectContaining({
                 q: "vpn",
                 page: 1,
-            })
+            }), expect.objectContaining({ isCurrent: expect.any(Function) })
         );
     });
+    it("all eight statuses and active group remain visible and serialize together", async () => {
+        render(<MyTicketsScreen currentRequester={requester} onCreateTicket={vi.fn()} onOpenTicket={vi.fn()}/>);
+        await screen.findAllByText("TKT-2026-00001");
+        const status = screen.getByLabelText("Status"); expect(status.querySelectorAll("option")).toHaveLength(9);
+        fireEvent.change(status, { target: { value: "Closed" } }); fireEvent.change(screen.getByLabelText("Status group"), { target: { value: "active" } });
+        await waitFor(() => expect(getMyTickets).toHaveBeenLastCalledWith(expect.objectContaining({ currentStatus: "Closed", statusGroup: "active", page: 1 }), expect.objectContaining({ isCurrent: expect.any(Function) })));
+    });
+    it("retrieval failure is not rendered as a successful empty result", async () => {
+        vi.mocked(getMyTickets).mockRejectedValueOnce(new Error("private diagnostics"));
+        render(<MyTicketsScreen currentRequester={requester} onCreateTicket={vi.fn()} onOpenTicket={vi.fn()}/>);
+        await screen.findByRole("alert"); expect(screen.queryByText("No Tickets Found")).not.toBeInTheDocument(); expect(screen.queryByText("private diagnostics")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Retry: Error" })); await screen.findAllByText("TKT-2026-00001");
+    });
+
 });

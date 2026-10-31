@@ -29,6 +29,8 @@ const upload = multer({
 const uuidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+class AttachmentAlreadyRemoved extends Error {}
+
 function sendTicketNotFound(res: Response) {
     return res.status(404).json({
         error: {
@@ -100,7 +102,33 @@ async function findOwnedTicket(
 attachmentsRouter.post(
     "/",
     requireRequester,
-    upload.array("files", 10),
+    async (req, res, next) => {
+        // Ownership precedes parser/content-type errors, preserving neutral
+        // foreign-resource responses and avoiding buffering unauthorized files.
+        if (!uuidPattern.test(req.params.ticketId)) return res.status(400).json({ error: {
+            code: "INVALID_TICKET_ID", message: "Ticket ID must be a valid UUID.", correlationId: randomUUID(),
+        } });
+        try {
+            if (!await findOwnedTicket(req.params.ticketId, req.auth!.user.id)) return sendTicketNotFound(res);
+            next();
+        } catch {
+            return res.status(500).json({ error: { code: "ATTACHMENT_UPLOAD_FAILED", message: "Failed to upload attachment.", correlationId: randomUUID() } });
+        }
+    },
+    (req, res, next) => {
+        if (req.headers["content-type"] && !req.is("multipart/form-data")) return res.status(415).json({ error: {
+            code: "UNSUPPORTED_CONTENT_TYPE", message: "Use multipart/form-data for attachment uploads.", correlationId: randomUUID(),
+        } });
+        upload.array("files", 10)(req, res, error => {
+            if (!error) return next();
+            const oversized = error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE";
+            return res.status(oversized ? 413 : 400).json({ error: {
+                code: oversized ? "UPLOAD_TOO_LARGE" : "INVALID_MULTIPART",
+                message: oversized ? "File exceeds the upload transport limit." : "Use a valid multipart upload with at most 10 files in the files field.",
+                correlationId: randomUUID(),
+            } });
+        });
+    },
     async (req: Request, res: Response) => {
         const requester = req.auth?.user;
         const { ticketId } = req.params;
@@ -130,15 +158,6 @@ attachmentsRouter.post(
         const prisma = getPrisma();
 
         try {
-            const ticket = await findOwnedTicket(
-                ticketId,
-                requester.id
-            );
-
-            if (!ticket) {
-                return sendTicketNotFound(res);
-            }
-
             const files = Array.isArray(req.files)
                 ? req.files
                 : [];
@@ -146,19 +165,6 @@ attachmentsRouter.post(
             if (files.length === 0) {
                 return sendNoValidFiles(res, []);
             }
-
-            const activeCount =
-                await prisma.attachment.count({
-                    where: {
-                        ticketId,
-                        isRemoved: false,
-                    },
-                });
-
-            let remainingCapacity = Math.max(
-                0,
-                MAX_ACTIVE_ATTACHMENTS - activeCount
-            );
 
             const accepted: Array<{
                 id: string;
@@ -190,16 +196,6 @@ attachmentsRouter.post(
                     continue;
                 }
 
-                if (remainingCapacity <= 0) {
-                    rejected.push({
-                        filename: file.originalname,
-                        reason:
-                            "Ticket attachment limit reached (maximum 5 active attachments).",
-                    });
-
-                    continue;
-                }
-
                 const detectedMimeType =
                     validation.detectedMimeType;
 
@@ -216,14 +212,21 @@ attachmentsRouter.post(
                 let storageKey: string | null = null;
 
                 try {
-                    storageKey =
+                    const savedKey =
                         await saveAttachmentBinary(
                             file.buffer,
                             detectedMimeType
                         );
+                    storageKey = savedKey;
 
-                    const attachment =
-                        await prisma.attachment.create({
+                    // Stage the binary before acquiring the parent lock. Capacity
+                    // and metadata commit together; every losing path compensates.
+                    const attachment = await prisma.$transaction(async tx => {
+                        const parent = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Ticket" WHERE "id" = ${ticketId} AND "requesterId" = ${requester.id} FOR UPDATE`;
+                        if (!parent.length) throw new Error("Ticket unavailable");
+                        const count = await tx.attachment.count({ where: { ticketId, isRemoved: false } });
+                        if (count >= MAX_ACTIVE_ATTACHMENTS) return null;
+                        return tx.attachment.create({
                             data: {
                                 ticketId,
                                 originalFilename:
@@ -231,7 +234,7 @@ attachmentsRouter.post(
                                 mimeType:
                                     detectedMimeType,
                                 sizeBytes: file.size,
-                                storageKey,
+                                storageKey: savedKey,
                             },
                             select: {
                                 id: true,
@@ -243,6 +246,13 @@ attachmentsRouter.post(
                                 isRemoved: true,
                             },
                         });
+                    });
+                    if (!attachment) {
+                        await deleteAttachmentBinary(storageKey);
+                        storageKey = null;
+                        rejected.push({ filename: file.originalname, reason: "Ticket attachment limit reached (maximum 5 active attachments)." });
+                        continue;
+                    }
 
                     accepted.push({
                         id: attachment.id,
@@ -259,7 +269,6 @@ attachmentsRouter.post(
                         isRemoved: false,
                     });
 
-                    remainingCapacity -= 1;
                 } catch {
                     if (storageKey) {
                         try {
@@ -279,8 +288,7 @@ attachmentsRouter.post(
                 }
             }
 
-            const newActiveCount =
-                activeCount + accepted.length;
+            const newActiveCount = await prisma.attachment.count({ where: { ticketId, isRemoved: false } });
 
             if (accepted.length === 0) {
                 return sendNoValidFiles(
@@ -542,7 +550,7 @@ attachmentsRouter.delete(
 
         if (
             reason.length < 1 ||
-            reason.length > 200
+            reason.length > 200 || reason.includes("\u0000")
         ) {
             return res.status(400).json({
                 error: {
@@ -607,17 +615,17 @@ attachmentsRouter.delete(
             const tombstone =
                 await prisma.$transaction(
                     async (tx) => {
+                        // Parent -> attachment ordering is shared with uploads.
+                        await tx.$queryRaw`SELECT "id" FROM "Ticket" WHERE "id" = ${ticketId} AND "requesterId" = ${requester.id} FOR UPDATE`;
+                        const changed = await tx.attachment.updateMany({
+                            where: { id: attachment.id, ticketId, isRemoved: false, ticket: { requesterId: requester.id } },
+                            data: { isRemoved: true, removedAt, removedByRequesterId: requester.id, removalReason: reason },
+                        });
+                        if (changed.count !== 1) throw new AttachmentAlreadyRemoved();
                         const updated =
-                            await tx.attachment.update({
+                            await tx.attachment.findUniqueOrThrow({
                                 where: {
                                     id: attachment.id,
-                                },
-                                data: {
-                                    isRemoved: true,
-                                    removedAt,
-                                    removedByRequesterId:
-                                        requester.id,
-                                    removalReason: reason,
                                 },
                                 select: {
                                     id: true,
@@ -668,7 +676,10 @@ attachmentsRouter.delete(
             return res.status(200).json({
                 data: tombstone,
             });
-        } catch {
+        } catch (error) {
+            if (error instanceof AttachmentAlreadyRemoved) return res.status(409).json({ error: {
+                code: "ATTACHMENT_ALREADY_REMOVED", message: "Attachment has already been removed.", correlationId: randomUUID(),
+            } });
             return res.status(500).json({
                 error: {
                     code:

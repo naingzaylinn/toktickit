@@ -7,7 +7,10 @@ export async function applyMigration(prisma: PrismaClient, name: string) {
   const sql = await readFile(`prisma/migrations/${name}/migration.sql`, "utf8");
   // The repository migrations contain ordinary DDL/DML, without procedural
   // bodies or semicolons inside literals. Remove line comments before splitting.
-  const statements = sql.replace(/^\s*--.*$/gm, "").split(";").filter(item => item.trim());
+  // The fixture already owns a transaction, including migrations that explicitly
+  // wrap deployment DDL for PostgreSQL atomicity.
+  const statements = sql.replace(/^\s*--.*$/gm, "").split(";")
+    .filter(item => item.trim() && !/^(BEGIN|COMMIT)$/i.test(item.trim()));
   await prisma.$transaction(async tx => {
     for (const statement of statements) await tx.$executeRawUnsafe(statement);
   });

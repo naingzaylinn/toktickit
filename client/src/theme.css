@@ -1,4 +1,8 @@
 :root {
+  --bs-link-color: #0B7A46;
+  --bs-link-color-rgb: 11, 122, 70;
+  --bs-link-hover-color: #006B3C;
+  --bs-link-hover-color-rgb: 0, 107, 60;
   --color-primary-green: #006B3C;
   --color-secondary-green: #0B7A46;
   --color-pale-green: #EAF6EF;
@@ -6,6 +10,11 @@
   --color-surface: #FFFFFF;
   --color-text-primary: #1E2D24;
 }
+
+.staff-dashboard-screen .zen-card { overflow-wrap: anywhere; min-width: 0; }
+.staff-dashboard-screen .dashboard-metric { text-decoration: none; }
+.staff-dashboard-screen .dashboard-metric:hover { background: var(--color-pale-green); }
+.staff-dashboard-screen[aria-busy="true"] { min-height: 16rem; }
 
 body {
   background-color: #F5F7F6;
@@ -91,11 +100,19 @@ body {
 
 /* Card styling */
 .zen-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
   background-color: #FFFFFF;
   border: 1px solid #E0E6E2;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 107, 60, 0.05);
 }
+
+a:not(.btn):not(.nav-link):not(.navbar-brand):visited { color: var(--color-primary-green); }
+.btn-link { --bs-btn-color: var(--color-secondary-green); --bs-btn-hover-color: var(--color-primary-green); --bs-btn-active-color: var(--color-primary-green); --bs-btn-disabled-color: var(--color-secondary-green); }
+.modal-content { min-width: 0; overflow-wrap: anywhere; }
+.modal-title { min-width: 0; }
+.attachment-upload:focus-within { outline: 2px solid var(--color-secondary-green); outline-offset: 2px; }
 
 /* Accessible focus ring */
 a:focus-visible,
@@ -196,3 +213,9 @@ textarea:focus-visible, .form-control:focus-visible, .form-select:focus-visible,
 @media (min-width: 992px) {
   .shell-identity { flex-basis: auto; max-width: 30%; margin-top: 0; margin-left: 1rem; }
 }
+
+.requester-dashboard-screen .zen-card { overflow-wrap: anywhere; min-width: 0; }
+.requester-dashboard-screen .dashboard-metric { text-decoration: none; }
+.requester-dashboard-screen .dashboard-metric:hover { background: var(--color-pale-green); }
+.requester-dashboard-screen[aria-busy="true"] { min-height: 16rem; }
+.my-tickets-screen .zen-card { min-width: 0; overflow-wrap: anywhere; }

@@ -31,7 +31,7 @@ requesterActionsRouter.route("/:ticketId/comments")
         if (!ticket)
             return authError(res, 404, "TICKET_NOT_FOUND", "The requested ticket was not found.");
         const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
-        if (!content || content.length > 2000)
+        if (!content || content.length > 2000 || content.includes("\u0000"))
             return authError(res, 400, "VALIDATION_ERROR", "Comment must contain 1 to 2000 characters after trimming.");
         const comment = await prisma.publicComment.create({ data: { ticketId: ticket.id, authorId: req.auth!.user.id, content }, select: commentSelect });
         res.status(201).json({ data: comment });

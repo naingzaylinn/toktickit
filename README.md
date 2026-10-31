@@ -1,300 +1,251 @@
-# TokTickIT - IT Service Desk
+# TokTickIT — IT Service Desk
 
-TokTickIT is a full-stack IT service desk application developed for CPE334 Software Engineering. Lab 3 is the current increment, adding authenticated, role-based workflows while retaining Lab 2 ticket and attachment functionality.
+TokTickIT implements the CPE334 Labs 1–4 service desk: authenticated ticketing,
+attachments and communication, attributable Actions Taken, the Ticket lifecycle,
+and Staff/Requester Dashboards. Issue #63 is prepared for independent review;
+this README does not declare release or merge approval.
 
-## Technology Stack
+## Stack and repository
 
-- **Frontend:** React 18, TypeScript, Vite, Bootstrap 5
-- **Backend:** Node.js, Express, TypeScript
-- **Database:** PostgreSQL with Prisma ORM
-- **Testing:** Vitest, React Testing Library, Supertest, Playwright
+React 18, TypeScript, Vite, Bootstrap 5; Express/Node.js; PostgreSQL/Prisma 5.22.
+Vitest, React Testing Library, Supertest and Playwright provide regression coverage.
 
----
+| Directory | Contents |
+|---|---|
+| client/src | Application, role screens, API transport |
+| client/tests/lab-01 through lab-04 | Component/transport regressions |
+| client/e2e/lab-03 and lab-04 | Browser journeys |
+| server/src | Middleware, routes, transactional services |
+| server/prisma | Schema, 11 committed migrations, local seeds |
+| server/scripts | Disposable-schema test runners |
+| server/tests/lab-01 through lab-04 | Unit/API/integration/migration/smoke tests |
+| docs/lab-01 through lab-04 | Specifications and historical/current evidence |
 
-## Lab 3 Features
+## Roles and permissions
 
-- Email/password authentication, logout, and mandatory first-login password change for initial-password users.
-- Requester, IT Staff, and Administrator roles with role-specific navigation and backend authorization.
-- Authenticated Requester ownership for Create Ticket, My Tickets, Ticket Detail, and attachments retained from Lab 2. My Tickets supports search, filtering, sorting, and pagination.
-- Attachment upload (JPG, PNG, WEBP, PDF), preview/download, soft removal with a reason, and removed attachment history.
-- Requester Public Comments and Problem Appears Resolved on owned tickets; the latter records an indication without changing the formal ticket status.
-- IT Staff Ticket Queue with search, filters, sorting, and pagination; ticket claim/reassignment, IT Priority, and permitted status updates.
-- Public Comments and role-restricted Internal Notes available to IT Staff and Administrators; Internal Notes are hidden from Requesters.
-- Administrator User Management with user search/filtering, creation, editing, activation/deactivation, single-role assignment, and administrator-set initial passwords.
-- Lab 2 regression compatibility for existing ticket and attachment workflows under authenticated identity.
+| Role | Capabilities |
+|---|---|
+| Requester | Create/search/filter/page own Tickets; owned attachments and Public Comments; advisory Problem Appears Resolved; all shared Actions on own Tickets; personal Dashboard |
+| IT Staff | Shared Queue/detail; claim/reassign ownership; IT Priority and approved transitions; active attachment downloads; Public Comments/Internal Notes; Actions creation/edit/assignment/completion/cancellation; Staff Dashboard |
+| Administrator | Staff capabilities plus user creation/editing, single-role assignment, activation and initial-password management |
 
----
+Requesters cannot formally resolve, close, cancel or reopen Tickets. Internal Notes
+are private to Staff/Admin. Actions retain immutable revisions and have no deletion.
+Reference-data CRUD, self-registration and email password reset are not implemented.
 
-## Project Structure
+## Prerequisites and environment
 
-```text
-toktickit/
-|-- client/                     # React + TypeScript frontend
-|   |-- src/
-|   |   |-- components/         # Application screens and shared components
-|   |   |-- App.tsx
-|   |   |-- api.ts              # Backend API client
-|   |   `-- main.tsx
-|   |-- tests/
-|   |   |-- lab-01/             # Regression tests
-|   |   |-- lab-02/             # Requester regression tests
-|   |   `-- lab-03/             # Authentication and role workflow tests
-|   |-- e2e/lab-03/             # Playwright browser tests
-|   |-- playwright.config.ts
-|   |-- .env.example
-|   `-- package.json
-|-- server/                     # Express + TypeScript backend
-|   |-- prisma/
-|   |   |-- migrations/         # Database migrations
-|   |   |-- schema.prisma       # Prisma data model
-|   |   `-- seed.ts             # Reference/development seed data
-|   |-- src/
-|   |   |-- middleware/
-|   |   |-- routes/
-|   |   |-- services/
-|   |   |-- app.ts
-|   |   |-- index.ts
-|   |   `-- prisma.ts
-|   |-- scripts/                # Isolated server and E2E test runners
-|   |-- tests/
-|   |   |-- lab-01/
-|   |   |-- lab-02/
-|   |   `-- lab-03/
-|   |-- .env.example
-|   `-- package.json
-|-- docs/
-|   |-- lab-01/
-|   |-- lab-02/
-|   `-- lab-03/
-|       |-- specification.md
-|       |-- api-spec.md
-|       |-- ui-spec.md
-|       |-- tests.md
-|       |-- reviewer.md
-|       |-- ai-use.md
-|       |-- authentication.md
-|       `-- release-evidence.md
-|-- .gitignore
-`-- README.md
-```
+- Node.js 20 or higher, npm, running PostgreSQL 14 or higher.
+- Microsoft Edge installed for the configured browser suite.
+- Migration permissions; tests additionally require generated-schema creation/drop.
+- Issue #63 was exercised with Node 24.19.0 and npm 11.17.0.
 
----
-
-## Prerequisites
-
-Install:
-
-- Node.js 20 or higher
-- npm
-- PostgreSQL 14 or higher
-
-PostgreSQL must be running before starting the backend.
-
----
-
-## Backend Setup
-
-Open a terminal from the project root:
-
-```bash
-cd server
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Copy the environment template:
-
-### Windows PowerShell
+From the repository root:
 
 ```powershell
-Copy-Item .env.example .env
+npm ci --prefix server
+npm ci --prefix client
+Copy-Item server/.env.example server/.env
+Copy-Item client/.env.example client/.env
 ```
 
-### macOS / Linux
-
-```bash
-cp .env.example .env
-```
-
-Check the PostgreSQL connection in `server/.env`.
-
-Example:
+On macOS/Linux use `cp` instead of `Copy-Item`. Edit `server/.env` for your
+database. The committed template contains this local example:
 
 ```env
 DATABASE_URL="postgresql://toktickit:toktickit@localhost:5432/toktickit?schema=public"
 PORT=3000
+NODE_ENV=development
 ```
 
-Generate the Prisma client:
+Do not commit real environment files. `DATABASE_URL`, `PORT`, `NODE_ENV`
+configure the backend. Optional `ATTACHMENT_STORAGE_DIRECTORY` selects local
+storage (default `server/storage/attachments` when started from server).
+Test runners use temporary storage. No `VITE_API_URL` is needed.
 
-```bash
+## Fresh database and existing-data upgrade
+
+Create the PostgreSQL database/user in your connection URL first. From server:
+
+```powershell
 npx prisma generate
-```
-
-Apply the database migrations.
-
-For a normal development database with the required PostgreSQL permissions:
-
-```bash
-npx prisma migrate dev
-```
-
-If the database user cannot create the Prisma shadow database but the committed migrations only need to be applied:
-
-```bash
 npx prisma migrate deploy
-```
-
-Seed the database:
-
-```bash
 npm run prisma:seed
 ```
 
-Start the backend:
+For authoring development migrations, `npm run prisma:migrate` invokes migrate dev
+and needs shadow-database permissions. Use deploy to apply committed migrations.
 
-```bash
-npm run dev
-```
+For an existing Labs 1–3 database, verify the URL/schema and take a verified backup,
+then apply `npx prisma migrate deploy`; do not reset. The migration sequence
+preserves IDs, ownership, attachments, communication, statuses and credentials.
+Lab 4 adds Actions/revisions, workflow versions and seed identity mappings without
+fabricating legacy work. Deploy client/backend together: status writes need a version.
 
-The API runs at:
+Normalized-email collisions need an explicit identity decision. Inspect failed
+deployments before resolve/retry; follow [database recovery](docs/lab-04/database.md).
+Large/live migration lock duration is not measured. Verification uses disposable schemas.
 
-```text
-http://localhost:3000
-```
+## Seed behavior and demonstration accounts
 
----
+From server, `npm run prisma:seed` creates local role/status/Action examples,
+including empty, pending, completed, cancelled and historical-assignee cases.
+Seeds refuse production and preserve edited fixture rows.
 
-## Frontend Setup
+**Newly created** users use **Initial123** and require a password change. Reseeding
+does not reset changed passwords, roles or activation. Existing users may no longer
+accept Initial123. These are public local lab fixtures, never production credentials.
 
-Open another terminal from the project root:
+| Account | Role/state |
+|---|---|
+| alice@kmutt.ac.th, bob@kmutt.ac.th, charlie@kmutt.ac.th, diana@kmutt.ac.th | Active Requester |
+| evan@kmutt.ac.th | Inactive Requester |
+| lab4-empty@example.com | Active Requester with no seeded Tickets |
+| staff1@example.com, staff2@example.com, staff3@example.com | Active IT Staff |
+| staff-inactive@example.com | Inactive IT Staff |
+| admin@example.com | Active Administrator |
 
-```bash
-cd client
-```
+Ambiguous renamed legacy users are not recreated. See
+[authentication](docs/lab-03/authentication.md) and [seed evidence](docs/lab-04/database.md).
 
-Install dependencies:
+## Startup, builds and production origin
 
-```bash
-npm install
-```
+Use separate terminals: `npm run dev` from server and `npm run dev` from client.
+Defaults are API http://localhost:3000 and UI http://localhost:5173.
+Vite proxies /api to localhost:3000. Custom API ports require corresponding
+environment/proxy configuration.
 
-Copy the environment template:
-
-### Windows PowerShell
+From the repository root:
 
 ```powershell
-Copy-Item .env.example .env
+npm run build --prefix server
+npm run build --prefix client
 ```
 
-### macOS / Linux
+From server, `npm start` runs emitted `dist/src/index.js`. Client output is
+`client/dist`; `npm run preview` from client is a local preview, not production hosting.
 
-```bash
-cp .env.example .env
+Production requires one HTTPS origin for UI and /api, configured database/storage
+and `NODE_ENV=production` for Secure cookies. Credentialed cross-origin CORS is
+not enabled. Public health/categories diagnostics preserve Lab 1 functionality.
+
+## Safe regression commands
+
+After installing both dependency trees, from the repository root:
+
+```powershell
+npm test --prefix client
+npm run build --prefix server
+npm run build --prefix client
 ```
 
-The frontend uses same-origin `/api` requests. No API URL environment variable
-is required; legacy `VITE_API_URL` settings are no longer used.
+From server:
 
-Start the frontend:
-
-```bash
-npm run dev
-```
-
-The Vite development server normally runs at:
-
-```text
-http://localhost:5173
-```
-
-Vite forwards `/api` to `http://localhost:3000`. Cross-origin credentialed API access
-is not enabled. Production must serve the frontend and `/api` at one HTTPS origin.
-
-For Lab 3 authentication endpoints, local seed credentials, and the migration
-handoff, see [Authentication implementation notes](docs/lab-03/authentication.md).
-
----
-
-## Running Tests
-
-Run each command block from the project root after installing both server and client dependencies. Database-backed checks require PostgreSQL and `DATABASE_URL` in the environment or `server/.env`, with permission to create schemas.
-
-### Backend
-
-```bash
-cd server
-npm run build
+```powershell
 npm run test:isolated
-```
-
-`test:isolated` creates a temporary PostgreSQL schema, applies migrations, checks Prisma schema consistency, seeds fixtures, runs the complete Vitest suite, and removes that schema afterward. Use `npm run test:lab3` for only the Lab 3 server tests. The isolated workflow accommodates Lab 2 regression tests that replace database fixtures.
-
-### Frontend
-
-```bash
-cd client
-npm test
-npm run build
-```
-
-### Database-backed E2E
-
-```bash
-cd server
+npm run test:lab3
+npm run test:workflow
+npm run test:migration
 npm run test:e2e
 ```
 
-The E2E runner applies migrations, verifies the schema, and seeds a disposable database schema. It starts the API and Vite, runs `client/e2e/lab-03`, and cleans up its services, schema, and temporary attachment storage. The current Playwright configuration requires Microsoft Edge (`msedge`) installed locally.
+The complete isolated suite includes unit, integration, API, database, populated
+migration, seed, authorization and performance checks. **Do not run raw npm test
+in server against developer data**: legacy suites replace fixtures.
+The runner creates a random schema, deploys 11 migrations, verifies schema parity,
+seeds, tests, then removes its schema and temporary attachment storage.
 
-### Final verified results from main
+Focused checks from server:
 
-| Check | Result |
-|---|---|
-| Server isolated suite | 20 test files, 209 tests passed |
-| Server build | Passed |
-| Client suite | 14 test files, 123 tests passed |
-| Client production build | Passed |
-| Database-backed E2E | 18 tests passed |
-| Database migrations | All 10 applied successfully |
-| Prisma migration/schema verification | No difference detected |
-| Seed | Completed successfully |
+```powershell
+npm run test:isolated -- tests/lab-04
+npm run test:isolated -- tests/lab-04/migration.test.ts tests/lab-04/seed.test.ts
+npm run test:isolated -- tests/lab-04/performance-smoke.test.ts tests/lab-04/product-performance-smoke.test.ts
+npm run test:e2e -- lab-04/product-hardening.spec.ts
+```
 
-These are the final Lab 3 results from `main`. [Test documentation](docs/lab-03/tests.md) and [integration evidence](docs/lab-03/release-evidence.md) provide traceability and earlier checkpoints; historical counts there are not the final results above.
+E2E starts temporary API/Vite services and storage, seeds a disposable schema,
+discovers **both Lab 3 and Lab 4**, then cleans up. Edge, one worker and zero retries
+are configured. Controlled browser failures have narrow documented console allowances.
 
----
+## Demonstrations
 
-## Lab 3 Documentation
+### Requester and Requester Dashboard
 
-Lab 3 engineering and delivery documentation is in [docs/lab-03](docs/lab-03/):
+Sign in as Alice/Bob and change the initial password if required. Create a Ticket
+with active Category/System, summary, description and requested priority.
+Attach JPG/PNG/WEBP/PDF (5 MiB per file, five active files). Exercise My Tickets
+search/filters/pages/counts, detail, Public Comments, downloads and removal.
+Foreign requester Tickets remain unavailable.
 
-- [specification.md](docs/lab-03/specification.md) - Requirements, business rules, and acceptance criteria.
-- [api-spec.md](docs/lab-03/api-spec.md) - API endpoints, authorization, validation, and response contracts.
-- [ui-spec.md](docs/lab-03/ui-spec.md) - Role-specific screens, navigation, and UI requirements.
-- [tests.md](docs/lab-03/tests.md) - Test design, requirement traceability, and execution evidence.
-- [reviewer.md](docs/lab-03/reviewer.md) - Peer-review comments and merge outcomes.
-- [ai-use.md](docs/lab-03/ai-use.md) - AI-use evidence and reflection.
+After uncertain creation, unchanged intent retries the same key; changed intent
+requires confirmation. Upload failures do not undo creation: review successful/
+failed files, open the existing Ticket and retry only failures. If upload results
+are uncertain, inspect existing attachments before reselecting files.
+Once creation is confirmed, retries review that existing Ticket and never
+automatically resend the original attachment batch. This also applies when logout
+fails during upload; the original upload may still finish. Use the confirmed
+Start a new Ticket action to clear the draft and begin a separate intent.
 
----
+Open Dashboard for personal totals, active/attention/status counts, recent updates
+and currently resolved Tickets. Cards drill into matching My Tickets filters;
+rows open detail. Refresh errors retain truthful prior data. Use the empty
+requester for zero states. Problem Appears Resolved remains advisory.
 
-## Authentication and Roles
+### IT Staff and Staff Dashboard
 
-Users sign in with email and password. The authenticated user determines identity and Requester ownership. Users with an administrator-set initial password must change it before normal application access, including after an Administrator sets a new initial password.
+Sign in as Staff One. Search/filter/page the shared Queue, claim an unassigned
+Ticket or assign eligible Staff/Admin, change IT Priority, download attachments,
+post Public Comments and private Internal Notes. Ticket ownership and Action
+assignment are independent.
 
-- **Requester:** Creates tickets and accesses only their own tickets and attachments, posts Public Comments, and indicates Problem Appears Resolved.
-- **IT Staff:** Uses the shared Ticket Queue and Ticket Detail to manage assignment, IT Priority, permitted status changes, Public Comments, and Internal Notes.
-- **Administrator:** Has staff ticket capabilities and manages user accounts, roles, activation, and initial passwords.
+Dashboard shows global/active/unassigned/own-active counts, status/IT-priority
+buckets, recent Tickets and Actions originally recorded by this identity.
+Exercise card/row drilldowns and Refresh. Admin shares this view with personal subsets.
 
-Each user has one role. Navigation reflects that role, and the backend enforces authorization, ownership boundaries, and password-change restrictions. Internal Notes are accessible only to IT Staff and Administrators.
+### Administrator
 
----
+Sign in as Admin. Create/edit users with one role, change activation and set
+another user's initial password. Demonstrate initial-password and inactive access
+restrictions. Self-deactivation and removing the last active Admin are protected.
+User deletion and reference-data administration are not provided.
 
-## Final Release Verification
+### Actions Taken and complete Ticket lifecycle
 
-Lab 3 feature branches were peer-reviewed and integrated through `lab3-staging`, followed by final integration into `main`. Final verification on `main` passed the server and client builds, isolated server tests, client tests, database-backed E2E, migration/schema checks, and seed execution, with results summarized above.
+On an active Ticket add PENDING work with Description, Result, Follow-up flag/
+conditional Note and optional Attachment Notes. Original date/performer are automatic.
+Assign/reassign active Staff/Admin independently of Ticket Owner; complete with valid
+evidence or cancel with an explicit Result explaining cancellation.
+Terminal Actions allow content correction, not state reversal/reassignment/deletion.
 
-[Peer-review evidence](docs/lab-03/reviewer.md) and the [Lab 3 documentation](docs/lab-03/) record the implemented requirements, testing, review outcomes, and AI use.
+Move NEW to OPEN/IN_PROGRESS using allowed destinations. Resolution requires
+at least one COMPLETED Action, no PENDING Actions and no COMPLETED follow-up flags.
+CANCELLED Actions neither qualify nor block. Clearing completed follow-up needs
+a new explanation. Review evidence, resolve, close, reopen for more work and
+re-resolve/cancel through permitted transitions. Legacy zero-Action RESOLVED
+Tickets may close. Reopen retains Action history. Stale writes require explicit
+refresh/review and are never automatically repeated.
+
+## Verification, limitations and documents
+
+The verified pre-change baseline at `9076bad` was 587 server tests, 332 client tests,
+55 browser tests and both builds passing. Current working-tree results, initial
+failures and retries are in [Issue #63 evidence](docs/lab-04/final-hardening.md).
+After R-01 and R-02 corrections, verification passed 627 server tests, 411 client tests,
+58 browser tests and both production builds. Database verification used disposable
+schemas and temporary attachment storage.
+This is branch/working-tree evidence, not a released main commit. Independent
+critical review remains required.
+
+Automated focus/keyboard/width/text-reflow checks do not establish screen-reader,
+contrast or actual browser-zoom compliance. Bounded local smoke is not production
+load evidence; communication/user lists retain their unpaged contracts.
+Production-scale migration timing remains unverified.
+
+- [Lab 1 tests](docs/lab-01/tests.md).
+- [Lab 2 specification](docs/lab-02/specification.md), [API](docs/lab-02/api-spec.md), [tests](docs/lab-02/tests.md).
+- [Lab 3 specification](docs/lab-03/specification.md), [authentication](docs/lab-03/authentication.md), [release evidence](docs/lab-03/release-evidence.md).
+- [Lab 4 specification](docs/lab-04/specification.md), [API](docs/lab-04/api-spec.md), [UI](docs/lab-04/ui-spec.md).
+- [Database](docs/lab-04/database.md), [Actions backend](docs/lab-04/actions-backend.md), [Actions UI](docs/lab-04/actions-ui.md), [workflow](docs/lab-04/ticket-workflow.md).
+- [Staff Dashboard](docs/lab-04/staff-dashboard.md), [Requester Dashboard](docs/lab-04/requester-dashboard.md).
+- [Tests](docs/lab-04/tests.md), [review preparation](docs/lab-04/reviewer.md), [AI use](docs/lab-04/ai-use.md).

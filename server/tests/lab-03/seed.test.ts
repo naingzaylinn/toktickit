@@ -9,7 +9,7 @@ describe("Issue 2 local development seed", () => {
       for (const name of await migrationNames()) await applyMigration(prisma, name);
       // Exercise installations whose original requester UUID differs from seed.ts.
       const existing = await prisma.developmentRequester.create({ data: { name: "Alice Developer", email: DEVELOPMENT_REQUESTERS[0].email } });
-      await seed(prisma);
+      await seed(prisma, { lab4: false });
       const users = await prisma.user.findMany({ orderBy: { id: "asc" } });
       expect(users.filter(user => user.role === "REQUESTER" && user.isActive)).toHaveLength(4);
       expect(users.filter(user => user.role === "REQUESTER" && !user.isActive)).toHaveLength(1);
@@ -45,7 +45,7 @@ describe("Issue 2 local development seed", () => {
       const changedHash = await hashPassword("Changed123");
       await prisma.user.update({ where: { id: existing.id }, data: { passwordHash: changedHash, mustChangePassword: false } });
       const before = await prisma.user.findMany({ orderBy: { id: "asc" } });
-      await seed(prisma);
+      await seed(prisma, { lab4: false });
       expect(await prisma.user.findMany({ orderBy: { id: "asc" } })).toEqual(before);
       expect(await prisma.ticket.findMany({ orderBy: { id: "asc" } })).toEqual(tickets);
       expect(await prisma.publicComment.findMany()).toEqual(comments);
