@@ -8,6 +8,14 @@ const user: api.AuthUser = { id: "user", name: "Test User", email: "test@example
 beforeEach(() => vi.restoreAllMocks());
 
 describe("authentication form accessibility and failure states", () => {
+  it("AX-05: password validation focuses the first invalid field and preserves values", async () => {
+    render(<AuthScreen user={user} onAuthenticated={vi.fn()} onLogout={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Change Password" }));
+    const current = screen.getByLabelText("Current Password"); await waitFor(() => expect(current).toHaveFocus()); expect(current).toHaveAccessibleDescription(/required/);
+    fireEvent.change(current, { target: { value: "Initial123" } }); fireEvent.change(screen.getByLabelText("New Password"), { target: { value: "short" } });
+    await userEvent.click(screen.getByRole("button", { name: "Change Password" }));
+    await waitFor(() => expect(screen.getByLabelText("New Password")).toHaveFocus()); expect(current).toHaveValue("Initial123");
+  });
   it("labels login controls and displays a safe authentication failure", async () => {
     vi.spyOn(api, "login").mockRejectedValue(new api.ApiError("INVALID_CREDENTIALS", "Unable to sign in with these credentials.", 401));
     render(<AuthScreen user={null} onAuthenticated={vi.fn()} onLogout={vi.fn()} />);

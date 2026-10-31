@@ -22,6 +22,7 @@ export default function UserManagementScreen({ currentUser }: { currentUser: Aut
   const [message, setMessage] = useState("");
   const [forbidden, setForbidden] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [loadedRevision, setLoadedRevision] = useState(-1);
   const [editing, setEditing] = useState<ManagedUser | "new" | null>(null);
   const [draft, setDraft] = useState<UserDraft>(blank);
   const [passwordTarget, setPasswordTarget] = useState<ManagedUser | null>(null);
@@ -29,6 +30,21 @@ export default function UserManagementScreen({ currentUser }: { currentUser: Aut
   const [confirm, setConfirm] = useState("");
 
   const formHeading = useRef<HTMLHeadingElement>(null);
+  const screenHeading = useRef<HTMLHeadingElement>(null);
+  const focusOrigin = useRef<{ element: HTMLElement; id: string; identity: string } | null>(null);
+  const restoreFocus = useRef(false);
+  const accessIdentity = `${currentUser.id}:${currentUser.role}:${currentUser.isActive}:${currentUser.mustChangePassword}`;
+  const currentAccess = useRef(accessIdentity); currentAccess.current = accessIdentity;
+  const captureFocus = (element: HTMLElement) => { focusOrigin.current = { element, id: element.id, identity: accessIdentity }; restoreFocus.current = false; };
+  useEffect(() => {
+    if (!restoreFocus.current || editing || passwordTarget || busy || loading || loadedRevision < revision) return;
+    restoreFocus.current = false;
+    const origin = focusOrigin.current;
+    if (!origin || origin.identity !== currentAccess.current || currentUser.role !== "ADMINISTRATOR" || !currentUser.isActive || currentUser.mustChangePassword) return;
+    const trigger = origin.element.isConnected ? origin.element : document.getElementById(origin.id);
+    (trigger && !trigger.matches(":disabled") ? trigger : screenHeading.current)?.focus();
+  }, [editing, passwordTarget, busy, loading, loadedRevision, revision, accessIdentity]);
+  useEffect(() => () => { restoreFocus.current = false; focusOrigin.current = null; }, [accessIdentity]);
   const [formActivation, setFormActivation] = useState(0);
   useEffect(() => {
     if (!formActivation) return;
@@ -40,14 +56,15 @@ export default function UserManagementScreen({ currentUser }: { currentUser: Aut
   useEffect(() => {
     if (currentUser.role !== "ADMINISTRATOR") { setForbidden(true); setLoading(false); return; }
     let active = true;
+    const controller = new AbortController();
     setLoading(true);
-    const timer = setTimeout(() => getManagedUsers(search, role).then(data => {
-      if (active) { setUsers(data); setError(""); setListFailed(false); setForbidden(false); }
+    const timer = setTimeout(() => getManagedUsers(search, role, { signal: controller.signal, isCurrent: () => active }).then(data => {
+      if (active) { setUsers(data); setError(""); setListFailed(false); setForbidden(false); setLoadedRevision(revision); }
     }).catch(err => {
-      if (active) { setUsers([]); setMessage(""); setListFailed(true); setForbidden(err instanceof ApiError && err.status === 403); setError("Unable to load users. Please retry."); }
+      if (active) { setUsers([]); setMessage(""); setListFailed(true); setForbidden(err instanceof ApiError && err.status === 403); setError("Unable to load users. Please retry."); setLoadedRevision(revision); }
     }).finally(() => { if (active) setLoading(false); }), search ? 250 : 0);
-    return () => { active = false; clearTimeout(timer); };
-  }, [currentUser.role, search, role, revision]);
+    return () => { active = false; controller.abort(); clearTimeout(timer); };
+  }, [currentUser.id, currentUser.role, search, role, revision]);
 
   const openEdit = (user: ManagedUser | "new") => {
     setFormActivation(value => value + 1);
@@ -67,9 +84,12 @@ export default function UserManagementScreen({ currentUser }: { currentUser: Aut
     setFieldErrors(fields); setError(""); setMessage("");
     if (Object.keys(fields).length) return;
     setBusy(true); setError(""); setMessage("");
+    const originAccess = accessIdentity;
     try {
       if (editing === "new") await createManagedUser({ ...draft, initialPassword: password });
       else if (editing) await updateManagedUser(editing.id, draft);
+      if (originAccess !== currentAccess.current) return;
+      restoreFocus.current = true;
       setEditing(null); setPassword(""); setMessage(editing === "new" ? "User created." : "User updated."); setRevision(value => value + 1);
     } catch (err) { setError(err instanceof ApiError && err.status === 409 ? err.message : "Unable to save user. Please retry."); }
     finally { setBusy(false); }
@@ -84,8 +104,11 @@ export default function UserManagementScreen({ currentUser }: { currentUser: Aut
     if (Object.keys(fields).length) return;
     if (!passwordTarget) return;
     setBusy(true); setError(""); setMessage("");
+    const originAccess = accessIdentity;
     try {
       await setManagedInitialPassword(passwordTarget.id, password);
+      if (originAccess !== currentAccess.current) return;
+      restoreFocus.current = true;
       setPasswordTarget(null); setPassword(""); setConfirm(""); setMessage("Initial password set. The user must change it before normal access."); setRevision(value => value + 1);
     } catch { setError("Unable to set the initial password. Please retry."); }
     finally { setBusy(false); }
@@ -100,11 +123,11 @@ export default function UserManagementScreen({ currentUser }: { currentUser: Aut
 
   if (forbidden) return <div role="alert" className="alert alert-danger">You are not permitted to manage users.</div>;
   return <section className="user-management-screen">
-    <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4"><h1>User Management</h1><button className="btn btn-primary-green" disabled={busy} onClick={() => openEdit("new")}>Create User</button></div>
+    <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4"><h1 ref={screenHeading} tabIndex={-1}>User Management</h1><button className="btn btn-primary-green" disabled={busy} id="create-user" onClick={event => { captureFocus(event.currentTarget); openEdit("new"); }}>Create User</button></div>
     {message && <div role="status" className="alert alert-success">{message}</div>}
     {error && <div role="alert" className="alert alert-danger">{error} {loading === false && !editing && !passwordTarget && <button className="btn btn-sm btn-outline-danger ms-2" onClick={() => setRevision(value => value + 1)}>Retry</button>}</div>}
     <div className="row g-2 mb-3"><div className="col-12 col-md-8"><label htmlFor="user-search" className="form-label">Search by name or email</label><input id="user-search" className="form-control" value={search} onChange={e => setSearch(e.target.value)} /></div><div className="col-12 col-md-4"><label htmlFor="role-filter" className="form-label">Role</label><select id="role-filter" className="form-select" value={role} onChange={e => setRole(e.target.value)}><option value="">All roles</option>{roles.map(item => <option key={item} value={item}>{label(item)}</option>)}</select></div></div>
-    {loading ? <p role="status">Loading users...</p> : listFailed ? null : users.length === 0 ? <p>{search || role ? "No users match your search or filter." : "No users are available."}</p> : <div className="row g-3">{users.map(user => <div className="col-12 col-lg-6" key={user.id}><article className="zen-card h-100 p-3"><h2 className="h5 text-break">{user.name}</h2><p className="text-break mb-2">{user.email}</p><p className="d-flex flex-wrap gap-2 mb-3"><span className="status-badge status-badge-info">{label(user.role)}</span><span className={`status-badge ${user.isActive ? "status-badge-success" : "status-badge-neutral"}`}>{user.isActive ? "Active" : "Inactive"}</span>{user.mustChangePassword && <span className="status-badge status-badge-warning">Password change required</span>}</p><div className="d-flex flex-wrap gap-2"><button className="btn btn-sm btn-outline-primary-green" disabled={busy} onClick={() => openEdit(user)}>Edit</button><button className={`btn btn-sm ${user.isActive ? "btn-outline-danger" : "btn-outline-primary-green"}`} disabled={busy || user.id === currentUser.id && user.isActive} onClick={() => toggle(user)}>{user.isActive ? "Deactivate" : "Activate"}</button><button className="btn btn-sm btn-outline-primary-green" disabled={busy || user.id === currentUser.id} onClick={() => { setFormActivation(value => value + 1); setEditing(null); setPasswordTarget(user); setPassword(""); setConfirm(""); setError(""); setFieldErrors({}); setMessage(""); }}>Set initial password</button></div></article></div>)}</div>}
+    {loading ? <p role="status">Loading users...</p> : listFailed ? null : users.length === 0 ? <p>{search || role ? "No users match your search or filter." : "No users are available."}</p> : <div className="row g-3">{users.map(user => <div className="col-12 col-lg-6" key={user.id}><article className="zen-card h-100 p-3"><h2 className="h5 text-break">{user.name}</h2><p className="text-break mb-2">{user.email}</p><p className="d-flex flex-wrap gap-2 mb-3"><span className="status-badge status-badge-info">{label(user.role)}</span><span className={`status-badge ${user.isActive ? "status-badge-success" : "status-badge-neutral"}`}>{user.isActive ? "Active" : "Inactive"}</span>{user.mustChangePassword && <span className="status-badge status-badge-warning">Password change required</span>}</p><div className="d-flex flex-wrap gap-2"><button className="btn btn-sm btn-outline-primary-green" disabled={busy} id={`edit-user-${user.id}`} onClick={event => { captureFocus(event.currentTarget); openEdit(user); }}>Edit</button><button className={`btn btn-sm ${user.isActive ? "btn-outline-danger" : "btn-outline-primary-green"}`} disabled={busy || user.id === currentUser.id && user.isActive} onClick={() => toggle(user)}>{user.isActive ? "Deactivate" : "Activate"}</button><button className="btn btn-sm btn-outline-primary-green" disabled={busy || user.id === currentUser.id} id={`password-user-${user.id}`} onClick={event => { captureFocus(event.currentTarget); setFormActivation(value => value + 1); setEditing(null); setPasswordTarget(user); setPassword(""); setConfirm(""); setError(""); setFieldErrors({}); setMessage(""); }}>Set initial password</button></div></article></div>)}</div>}
     {editing && <form onSubmit={save} noValidate aria-busy={busy} className="zen-card p-3 p-md-4 mt-4">
       <h2 ref={formHeading} tabIndex={-1} className="h4">{editing === "new" ? "Create User" : `Edit ${editing.name}`}</h2>
       <FormField id="managed-user-name" label="Name" error={fieldErrors.name}><input className="form-control" required value={draft.name} onChange={e => { setDraft({ ...draft, name: e.target.value }); clearField("name"); }} /></FormField>
@@ -112,13 +135,13 @@ export default function UserManagementScreen({ currentUser }: { currentUser: Aut
       <FormField id="managed-user-role" label="Role" error={fieldErrors.role}><select className="form-select" value={draft.role} onChange={e => { setDraft({ ...draft, role: e.target.value as UserRole }); clearField("role"); }}>{roles.map(item => <option value={item} key={item}>{label(item)}</option>)}</select></FormField>
       <label className="form-check my-2"><input className="form-check-input" type="checkbox" checked={draft.isActive} onChange={e => setDraft({ ...draft, isActive: e.target.checked })} /> Active</label>
       {editing === "new" && <FormField id="managed-user-password" label="Initial Password" helperText={passwordGuidance} error={fieldErrors.password}><input className="form-control" type="password" autoComplete="new-password" required value={password} onChange={e => { setPassword(e.target.value); clearField("password"); }} /></FormField>}
-      <div className="d-flex flex-wrap gap-2"><button className="btn btn-primary-green" disabled={busy}>{busy ? "Saving..." : "Save User"}</button><button type="button" className="btn btn-outline-secondary" disabled={busy} onClick={() => { setEditing(null); setPassword(""); setFieldErrors({}); }}>Cancel</button></div>
+      <div className="d-flex flex-wrap gap-2"><button className="btn btn-primary-green" disabled={busy}>{busy ? "Saving..." : "Save User"}</button><button type="button" className="btn btn-outline-secondary" disabled={busy} onClick={() => { restoreFocus.current = true; setEditing(null); setPassword(""); setFieldErrors({}); }}>Cancel</button></div>
     </form>}
     {passwordTarget && <form onSubmit={setInitial} noValidate aria-busy={busy} className="zen-card p-3 p-md-4 mt-4">
       <h2 ref={formHeading} tabIndex={-1} className="h4">Set initial password for {passwordTarget.name}</h2><p>The user must change this password before normal access.</p>
       <FormField id="managed-initial-password" label="New initial password" helperText={passwordGuidance} error={fieldErrors.password}><input className="form-control" type="password" autoComplete="new-password" required value={password} onChange={e => { setPassword(e.target.value); clearField("password"); clearField("confirm"); }} /></FormField>
       <FormField id="managed-confirm-password" label="Confirm initial password" error={fieldErrors.confirm}><input className="form-control" type="password" autoComplete="new-password" required value={confirm} onChange={e => { setConfirm(e.target.value); clearField("confirm"); }} /></FormField>
-      <div className="d-flex flex-wrap gap-2"><button className="btn btn-primary-green" disabled={busy}>{busy ? "Saving..." : "Set Password"}</button><button type="button" className="btn btn-outline-secondary" disabled={busy} onClick={() => { setPasswordTarget(null); setPassword(""); setConfirm(""); setFieldErrors({}); }}>Cancel</button></div>
+      <div className="d-flex flex-wrap gap-2"><button className="btn btn-primary-green" disabled={busy}>{busy ? "Saving..." : "Set Password"}</button><button type="button" className="btn btn-outline-secondary" disabled={busy} onClick={() => { restoreFocus.current = true; setPasswordTarget(null); setPassword(""); setConfirm(""); setFieldErrors({}); }}>Cancel</button></div>
     </form>}
   </section>;
 }

@@ -70,6 +70,7 @@ function queueResponse(data = [ticket]) {
 describe("Lab 3 Staff Ticket Queue UI", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        window.history.replaceState({}, "", "/staff/tickets");
 
         vi.mocked(getStaffTickets).mockResolvedValue(
             queueResponse()
@@ -200,7 +201,7 @@ describe("Lab 3 Staff Ticket Queue UI", () => {
                     order: "asc",
                     page: 1,
                 })
-            );
+            , expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
         });
     });
 
@@ -247,7 +248,7 @@ describe("Lab 3 Staff Ticket Queue UI", () => {
                 search: "wifi",
                 page: 1,
             })
-        );
+        , expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
     });
 
     it("shows a true empty queue state", async () => {
@@ -413,7 +414,7 @@ describe("Lab 3 Staff Ticket Queue UI", () => {
                     page: 2,
                     pageSize: 20,
                 })
-            );
+            , expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
         });
 
         fireEvent.change(
@@ -431,7 +432,7 @@ describe("Lab 3 Staff Ticket Queue UI", () => {
                     page: 1,
                     pageSize: 50,
                 })
-            );
+            , expect.objectContaining({ signal: expect.any(AbortSignal), isCurrent: expect.any(Function) }));
         });
     });
 });

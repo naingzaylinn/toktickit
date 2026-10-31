@@ -4,6 +4,7 @@ import request from "supertest";
 import { randomUUID } from "node:crypto";
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
+import { cleanupTickets } from "./cleanup.js";
 
 describe("Feature-E: My Tickets API", () => {
     const prisma = getPrisma();
@@ -19,10 +20,7 @@ describe("Feature-E: My Tickets API", () => {
     beforeEach(async () => {
         vi.restoreAllMocks();
 
-        await prisma.ticketEvent.deleteMany();
-        await prisma.attachment.deleteMany();
-        await prisma.ticket.deleteMany();
-        await prisma.ticketSequence.deleteMany();
+        await cleanupTickets(prisma);
 
         const hardware = await prisma.category.findUniqueOrThrow({
             where: { name: "Hardware" },
@@ -478,7 +476,8 @@ describe("Feature-E: My Tickets API", () => {
             "pageSize=15",
             "sortBy=invalid",
             "requestedPriority=Critical",
-            "currentStatus=Closed",
+            // Lab 4 accepts Closed; uppercase remains invalid for this legacy filter.
+            "currentStatus=CLOSED",
             "categoryId=abc",
         ];
 

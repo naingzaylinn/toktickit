@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     RequesterIdentity,
+    ApiError, requesterStatusFromDashboard, RequesterTicketStatus,
     getMyTickets,
     getRelatedSystems,
     getTicketCategories,
@@ -18,7 +19,7 @@ import LoadingSpinner from "./common/LoadingSpinner.js";
 import StatusBadge from "./common/StatusBadge.js";
 
 interface MyTicketsScreenProps {
-    currentRequester: RequesterIdentity;
+    currentRequester: RequesterIdentity & { role?: string };
     onCreateTicket: () => void;
     onOpenTicket: (ticketId: string) => void;
 }
@@ -32,7 +33,8 @@ const DEFAULT_PAGINATION: TicketPagination = {
     hasPreviousPage: false,
 };
 
-export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
+export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = props => <MyTicketsContent key={props.currentRequester.id + ":" + (props.currentRequester.role ?? "REQUESTER")} {...props}/>;
+const MyTicketsContent: React.FC<MyTicketsScreenProps> = ({
     currentRequester,
     onCreateTicket,
     onOpenTicket,
@@ -41,32 +43,43 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
     const [categories, setCategories] = useState<TicketReferenceCategory[]>([]);
     const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
 
-    const [searchInput, setSearchInput] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const initial = useRef(new URLSearchParams(window.location.search)).current;
+    const [searchInput, setSearchInput] = useState(initial.get("q") ?? "");
+    const [debouncedSearch, setDebouncedSearch] = useState(initial.get("q") ?? "");
 
-    const [categoryId, setCategoryId] = useState("");
-    const [relatedSystemId, setRelatedSystemId] = useState("");
-    const [requestedPriority, setRequestedPriority] = useState("");
-    const [currentStatus, setCurrentStatus] = useState("");
-    const [sortBy, setSortBy] = useState<TicketSort>("newest");
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
+    const [categoryId, setCategoryId] = useState(initial.get("categoryId") ?? "");
+    const [relatedSystemId, setRelatedSystemId] = useState(initial.get("relatedSystemId") ?? "");
+    const [requestedPriority, setRequestedPriority] = useState(initial.get("requestedPriority") ?? "");
+    const [currentStatus, setCurrentStatus] = useState(initial.get("currentStatus") ?? "");
+    const [sortBy, setSortBy] = useState<TicketSort>((initial.get("sortBy") as TicketSort) || "newest");
+    const [page, setPage] = useState(Number(initial.get("page") ?? 1));
+    const [pageSize, setPageSize] = useState<10 | 20 | 50>(Number(initial.get("pageSize") ?? 10) as 10 | 20 | 50);
 
     const [pagination, setPagination] =
         useState<TicketPagination>(DEFAULT_PAGINATION);
 
     const [loading, setLoading] = useState(true);
     const [referenceLoading, setReferenceLoading] = useState(true);
+    const [referenceError, setReferenceError] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const firstSearchRender = useRef(true);
+    const [statusGroup, setStatusGroup] = useState(initial.get("statusGroup") ?? "");
+    const generation = useRef(0);
+    const pending = useRef<AbortController | null>(null);
+    const referencePending = useRef<AbortController | null>(null);
+    const skipUrlSync = useRef(true);
+    const ownNavigation = useRef(false);
+    const [routeRevision, setRouteRevision] = useState(0);
+    const [denied, setDenied] = useState(false);
 
     const hasActiveQuery =
         debouncedSearch.length > 0 ||
         categoryId !== "" ||
         relatedSystemId !== "" ||
         requestedPriority !== "" ||
-        currentStatus !== "";
+        currentStatus !== "" || statusGroup !== "";
+
+    const hasQuerySettings = hasActiveQuery || sortBy !== "newest" || pageSize !== 10 || page !== 1;
 
     const query = useMemo<MyTicketsQuery>(() => {
         return {
@@ -76,7 +89,8 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
             requestedPriority:
                 (requestedPriority as RequestedPriority) || undefined,
             currentStatus:
-                currentStatus === "New" ? "New" : undefined,
+                (currentStatus as RequesterTicketStatus) || undefined,
+            statusGroup: (statusGroup as "active") || undefined,
             sortBy,
             page,
             pageSize,
@@ -87,6 +101,7 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
         relatedSystemId,
         requestedPriority,
         currentStatus,
+        statusGroup, routeRevision,
         sortBy,
         page,
         pageSize,
@@ -94,68 +109,77 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
 
     useEffect(() => {
         const timer = window.setTimeout(() => {
+            if (searchInput.trim() !== debouncedSearch) setPage(1);
             setDebouncedSearch(searchInput.trim());
         }, 300);
-
         return () => window.clearTimeout(timer);
-    }, [searchInput]);
+    }, [searchInput, debouncedSearch]);
 
     useEffect(() => {
-        if (firstSearchRender.current) {
-            firstSearchRender.current = false;
-            return;
-        }
-
-        setPage(1);
-    }, [debouncedSearch]);
-
-    useEffect(() => {
-        const loadReferenceData = async () => {
-            setReferenceLoading(true);
-
-            try {
-                const [categoryData, systemData] = await Promise.all([
-                    getTicketCategories(),
-                    getRelatedSystems(),
-                ]);
-
-                setCategories(categoryData);
-                setRelatedSystems(systemData);
-            } catch {
-                setError(
-                    "Unable to load ticket filters. Please try again."
-                );
-            } finally {
-                setReferenceLoading(false);
-            }
-        };
-
-        loadReferenceData();
-    }, [currentRequester.id]);
+        let active = true;
+        const controller = new AbortController();
+        referencePending.current = controller;
+        const context = { signal: controller.signal, isCurrent: () => active };
+        Promise.all([getTicketCategories(context), getRelatedSystems(context)]).then(([categoryData, systemData]) => {
+            if (active) { setCategories(categoryData); setRelatedSystems(systemData); }
+        }).catch(() => { if (active) setReferenceError("Unable to load ticket filters. Please try again."); })
+          .finally(() => { if (active) setReferenceLoading(false); });
+        return () => { active = false; controller.abort(); };
+    }, []);
 
     const loadTickets = async () => {
-        setLoading(true);
-        setError(null);
-
+        pending.current?.abort();
+        const controller = new AbortController();
+        pending.current = controller;
+        const token = ++generation.current;
+        setLoading(true); setError(null);
         try {
-            const response = await getMyTickets(
-                query
-            );
-
-            setTickets(response.data);
-            setPagination(response.pagination);
-        } catch {
-            setError(
-                "Unable to load your tickets right now. Please try again."
-            );
-        } finally {
-            setLoading(false);
-        }
+            const response = await getMyTickets(query, { signal: controller.signal, isCurrent: () => token === generation.current });
+            if (token !== generation.current) return;
+            setTickets(response.data); setPagination(response.pagination);
+        } catch (cause) {
+            if (token !== generation.current) return;
+            setTickets([]);
+            if (cause instanceof ApiError && ([401, 403].includes(cause.status) || cause.code === "PASSWORD_CHANGE_REQUIRED")) {
+                ++generation.current; setDenied(true); setLoading(false); return;
+            }
+            setError("Unable to load your tickets right now. Please try again.");
+        } finally { if (token === generation.current) setLoading(false); }
     };
-
     useEffect(() => {
-        loadTickets();
-    }, [currentRequester.id, query]);
+        void loadTickets();
+        return () => { pending.current?.abort(); ++generation.current; };
+    }, [query]);
+    useEffect(() => {
+        if (skipUrlSync.current) { skipUrlSync.current = false; return; }
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(query)) {
+            if (value === undefined || key === "page" && value === 1 || key === "pageSize" && value === 10 || key === "sortBy" && value === "newest") continue;
+            params.set(key, String(value));
+        }
+        const search = params.size ? "?" + params.toString() : "";
+        if (window.location.search !== search) {
+            ownNavigation.current = true;
+            window.history.pushState({}, "", "/tickets" + search);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            ownNavigation.current = false;
+        }
+    }, [query]);
+    useEffect(() => {
+        const restore = () => {
+            if (ownNavigation.current || !["/tickets", "/", "/login"].includes(window.location.pathname)) return;
+            const params = new URLSearchParams(window.location.search);
+            skipUrlSync.current = true; ++generation.current; setRouteRevision(value => value + 1);
+            setSearchInput(params.get("q") ?? ""); setDebouncedSearch(params.get("q") ?? "");
+            setCategoryId(params.get("categoryId") ?? ""); setRelatedSystemId(params.get("relatedSystemId") ?? "");
+            setRequestedPriority(params.get("requestedPriority") ?? ""); setCurrentStatus(params.get("currentStatus") ?? "");
+            setStatusGroup(params.get("statusGroup") ?? ""); setSortBy((params.get("sortBy") as TicketSort) || "newest");
+            setPage(Number(params.get("page") ?? 1)); setPageSize(Number(params.get("pageSize") ?? 10) as 10 | 20 | 50);
+        };
+        const clear = () => { pending.current?.abort(); referencePending.current?.abort(); ++generation.current; setTickets([]); setCategories([]); setRelatedSystems([]); setDenied(true); setLoading(false); };
+        window.addEventListener("popstate", restore); window.addEventListener("session-access-changed", clear);
+        return () => { pending.current?.abort(); ++generation.current; window.removeEventListener("popstate", restore); window.removeEventListener("session-access-changed", clear); };
+    }, []);
 
     const resetToPageOne = () => {
         setPage(1);
@@ -168,6 +192,7 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
         setRelatedSystemId("");
         setRequestedPriority("");
         setCurrentStatus("");
+        setStatusGroup("");
         setSortBy("newest");
         setPage(1);
         setPageSize(10);
@@ -205,6 +230,7 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
         );
     };
 
+    if (denied) return <p role="alert">My Tickets is unavailable for your session or role.</p>;
     return (
         <div className="my-tickets-screen">
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
@@ -228,6 +254,12 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
 
             <div className="zen-card p-3 p-md-4 mb-4">
                 <div className="row g-3">
+                    <div className="col-12 col-md-6 col-lg-3">
+                        <label htmlFor="ticket-status-group" className="form-label fw-semibold">Status group</label>
+                        <select id="ticket-status-group" className="form-select" value={statusGroup} onChange={event => { setStatusGroup(event.target.value); resetToPageOne(); }}>
+                            <option value="">All Tickets</option><option value="active">Active Tickets</option>
+                        </select>
+                    </div>
                     <div className="col-12">
                         <label
                             htmlFor="ticket-search"
@@ -267,6 +299,7 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
                             }}
                         >
                             <option value="">All Categories</option>
+                            {categoryId && !categories.some(category => String(category.id) === categoryId) && <option value={categoryId}>Previously selected category (ID: {categoryId})</option>}
 
                             {categories.map((category) => (
                                 <option
@@ -298,6 +331,7 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
                             }}
                         >
                             <option value="">All Systems</option>
+                            {relatedSystemId && !relatedSystems.some(system => system.id === relatedSystemId) && <option value={relatedSystemId}>Previously selected system (ID: {relatedSystemId})</option>}
 
                             {relatedSystems.map((system) => (
                                 <option
@@ -353,7 +387,7 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
                             }}
                         >
                             <option value="">All Statuses</option>
-                            <option value="New">New</option>
+                            {Object.values(requesterStatusFromDashboard).map(status => <option key={status} value={status}>{status.replace(/([a-z])([A-Z])/g, "$1 $2")}</option>)}
                         </select>
                     </div>
 
@@ -422,7 +456,7 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
                             type="button"
                             className="btn btn-outline-secondary w-100"
                             onClick={clearFilters}
-                            disabled={!hasActiveQuery}
+                            disabled={!hasQuerySettings}
                         >
                             Clear Filters
                         </button>
@@ -430,6 +464,7 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
                 </div>
             </div>
 
+            {referenceError && <ErrorAlert message={referenceError}/>}
             {error && (
                 <ErrorAlert
                     message={error}
@@ -439,8 +474,10 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
 
             {loading ? (
                 <LoadingSpinner message="Loading your tickets..." />
-            ) : tickets.length === 0 ? (
-                hasActiveQuery ? (
+            ) : error ? null : tickets.length === 0 ? (
+                pagination.totalItems > 0 ? (
+                    <EmptyState title="No Tickets on This Page" description="The requested page has no results. Return to the first page to view matching Tickets." actionLabel="Go to First Page" onAction={resetToPageOne}/>
+                ) : hasActiveQuery ? (
                     <EmptyState
                         title="No Matching Tickets"
                         description="No tickets match your search and filter criteria."
@@ -477,24 +514,16 @@ export const MyTicketsScreen: React.FC<MyTicketsScreenProps> = ({
                                     {tickets.map((ticket) => (
                                         <tr
                                             key={ticket.id}
-                                            tabIndex={0}
-                                            role="button"
                                             style={{ cursor: "pointer" }}
-                                            onClick={() =>
-                                                onOpenTicket(ticket.id)
-                                            }
-                                            onKeyDown={(event) => {
-                                                if (
-                                                    event.key === "Enter" ||
-                                                    event.key === " "
-                                                ) {
-                                                    event.preventDefault();
-                                                    onOpenTicket(ticket.id);
-                                                }
+                                            onClick={event => {
+                                                if (!(event.target as HTMLElement).closest("a, button, input, select, textarea")) onOpenTicket(ticket.id);
                                             }}
                                         >
                                             <td className="fw-semibold text-primary-green">
-                                                {ticket.ticketNumber}
+                                                <a href={"/tickets/" + encodeURIComponent(ticket.id)} onClick={event => {
+                                                    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                                                    event.preventDefault(); onOpenTicket(ticket.id);
+                                                }}>{ticket.ticketNumber}</a>
                                             </td>
 
                                             <td>{ticket.summary}</td>
