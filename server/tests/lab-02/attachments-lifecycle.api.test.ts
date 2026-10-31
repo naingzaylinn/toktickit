@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 
 import { app } from "../../src/app.js";
 import { getPrisma } from "../../src/prisma.js";
+import { cleanupTickets } from "./cleanup.js";
 import {
     saveAttachmentBinary,
 } from "../../src/services/attachmentStorage.js";
@@ -28,10 +29,7 @@ describe("Feature-G: Attachment Lifecycle API", () => {
     ]);
 
     beforeEach(async () => {
-        await prisma.ticketEvent.deleteMany();
-        await prisma.attachment.deleteMany();
-        await prisma.ticket.deleteMany();
-        await prisma.ticketSequence.deleteMany();
+        await cleanupTickets(prisma);
 
         const category =
             await prisma.category.upsert({
