@@ -15,7 +15,7 @@ const openActiveQueueTicket = async () => {
   render(<App/>); await screen.findByRole("link", { name: "Active Tickets 30" });
   fireEvent.click(screen.getByRole("link", { name: "Active Tickets 30" })); await screen.findByRole("heading", { name: "Ticket Queue" });
   expect(screen.getByLabelText("Status group")).toHaveValue("active");
-  fireEvent.click(screen.getByRole("button", { name: "Open", exact: true })); await screen.findByRole("heading", { name: /Queue result/ });
+  fireEvent.click(screen.getByRole("button", { name: /^Open$/ })); await screen.findByRole("heading", { name: /Queue result/ });
 };
 beforeEach(() => {
   vi.clearAllMocks(); window.history.replaceState({}, "", "/staff/tickets");
