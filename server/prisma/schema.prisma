@@ -67,6 +67,7 @@ model Ticket {
   categoryId        Int
   relatedSystemId   String
   ownerId           String?
+  workflowVersion   Int               @default(0)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -82,6 +83,7 @@ model Ticket {
 
   attachments Attachment[]
   events      TicketEvent[]
+  actionsTaken ActionTaken[]
 
   @@unique([requesterId, clientRequestId])
   @@index([requesterId])
@@ -89,6 +91,8 @@ model Ticket {
   @@index([ownerId])
   @@index([relatedSystemId])
   @@index([ticketDate])
+  @@index([currentStatus, ownerId])
+  @@index([updatedAt(sort: Desc), ticketNumber(sort: Asc)])
 }
 
 model Attachment {
@@ -174,6 +178,75 @@ model User {
   ticketEvents       TicketEvent[]   @relation("TicketEventActor")
   publicComments     PublicComment[]
   internalNotes      InternalNote[]
+  performedActions   ActionTaken[]         @relation("ActionPerformer")
+  assignedActions    ActionTaken[]         @relation("ActionAssignee")
+  actionRevisions    ActionTakenRevision[] @relation("ActionRevisionEditor")
+  assignedActionRevisions ActionTakenRevision[] @relation("ActionRevisionAssignee")
+  seedIdentity       SeedUserIdentity?
+}
+
+// Local seed metadata binds an immutable fixture key to an existing User ID.
+model SeedUserIdentity {
+  seedKey String @id
+  userId  String @unique
+  user    User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+enum ActionStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model ActionTaken {
+  id                String       @id @default(uuid())
+  ticketId          String
+  performedById     String
+  assigneeId        String
+  status            ActionStatus @default(PENDING)
+  actionDescription String
+  actionResult      String
+  followUpRequired  Boolean      @default(false)
+  followUpNote      String?
+  attachmentNotes   String?
+  clientRequestId   String
+  version           Int          @default(1)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  ticket      Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  performedBy User   @relation("ActionPerformer", fields: [performedById], references: [id], onDelete: Restrict)
+  assignee    User   @relation("ActionAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  revisions   ActionTakenRevision[]
+
+  @@unique([ticketId, performedById, clientRequestId])
+  @@index([ticketId, createdAt, id])
+  @@index([performedById, createdAt, id])
+  @@index([assigneeId])
+  @@index([ticketId, status])
+}
+
+model ActionTakenRevision {
+  id                String       @id @default(uuid())
+  actionId          String
+  editorId          String
+  version           Int
+  actionDescription String
+  actionResult      String
+  followUpRequired  Boolean
+  followUpNote      String?
+  attachmentNotes   String?
+  assigneeId        String
+  status            ActionStatus
+  createdAt         DateTime     @default(now())
+
+  action   ActionTaken @relation(fields: [actionId], references: [id], onDelete: Restrict)
+  editor   User @relation("ActionRevisionEditor", fields: [editorId], references: [id], onDelete: Restrict)
+  assignee User @relation("ActionRevisionAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+
+  @@unique([actionId, version])
+  @@index([editorId])
+  @@index([assigneeId])
 }
 
 model Session {
